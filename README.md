@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BH Hunter
 
-## Getting Started
+A boarding house discovery platform for students of **Visayas State University (VSU)
+Main Campus**, Baybay, Leyte. Find available boarding houses on an interactive map:
+compare prices, check real vacancies, see amenities, and view walking distance to campus.
 
-First, run the development server:
+> Full product vision and requirements live in [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md).
+> Architecture notes live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Tech stack
+
+| Layer     | Choice                                        |
+| --------- | --------------------------------------------- |
+| Framework | Next.js (App Router) + React + TypeScript     |
+| Styling   | Tailwind CSS + Framer Motion                  |
+| Map       | Leaflet + OpenStreetMap (swappable provider)  |
+| Database  | Supabase (PostgreSQL)                         |
+| ORM       | Prisma                                        |
+| Auth      | Supabase Auth                                 |
+| Storage   | Supabase Storage                              |
+| Hosting   | Vercel                                        |
+
+## Project structure
+
+```
+src/
+  app/            Routes and pages (thin — no business logic)
+  components/     Reusable UI, grouped by feature
+  hooks/          Reusable React state logic
+  services/       Business logic (availability, ranking, distance)
+  lib/
+    db/           Prisma client + data-access (the ONLY place that talks to the DB)
+    validation/   Zod schemas shared by client and server
+    utils/        Pure helper functions
+  config/         campus.ts — VSU-specific settings (map center, gate, radius)
+  types/          Shared TypeScript types
+prisma/
+  schema.prisma   Database schema
+  seed.ts         Seed data
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**The one rule that keeps this clean:** `app/` and `components/` never import Prisma.
+Data flows `UI → hooks → services → lib/db → database`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Getting started
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+cp .env.example .env.local   # then fill in your Supabase credentials
+npm run dev                  # http://localhost:3000
+```
 
-## Learn More
+## Roadmap (milestones)
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **M0 — Foundation** ✅ scaffold, folder structure, Prisma schema, seed data, campus config
+- **M1 — Discovery** interactive map, listings, filters, detail pages (read-only MVP)
+- **M2 — Owner side** auth, owner dashboard, listing management, vacancy updates
+- **M3 — Student accounts** favorites, compare, viewing requests, reviews
+- **M4 — Admin + polish** verification, moderation, analytics, 360° tours

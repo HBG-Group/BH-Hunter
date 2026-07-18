@@ -1,26 +1,82 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+body {
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  color: #171717;
+}
+
+/* Leaflet base map fills its container. */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: #e5e7eb;
+}
+
+/* Custom availability pins (see components/map/markerIcon.ts). */
+.bh-pin-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+}
+
+.bh-pin-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.bh-pin-pulse {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  opacity: 0.5;
+  animation: bh-pulse 1.8s ease-out infinite;
+}
+
+@keyframes bh-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Draggable pin used in the owner location picker. */
+.bh-pick-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px 9999px 9999px 2px;
+  background: #171717;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transform: rotate(45deg);
+  cursor: grab;
+}
+
+.bh-campus-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  background: #171717;
+  color: #fff;
+  font-size: 14px;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }

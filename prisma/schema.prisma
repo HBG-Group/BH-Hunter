@@ -1,0 +1,315 @@
+// BH Hunter database schema.
+// One campus for now (VSU Main), so there is no Campus table yet — campus settings
+// live in src/config/campus.ts. When we expand, we add a Campus model and a
+// campusId on BoardingHouse; nothing else here needs to change.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums — the fixed vocabulary of the app (mirrors src/types/domain.ts)
+// ---------------------------------------------------------------------------
+
+enum Role {
+  STUDENT
+  OWNER
+  ADMIN
+}
+
+enum GenderPolicy {
+  MALE
+  FEMALE
+  MIXED
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ImageType {
+  PHOTO
+  TOUR_360
+}
+
+enum NearbyCategory {
+  LAUNDRY
+  CONVENIENCE_STORE
+  CAFE
+  WATER_REFILL
+  PRINTING_SHOP
+  PHARMACY
+  ATM
+  JEEPNEY_STOP
+  CLINIC
+}
+
+enum ViewingRequestStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+  CANCELLED
+}
+
+enum AnalyticsEventType {
+  VIEW
+  CONTACT_CLICK
+  FAVORITE
+  VIEWING_REQUEST
+}
+
+// ---------------------------------------------------------------------------
+// People. Profile.id matches the Supabase Auth user id (auth.users.id).
+// ---------------------------------------------------------------------------
+
+model Profile {
+  id        String   @id
+  role      Role     @default(STUDENT)
+  fullName  String
+  email     String   @unique
+  phone     String?
+  avatarUrl String?  // profile photo (auto-filled from Google when available)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  boardingHouses         BoardingHouse[]         @relation("OwnerListings")
+  reviews                Review[]
+  favorites              Favorite[]
+  viewingRequests        ViewingRequest[]
+  notifications          Notification[]
+  recentlyViewed         RecentlyViewed[]
+  notificationPreference NotificationPreference?
+
+  @@map("profiles")
+}
+
+// A student's recently viewed listings. One row per student+listing (upserted).
+model RecentlyViewed {
+  studentId       String
+  boardingHouseId String
+  student         Profile       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  boardingHouse   BoardingHouse @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+  viewedAt        DateTime      @default(now())
+
+  @@id([studentId, boardingHouseId])
+  @@index([studentId, viewedAt])
+  @@map("recently_viewed")
+}
+
+// Per-student notification settings. One row per student.
+model NotificationPreference {
+  studentId          String  @id
+  student            Profile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  roomAvailableAlerts Boolean @default(true)
+
+  @@map("notification_preferences")
+}
+
+// ---------------------------------------------------------------------------
+// The core entity: a boarding house listing.
+// ---------------------------------------------------------------------------
+
+model BoardingHouse {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  ownerId      String
+  owner        Profile       @relation("OwnerListings", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  name         String
+  addressLine  String
+  latitude     Float
+  longitude    Float
+
+  genderPolicy GenderPolicy
+  priceMonthly Int           // lowest room price, in PHP
+  advanceMonths Int          @default(1)
+  depositMonths Int          @default(1)
+  utilitiesIncluded Boolean  @default(false)
+  internetIncluded  Boolean  @default(false)
+
+  curfew       String?
+  houseRules   String?
+
+  contactPhone String
+  messengerUrl String?
+  contactEmail String?
+
+  status          ListingStatus @default(DRAFT)
+  lastConfirmedAt DateTime?     // last time the owner confirmed vacancies
+  verifiedAt      DateTime?     // set by an admin after verification
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rooms           Room[]
+  amenities       BoardingHouseAmenity[]
+  images          Image[]
+  nearbyPlaces    NearbyPlace[]
+  reviews         Review[]
+  favorites       Favorite[]
+  viewingRequests ViewingRequest[]
+  analyticsEvents AnalyticsEvent[]
+  recentlyViewed  RecentlyViewed[]
+
+  @@index([status])
+  @@map("boarding_houses")
+}
+
+// Availability is derived by counting rooms, so vacancy can never contradict them.
+model Room {
+  id              String        @id @default(cuid())
+  boardingHouseId String
+  boardingHouse   BoardingHouse @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+
+  label        String
+  capacity     Int
+  occupied     Int  @default(0)
+  priceMonthly Int?
+
+  @@index([boardingHouseId])
+  @@map("rooms")
+}
+
+// ---------------------------------------------------------------------------
+// Amenities — a shared catalog plus a join table per boarding house.
+// ---------------------------------------------------------------------------
+
+model Amenity {
+  id    String @id @default(cuid())
+  key   String @unique
+  label String
+
+  boardingHouses BoardingHouseAmenity[]
+
+  @@map("amenities")
+}
+
+model BoardingHouseAmenity {
+  boardingHouseId String
+  amenityId       String
+  boardingHouse   BoardingHouse @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+  amenity         Amenity       @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([boardingHouseId, amenityId])
+  @@map("boarding_house_amenities")
+}
+
+// ---------------------------------------------------------------------------
+// Media, nearby places, reviews, and student-side records.
+// ---------------------------------------------------------------------------
+
+model Image {
+  id              String        @id @default(cuid())
+  boardingHouseId String
+  boardingHouse   BoardingHouse @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+
+  url       String
+  type      ImageType @default(PHOTO)
+  alt       String?
+  sortOrder Int       @default(0)
+
+  @@index([boardingHouseId])
+  @@map("images")
+}
+
+model NearbyPlace {
+  id              String        @id @default(cuid())
+  boardingHouseId String
+  boardingHouse   BoardingHouse @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+
+  category    NearbyCategory
+  name        String
+  walkMinutes Int
+
+  @@index([boardingHouseId])
+  @@map("nearby_places")
+}
+
+model Review {
+  id              String        @id @default(cuid())
+  boardingHouseId String
+  boardingHouse   BoardingHouse @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+  authorId        String
+  author          Profile       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  overall          Int
+  cleanliness      Int
+  internet         Int
+  safety           Int
+  noiseLevel       Int
+  waterSupply      Int
+  ownerFriendliness Int
+  body             String?
+  isVerified       Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([boardingHouseId, authorId])
+  @@index([boardingHouseId])
+  @@map("reviews")
+}
+
+model Favorite {
+  studentId       String
+  boardingHouseId String
+  student         Profile       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  boardingHouse   BoardingHouse @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+
+  @@id([studentId, boardingHouseId])
+  @@map("favorites")
+}
+
+model ViewingRequest {
+  id              String               @id @default(cuid())
+  studentId       String
+  boardingHouseId String
+  student         Profile              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  boardingHouse   BoardingHouse        @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+
+  preferredAt DateTime
+  status      ViewingRequestStatus @default(PENDING)
+  message     String?
+  createdAt   DateTime             @default(now())
+
+  @@index([boardingHouseId])
+  @@map("viewing_requests")
+}
+
+// One row per meaningful action, so owner analytics can be aggregated later.
+model AnalyticsEvent {
+  id              String             @id @default(cuid())
+  boardingHouseId String
+  boardingHouse   BoardingHouse      @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+
+  type      AnalyticsEventType
+  createdAt DateTime           @default(now())
+
+  @@index([boardingHouseId, type])
+  @@map("analytics_events")
+}
+
+model Notification {
+  id     String  @id @default(cuid())
+  userId String
+  user   Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type   String
+  title  String
+  body   String?
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("notifications")
+}
