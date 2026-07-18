@@ -39,6 +39,7 @@ export async function findFavoriteListings(studentId: string) {
           images: { orderBy: { sortOrder: "asc" } },
           amenities: { include: { amenity: true } },
           nearbyPlaces: true,
+          reviews: { select: { overall: true } },
         },
       },
     },

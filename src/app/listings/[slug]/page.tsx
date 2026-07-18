@@ -7,6 +7,7 @@ import { FactList } from "@/components/detail/FactList";
 import { NearbyList } from "@/components/detail/NearbyList";
 import { ContactPanel } from "@/components/detail/ContactPanel";
 import { ViewTracker } from "@/components/detail/ViewTracker";
+import { ListingLocation } from "@/components/detail/ListingLocation";
 import { ReviewList } from "@/components/detail/ReviewList";
 import { ReviewForm } from "@/components/detail/ReviewForm";
 import { ViewingRequestForm } from "@/components/detail/ViewingRequestForm";
@@ -115,6 +116,16 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 <p className="text-sm text-neutral-600">{listing.houseRules}</p>
               </section>
             )}
+
+            <section>
+              <h2 className="mb-2 text-sm font-semibold text-neutral-900">Location</h2>
+              <ListingLocation
+                latitude={listing.latitude}
+                longitude={listing.longitude}
+                availabilityState={listing.availabilityState}
+                walkingMinutes={listing.walkingMinutesToCampus}
+              />
+            </section>
 
             {listing.nearbyPlaces.length > 0 && (
               <section>

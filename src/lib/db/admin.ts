@@ -39,12 +39,16 @@ const adminListingSelect = {
   owner: { select: { fullName: true, email: true } },
 } as const;
 
-// The review queue: listings owners have submitted and are waiting to go live.
+// Listings that need an admin's attention: submitted for review (PENDING) or not yet
+// verified. Archived listings are excluded.
 export function findListingsAwaitingReview() {
   return prisma.boardingHouse.findMany({
-    where: { status: "PENDING" },
+    where: {
+      status: { not: "ARCHIVED" },
+      OR: [{ status: "PENDING" }, { verifiedAt: null }],
+    },
     select: adminListingSelect,
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
   });
 }
 

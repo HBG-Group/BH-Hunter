@@ -14,12 +14,12 @@ export default async function AdminOverviewPage() {
       <PlatformStatCards stats={stats} />
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Awaiting review</h2>
+        <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Needs attention</h2>
         <p className="text-sm text-neutral-500">
-          Listings owners have submitted. Verify and publish to make them go live.
+          New, pending, or unverified listings. Verify and publish to make them go live.
         </p>
         {queue.length === 0 ? (
-          <EmptyState title="All caught up" message="No listings are waiting for review." />
+          <EmptyState title="All caught up" message="No listings need attention right now." />
         ) : (
           <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
             {queue.map((row) => (

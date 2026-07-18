@@ -10,6 +10,7 @@ const listingInclude = {
   images: { orderBy: { sortOrder: "asc" } },
   amenities: { include: { amenity: true } },
   nearbyPlaces: true,
+  reviews: { select: { overall: true } },
 } as const;
 
 export function findPublishedBoardingHouses() {

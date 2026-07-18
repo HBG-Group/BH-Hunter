@@ -21,6 +21,13 @@ export async function getCurrentProfile(): Promise<Profile | null> {
   const existing = await prisma.profile.findUnique({ where: { id: user.id } });
   if (existing) return existing;
 
+  // The same email may already have a profile from a different sign-in method
+  // (e.g. email/password first, then Google). Reuse it — it's the same person.
+  if (user.email) {
+    const byEmail = await prisma.profile.findUnique({ where: { email: user.email } });
+    if (byEmail) return byEmail;
+  }
+
   // Metadata differs between email sign-up and Google (name / avatar live here).
   const metadata = user.user_metadata ?? {};
   const fullName =

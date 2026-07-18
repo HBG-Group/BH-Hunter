@@ -24,6 +24,7 @@ export async function findRecentlyViewed(studentId: string, limit = 8) {
           images: { orderBy: { sortOrder: "asc" } },
           amenities: { include: { amenity: true } },
           nearbyPlaces: true,
+          reviews: { select: { overall: true } },
         },
       },
     },

@@ -49,7 +49,7 @@ export function LocationPickerMap({ latitude, longitude, onChange }: Props) {
       center={[latitude, longitude]}
       zoom={activeCampus.defaultZoom}
       scrollWheelZoom
-      className="h-64 w-full overflow-hidden rounded-xl"
+      className="h-full w-full"
     >
       <TileLayer
         url={activeTileProvider.urlTemplate}

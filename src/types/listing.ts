@@ -38,6 +38,8 @@ export interface ListingCard {
   availabilityState: AvailabilityState;
   isAvailabilityStale: boolean;
   isVerified: boolean;
+  averageRating: number;
+  reviewCount: number;
   walkingMinutesToCampus: number;
   motorcycleMinutesToCampus: number;
   lastConfirmedAt: string | null;

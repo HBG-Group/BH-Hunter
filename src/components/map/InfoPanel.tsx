@@ -62,7 +62,7 @@ export function InfoPanel({ listing, isFavorited, isAuthenticated, onClose }: Pr
 
         <Link
           href={`/listings/${listing.slug}`}
-          className="mt-1 block rounded-xl bg-neutral-900 py-2 text-center text-sm font-medium text-white hover:bg-neutral-800"
+          className="mt-1 block rounded-xl bg-primary py-2 text-center text-sm font-medium text-white hover:bg-primary-hover"
         >
           View details
         </Link>

@@ -4,6 +4,8 @@ import "leaflet/dist/leaflet.css";
 import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import { activeCampus } from "@/config/campus";
 import { activeTileProvider } from "@/lib/map/provider";
+import { GestureHandler } from "@/components/map/GestureHandler";
+import { AutoResize } from "@/components/map/AutoResize";
 import { buildMarkerIcon } from "@/components/map/markerIcon";
 import { CampusMarker } from "@/components/map/CampusMarker";
 import type { ListingCard } from "@/types/listing";
@@ -22,9 +24,10 @@ export function MapView({ listings, activeId, onSelect, onHover }: Props) {
     <MapContainer
       center={[activeCampus.center.latitude, activeCampus.center.longitude]}
       zoom={activeCampus.defaultZoom}
-      scrollWheelZoom
       className="h-full w-full"
     >
+      <GestureHandler />
+      <AutoResize />
       <TileLayer
         url={activeTileProvider.urlTemplate}
         attribution={activeTileProvider.attribution}

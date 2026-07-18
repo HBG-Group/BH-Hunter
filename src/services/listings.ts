@@ -17,6 +17,10 @@ function toCard(row: BoardingHouseWithRelations): ListingCard {
     activeCampus.mainGate,
   );
 
+  const reviewCount = row.reviews.length;
+  const averageRating =
+    reviewCount > 0 ? row.reviews.reduce((sum, r) => sum + r.overall, 0) / reviewCount : 0;
+
   return {
     id: row.id,
     slug: row.slug,
@@ -33,6 +37,8 @@ function toCard(row: BoardingHouseWithRelations): ListingCard {
     availabilityState: availability.state,
     isAvailabilityStale: isAvailabilityStale(row.lastConfirmedAt),
     isVerified: row.verifiedAt !== null,
+    averageRating,
+    reviewCount,
     walkingMinutesToCampus: travel.walkingMinutes,
     motorcycleMinutesToCampus: travel.motorcycleMinutes,
     lastConfirmedAt: row.lastConfirmedAt?.toISOString() ?? null,

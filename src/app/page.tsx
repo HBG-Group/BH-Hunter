@@ -1,5 +1,7 @@
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { DiscoveryView } from "@/components/discovery/DiscoveryView";
+import { AboutSection } from "@/components/home/AboutSection";
+import { FadeIn } from "@/components/ui/FadeIn";
 import { findPublishedBoardingHouses } from "@/lib/db/boarding-houses";
 import { getFavoriteIds } from "@/lib/db/favorites";
 import { getCurrentProfile } from "@/lib/auth/profile";
@@ -19,22 +21,22 @@ export default async function HomePage() {
     <div className="min-h-screen bg-neutral-50">
       <SiteHeader />
       <main className="mx-auto max-w-7xl px-4 py-6">
-        <section id="explore" className="mb-6 scroll-mt-20">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">
+        <FadeIn className="mb-8 max-w-2xl">
+          <h1 className="text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
             Find your boarding house near VSU
           </h1>
-          <p className="mt-1 text-neutral-500">
-            Compare prices, check real vacancies, and see the walk to campus — all on one map.
+          <p className="mt-3 text-lg text-muted">
+            Browse every option on one map, compare prices, and check real vacancies — no sign-in needed.
           </p>
-        </section>
+        </FadeIn>
 
-        <div id="map" className="scroll-mt-20">
-          <DiscoveryView
-            listings={listings}
-            favoritedIds={favoritedIds}
-            isAuthenticated={profile !== null}
-          />
-        </div>
+        <DiscoveryView
+          listings={listings}
+          favoritedIds={favoritedIds}
+          isAuthenticated={profile !== null}
+        />
+
+        <AboutSection />
       </main>
     </div>
   );
