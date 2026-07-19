@@ -11,8 +11,11 @@ import { ListingLocation } from "@/components/detail/ListingLocation";
 import { ReviewList } from "@/components/detail/ReviewList";
 import { ReviewForm } from "@/components/detail/ReviewForm";
 import { ViewingRequestForm } from "@/components/detail/ViewingRequestForm";
+import { SectionTabs } from "@/components/detail/SectionTabs";
+import { AvailabilitySummary } from "@/components/detail/AvailabilitySummary";
 import { AmenityChips } from "@/components/ui/AmenityChips";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
+import { Stars } from "@/components/ui/Stars";
 import { FavoriteButton } from "@/components/student/FavoriteButton";
 import { findBoardingHouseBySlug } from "@/lib/db/boarding-houses";
 import { findReviews, findStudentReview, getRatingSummary } from "@/lib/db/reviews";
@@ -40,12 +43,31 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 // A gentle nudge shown in place of the review/viewing forms when signed out.
 function SignInPrompt({ slug }: { slug: string }) {
   return (
-    <p className="rounded-2xl border border-dashed border-neutral-200 bg-white p-4 text-sm text-neutral-500">
-      <Link href={`/login?next=/listings/${slug}`} className="text-neutral-900 underline">
+    <p className="rounded-2xl border border-dashed border-line bg-white p-4 text-sm text-muted">
+      <Link href={`/login?next=/listings/${slug}`} className="text-primary underline">
         Sign in
       </Link>{" "}
       to save this place, leave a review, or request a viewing.
     </p>
+  );
+}
+
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "amenities", label: "Amenities" },
+  { id: "availability", label: "Availability" },
+  { id: "reviews", label: "Reviews" },
+  { id: "location", label: "Location" },
+  { id: "owner", label: "Owner" },
+];
+
+// Consistent section heading + scroll offset for the sticky header + tabs.
+function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  return (
+    <section id={id} className="scroll-mt-32 space-y-3">
+      <h2 className="text-xl font-semibold tracking-tight text-ink">{title}</h2>
+      {children}
+    </section>
   );
 }
 
@@ -75,81 +97,93 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const isFavorited = favoriteIds.includes(row.id);
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-canvas">
       <ViewTracker boardingHouseId={listing.id} />
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-4 py-6">
-        <Link href="/" className="text-sm text-neutral-500 hover:text-neutral-900">
+        <Link href="/" className="text-sm text-muted hover:text-ink">
           ← Back to map
         </Link>
 
-        <div className="mt-3 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="space-y-6">
-            <PhotoGallery images={listing.images} name={listing.name} />
+        {/* Gallery first */}
+        <div className="mt-3">
+          <PhotoGallery images={listing.images} name={listing.name} />
+        </div>
 
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">{listing.name}</h1>
-                  {listing.isVerified && <VerifiedBadge />}
-                </div>
-                <p className="mt-1 text-neutral-500">{listing.addressLine}</p>
-              </div>
-              <FavoriteButton
-                boardingHouseId={row.id}
-                initialFavorited={isFavorited}
-                isAuthenticated={profile !== null}
-                variant="inline"
-              />
+        {/* Title block */}
+        <div className="mt-5 flex items-start justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-3xl font-semibold tracking-tight text-ink">{listing.name}</h1>
+              {listing.isVerified && <VerifiedBadge />}
             </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+              <span className="flex items-center gap-1">
+                <Stars value={summary.average} size={14} />
+                {summary.count > 0 ? `${summary.average.toFixed(1)} (${summary.count})` : "No reviews yet"}
+              </span>
+              <span>·</span>
+              <span>{listing.addressLine}</span>
+            </div>
+          </div>
+          <FavoriteButton
+            boardingHouseId={row.id}
+            initialFavorited={isFavorited}
+            isAuthenticated={profile !== null}
+            variant="inline"
+          />
+        </div>
 
-            <FactList listing={listing} />
+        <div className="mt-5">
+          <SectionTabs tabs={TABS} />
+        </div>
 
-            <section>
-              <h2 className="mb-2 text-sm font-semibold text-neutral-900">Amenities</h2>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="space-y-10">
+            <Section id="overview" title="Overview">
+              <FactList listing={listing} />
+              {listing.houseRules && (
+                <div className="rounded-2xl border border-line bg-white p-4">
+                  <p className="text-sm font-medium text-ink">House rules</p>
+                  <p className="mt-1 text-sm text-muted">{listing.houseRules}</p>
+                </div>
+              )}
+            </Section>
+
+            <Section id="amenities" title="Amenities">
               <AmenityChips amenityKeys={listing.amenityKeys} />
-            </section>
+            </Section>
 
-            {listing.houseRules && (
-              <section>
-                <h2 className="mb-2 text-sm font-semibold text-neutral-900">House rules</h2>
-                <p className="text-sm text-neutral-600">{listing.houseRules}</p>
-              </section>
-            )}
+            <Section id="availability" title="Availability">
+              <AvailabilitySummary listing={listing} />
+            </Section>
 
-            <section>
-              <h2 className="mb-2 text-sm font-semibold text-neutral-900">Location</h2>
+            <Section id="reviews" title="Reviews">
+              <ReviewList summary={summary} reviews={reviews} />
+              {profile ? (
+                <ReviewForm action={submitReviewAction.bind(null, target)} slug={slug} existing={myReview} />
+              ) : (
+                <SignInPrompt slug={slug} />
+              )}
+            </Section>
+
+            <Section id="location" title="Location">
               <ListingLocation
                 latitude={listing.latitude}
                 longitude={listing.longitude}
                 availabilityState={listing.availabilityState}
                 walkingMinutes={listing.walkingMinutesToCampus}
               />
-            </section>
-
-            {listing.nearbyPlaces.length > 0 && (
-              <section>
-                <h2 className="mb-1 text-sm font-semibold text-neutral-900">What&apos;s nearby</h2>
-                <NearbyList places={listing.nearbyPlaces} />
-              </section>
-            )}
-
-            <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-neutral-900">Reviews</h2>
-              <ReviewList summary={summary} reviews={reviews} />
-              {profile ? (
-                <ReviewForm
-                  action={submitReviewAction.bind(null, target)}
-                  slug={slug}
-                  existing={myReview}
-                />
-              ) : (
-                <SignInPrompt slug={slug} />
+              {listing.nearbyPlaces.length > 0 && (
+                <div className="pt-2">
+                  <p className="mb-1 text-sm font-medium text-ink">What&apos;s nearby</p>
+                  <NearbyList places={listing.nearbyPlaces} />
+                </div>
               )}
-            </section>
+            </Section>
           </div>
 
-          <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+          <aside id="owner" className="scroll-mt-32 space-y-4 lg:sticky lg:top-24 lg:self-start">
             <ContactPanel listing={listing} />
             {profile ? (
               <ViewingRequestForm action={requestViewingAction.bind(null, target)} />
