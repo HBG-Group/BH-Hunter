@@ -34,6 +34,9 @@ export function FavoriteButton({
       return;
     }
 
+    // Ignore repeat clicks while a toggle is in flight.
+    if (pending) return;
+
     setFavorited((current) => !current);
     startTransition(async () => {
       const result = await toggleFavoriteAction(boardingHouseId);

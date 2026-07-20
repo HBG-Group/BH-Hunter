@@ -43,16 +43,25 @@ export async function addImageForOwner(
   return true;
 }
 
-// Removes a photo the owner owns and returns its URL (so the file can be deleted).
-export async function deleteImageForOwner(
-  ownerId: string,
-  imageId: string,
-): Promise<string | null> {
-  const image = await prisma.image.findFirst({
-    where: { id: imageId, boardingHouse: { ownerId } },
-  });
-  if (!image) return null;
+// True when this exact object has already been registered — blocks ticket replay.
+export async function imageUrlExists(url: string): Promise<boolean> {
+  const existing = await prisma.image.findFirst({ where: { url }, select: { id: true } });
+  return existing !== null;
+}
 
-  await prisma.image.delete({ where: { id: imageId } });
-  return image.url;
+// Removes photos the owner owns on the given listing, returning their URLs so the
+// files can be deleted. Ids the owner doesn't own are silently skipped.
+export async function deleteImagesForOwner(
+  ownerId: string,
+  boardingHouseId: string,
+  imageIds: string[],
+): Promise<string[]> {
+  const images = await prisma.image.findMany({
+    where: { id: { in: imageIds }, boardingHouseId, boardingHouse: { ownerId } },
+    select: { id: true, url: true },
+  });
+  if (images.length === 0) return [];
+
+  await prisma.image.deleteMany({ where: { id: { in: images.map((image) => image.id) } } });
+  return images.map((image) => image.url);
 }

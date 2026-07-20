@@ -161,6 +161,7 @@ model BoardingHouse {
   recentlyViewed  RecentlyViewed[]
 
   @@index([status])
+  @@index([ownerId])
   @@map("boarding_houses")
 }
 
@@ -212,7 +213,7 @@ model Image {
   boardingHouseId String
   boardingHouse   BoardingHouse @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
 
-  url       String
+  url       String    @unique
   type      ImageType @default(PHOTO)
   alt       String?
   sortOrder Int       @default(0)
@@ -255,6 +256,7 @@ model Review {
 
   @@unique([boardingHouseId, authorId])
   @@index([boardingHouseId])
+  @@index([authorId])
   @@map("reviews")
 }
 
@@ -266,6 +268,7 @@ model Favorite {
   createdAt       DateTime      @default(now())
 
   @@id([studentId, boardingHouseId])
+  @@index([boardingHouseId])
   @@map("favorites")
 }
 
@@ -282,6 +285,7 @@ model ViewingRequest {
   createdAt   DateTime             @default(now())
 
   @@index([boardingHouseId])
+  @@index([studentId])
   @@map("viewing_requests")
 }
 

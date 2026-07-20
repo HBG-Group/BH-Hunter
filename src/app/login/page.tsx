@@ -3,6 +3,7 @@ import { AuthLayout } from "@/components/auth/AuthLayout";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { AuthDivider } from "@/components/auth/AuthDivider";
+import { safeRedirectPath } from "@/lib/security/redirect";
 import { signInAction } from "@/lib/auth/actions";
 
 interface Props {
@@ -10,7 +11,9 @@ interface Props {
 }
 
 export default async function LoginPage({ searchParams }: Props) {
-  const { next, error } = await searchParams;
+  const { next: rawNext, error } = await searchParams;
+  // Validate redirect at the boundary, before it reaches the form or Google.
+  const next = safeRedirectPath(rawNext, "");
 
   return (
     <AuthLayout title="Sign in" subtitle="Students and owners both sign in here.">
@@ -19,9 +22,9 @@ export default async function LoginPage({ searchParams }: Props) {
           Sign-in didn&apos;t complete. Please try again.
         </p>
       )}
-      <GoogleButton next={next ?? "/"} />
+      <GoogleButton next={next || "/"} />
       <AuthDivider />
-      <AuthForm mode="signin" action={signInAction} next={next} />
+      <AuthForm mode="signin" action={signInAction} next={next || undefined} />
 
       <p className="mt-4 text-center text-xs text-neutral-500">
         Renting a room?{" "}

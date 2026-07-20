@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { safeRedirectPath } from "@/lib/security/redirect";
 import { AnimatePresence, motion } from "framer-motion";
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
 export function SignInModal({ next, onClose }: Props) {
   const router = useRouter();
   const isOpen = next !== null;
-  const returnTo = next ?? "/";
+  const returnTo = safeRedirectPath(next, "/");
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 

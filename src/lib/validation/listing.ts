@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AMENITY_KEYS } from "@/config/amenities";
+import { isSafeExternalUrl } from "@/lib/security/url";
 
 // Sensible upper bounds so a typo can't create nonsense data.
 export const MAX_MONTHLY_PRICE = 100_000;
@@ -49,7 +50,14 @@ export const listingSchema = z.object({
   houseRules: z.string().trim().max(1000, "Keep house rules under 1000 characters").optional(),
 
   contactPhone: phoneSchema,
-  messengerUrl: z.string().trim().url("Enter a full link (https://…)").max(300).optional().or(z.literal("")),
+  // Sanitize URL: https only (http allowed outside production), no other scheme.
+  messengerUrl: z
+    .string()
+    .trim()
+    .max(300)
+    .refine(isSafeExternalUrl, "Enter a full https:// link")
+    .optional()
+    .or(z.literal("")),
   contactEmail: z.string().trim().email("Enter a valid email").max(160).optional().or(z.literal("")),
 
   amenityKeys: z.array(z.enum(AMENITY_KEYS as [string, ...string[]])).default([]),

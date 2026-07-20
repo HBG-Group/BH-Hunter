@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAnonKey, supabaseUrl } from "@/config/env";
+import { safeRedirectPath } from "@/lib/security/redirect";
 
 // Next 16's replacement for middleware. Runs before a route renders: it refreshes the
 // Supabase session cookie and bounces signed-out visitors away from the owner area.
@@ -32,7 +33,8 @@ export async function proxy(request: NextRequest) {
   const isProtected = path.startsWith("/owner") || path.startsWith("/admin");
   if (isProtected && !user) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", path);
+    // Only ever round-trip a validated in-app path.
+    loginUrl.searchParams.set("next", safeRedirectPath(path, "/"));
     return NextResponse.redirect(loginUrl);
   }
 

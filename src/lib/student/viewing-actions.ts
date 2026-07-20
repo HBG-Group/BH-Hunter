@@ -5,6 +5,9 @@ import { requireProfile } from "@/lib/auth/profile";
 import { createViewingRequest } from "@/lib/db/viewing-requests";
 import { logAnalyticsEvent } from "@/lib/db/analytics";
 import { viewingRequestSchema } from "@/lib/validation/viewing";
+import { publishedListingExists } from "@/lib/db/listing-guards";
+import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
+import { guarded } from "@/lib/security/errors";
 
 export interface ViewingFormState {
   error?: string;
@@ -23,6 +26,12 @@ export async function requestViewingAction(
   formData: FormData,
 ): Promise<ViewingFormState> {
   const profile = await requireProfile(`/listings/${target.slug}`);
+  if (!(await allow("viewing", LIMITS.viewing, profile.id))) return { error: RATE_LIMITED };
+
+  // Verify the listing is real and public before creating a request against it.
+  if (!(await publishedListingExists(target.boardingHouseId))) {
+    return { error: "That listing is no longer available." };
+  }
 
   const parsed = viewingRequestSchema.safeParse({
     preferredAt: formData.get("preferredAt"),
@@ -32,14 +41,20 @@ export async function requestViewingAction(
     return { error: parsed.error.issues[0]?.message ?? "Please check the date" };
   }
 
-  await createViewingRequest(
-    profile.id,
-    target.boardingHouseId,
-    parsed.data.preferredAt,
-    parsed.data.message,
-  );
-  await logAnalyticsEvent(target.boardingHouseId, "VIEWING_REQUEST");
+  return guarded<ViewingFormState>(
+    "requestViewing",
+    async () => {
+      await createViewingRequest(
+        profile.id,
+        target.boardingHouseId,
+        parsed.data.preferredAt,
+        parsed.data.message,
+      );
+      await logAnalyticsEvent(target.boardingHouseId, "VIEWING_REQUEST");
 
-  revalidatePath("/account");
-  return { success: true };
+      revalidatePath("/account");
+      return { success: true };
+    },
+    (message) => ({ error: message }),
+  );
 }

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { Profile } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { safeRedirectPath } from "@/lib/security/redirect";
 
 // The Supabase auth user for this request, or null if signed out.
 export async function getCurrentUser() {
@@ -60,7 +61,11 @@ export async function requireOwner(): Promise<Profile> {
 // For anything that just needs a signed-in account (favorites, reviews, viewings).
 export async function requireProfile(next?: string): Promise<Profile> {
   const profile = await getCurrentProfile();
-  if (!profile) redirect(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
+  // Validate redirect before echoing it back into the login URL.
+  if (!profile) {
+    const target = next ? safeRedirectPath(next, "") : "";
+    redirect(target ? `/login?next=${encodeURIComponent(target)}` : "/login");
+  }
   return profile;
 }
 

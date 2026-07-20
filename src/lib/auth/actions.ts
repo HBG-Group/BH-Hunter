@@ -3,6 +3,9 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/profile";
+import { safeRedirectPath } from "@/lib/security/redirect";
+import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
+import { credentialsSchema, signUpSchema } from "@/lib/validation/auth";
 
 export interface AuthFormState {
   error?: string;
@@ -14,13 +17,21 @@ export async function signInAction(
   _prev: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
-  const email = String(formData.get("email") ?? "");
-  const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "");
+  if (!(await allow("signin", LIMITS.auth))) return { error: RATE_LIMITED };
+
+  const parsed = credentialsSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check your details" };
+
+  // Validate redirect before it is ever used.
+  const next = safeRedirectPath(formData.get("next") as string | null, "");
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: error.message };
+  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  // Deliberately generic: don't reveal whether the email exists.
+  if (error) return { error: "Incorrect email or password." };
 
   // Make sure a Profile row exists, then send them somewhere sensible for their role.
   const profile = await getCurrentProfile();
@@ -35,12 +46,18 @@ export async function signUpAction(
   _prev: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
-  const fullName = String(formData.get("fullName") ?? "");
-  const email = String(formData.get("email") ?? "");
-  const password = String(formData.get("password") ?? "");
+  if (!(await allow("signup", LIMITS.auth))) return { error: RATE_LIMITED };
+
   // Owners sign up from the "list your property" flow; everyone else is a student.
   // Any email is accepted — incoming freshmen may not have a VSU email yet.
-  const role = formData.get("role") === "OWNER" ? "OWNER" : "STUDENT";
+  const parsed = signUpSchema.safeParse({
+    fullName: formData.get("fullName"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+    role: formData.get("role") === "OWNER" ? "OWNER" : "STUDENT",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check your details" };
+  const { fullName, email, password, role } = parsed.data;
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({

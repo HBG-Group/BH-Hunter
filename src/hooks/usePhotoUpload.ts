@@ -13,8 +13,8 @@ interface Result {
   clearError: () => void;
 }
 
-// Photos go browser → Supabase Storage directly, using short-lived signed tickets
-// from the server. Sending megabytes through a Server Action truncates the request.
+// Photos go browser → Supabase Storage directly, using signed tickets from the server.
+// The server picks every path and re-verifies each file after upload.
 export function usePhotoUpload(boardingHouseId: string): Result {
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
@@ -24,39 +24,42 @@ export function usePhotoUpload(boardingHouseId: string): Result {
     setUploading(true);
     setError(null);
 
-    const prepared = await prepareUploadsAction(
-      boardingHouseId,
-      files.map((file) => ({ name: file.name, type: file.type, size: file.size })),
-    );
-    if (prepared.error || !prepared.tickets) {
-      setError(prepared.error ?? "Could not start the upload");
-      setUploading(false);
-      return;
-    }
-
-    const supabase = createSupabaseBrowserClient();
-    const stored: string[] = [];
-
-    for (const [index, ticket] of prepared.tickets.entries()) {
-      const { error: uploadError } = await supabase.storage
-        .from(PHOTO_BUCKET)
-        .uploadToSignedUrl(ticket.path, ticket.token, files[index]);
-
-      if (uploadError) {
-        setError(`"${ticket.fileName}" failed to upload: ${uploadError.message}`);
-        break;
+    try {
+      const prepared = await prepareUploadsAction(
+        boardingHouseId,
+        files.map((file) => ({ name: file.name, type: file.type, size: file.size })),
+      );
+      if (prepared.error || !prepared.tickets) {
+        setError(prepared.error ?? "Could not start the upload");
+        return;
       }
-      stored.push(ticket.path);
-    }
 
-    // Record whatever made it, so a partial failure doesn't lose the good uploads.
-    if (stored.length > 0) {
-      const result = await registerPhotosAction(boardingHouseId, stored);
-      if (result.error) setError(result.error);
-      else router.refresh();
-    }
+      const supabase = createSupabaseBrowserClient();
+      const uploaded: { claims: (typeof prepared.tickets)[number]["claims"]; signature: string }[] = [];
 
-    setUploading(false);
+      for (const [index, ticket] of prepared.tickets.entries()) {
+        const { error: uploadError } = await supabase.storage
+          .from(PHOTO_BUCKET)
+          .uploadToSignedUrl(ticket.path, ticket.token, files[index]);
+
+        if (uploadError) {
+          setError(`"${ticket.fileName}" was rejected: ${uploadError.message}`);
+          break;
+        }
+        uploaded.push({ claims: ticket.claims, signature: ticket.signature });
+      }
+
+      // Register whatever landed, so a partial failure doesn't lose good uploads.
+      if (uploaded.length > 0) {
+        const result = await registerPhotosAction(boardingHouseId, uploaded);
+        if (result.error) setError(result.error);
+        else router.refresh();
+      }
+    } catch {
+      setError("The upload failed. Check your connection and try again.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return { upload, uploading, error, clearError: () => setError(null) };

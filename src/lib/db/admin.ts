@@ -67,18 +67,22 @@ export async function isListingVerified(id: string): Promise<boolean> {
   return row?.verifiedAt != null;
 }
 
-export function setListingVerified(id: string, verified: boolean) {
-  return prisma.boardingHouse.update({
+// updateMany/deleteMany return a count instead of throwing when the row is gone, so
+// two admins working the same queue can't crash each other.
+export async function setListingVerified(id: string, verified: boolean): Promise<boolean> {
+  const result = await prisma.boardingHouse.updateMany({
     where: { id },
     data: { verifiedAt: verified ? new Date() : null },
   });
+  return result.count > 0;
 }
 
-export function setListingStatusAsAdmin(
+export async function setListingStatusAsAdmin(
   id: string,
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
-) {
-  return prisma.boardingHouse.update({ where: { id }, data: { status } });
+): Promise<boolean> {
+  const result = await prisma.boardingHouse.updateMany({ where: { id }, data: { status } });
+  return result.count > 0;
 }
 
 export function findRecentReviews(limit = 50) {
@@ -92,6 +96,7 @@ export function findRecentReviews(limit = 50) {
   });
 }
 
-export function deleteReviewById(id: string) {
-  return prisma.review.delete({ where: { id } });
+export async function deleteReviewById(id: string): Promise<boolean> {
+  const result = await prisma.review.deleteMany({ where: { id } });
+  return result.count > 0;
 }

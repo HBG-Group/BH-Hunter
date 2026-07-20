@@ -4,12 +4,13 @@ import Image from "next/image";
 import { useRef, useState, useTransition } from "react";
 import { deletePhotosAction } from "@/lib/owner/photo-actions";
 import { usePhotoUpload } from "@/hooks/usePhotoUpload";
+import { MIN_LISTING_PHOTOS, PHOTO_REQUIREMENT_MESSAGE } from "@/config/listing";
 import {
+  ALLOWED_PHOTO_MIME,
   MAX_PHOTO_BYTES,
-  MIN_LISTING_PHOTOS,
-  PHOTO_REQUIREMENT_MESSAGE,
   PHOTO_SIZE_HINT,
-} from "@/config/listing";
+  isAllowedPhotoMime,
+} from "@/config/storage";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface PhotoItem {
@@ -44,16 +45,15 @@ export function PhotoManager({ boardingHouseId, images }: Props) {
   const met = count >= MIN_LISTING_PHOTOS;
   const progress = Math.min(100, (count / MIN_LISTING_PHOTOS) * 100);
 
-  // Queue the picked files and flag anything oversized before we touch the network.
+  // Validate the picked files for UX only — the server and Storage re-check everything.
   const queue = (files: FileList | File[] | null) => {
-    const list = Array.from(files ?? []).filter((file) => file.type.startsWith("image/"));
-    const tooBig = list.find((file) => file.size > MAX_PHOTO_BYTES);
+    const list = Array.from(files ?? []);
     clearError();
-    setSizeError(
-      tooBig
-        ? `"${tooBig.name}" is ${(tooBig.size / 1024 / 1024).toFixed(1)} MB. ${PHOTO_SIZE_HINT}`
-        : null,
+
+    const rejected = list.find(
+      (file) => !isAllowedPhotoMime(file.type) || file.size <= 0 || file.size > MAX_PHOTO_BYTES,
     );
+    setSizeError(rejected ? `"${rejected.name}" can't be used. ${PHOTO_SIZE_HINT}` : null);
     setQueued(list);
   };
 
@@ -112,7 +112,7 @@ export function PhotoManager({ boardingHouseId, images }: Props) {
             id="photo-input"
             ref={inputRef}
             type="file"
-            accept="image/*"
+            accept={ALLOWED_PHOTO_MIME.join(",")}
             multiple
             onChange={(e) => queue(e.target.files)}
             className="mx-auto mt-2 block w-full max-w-xs text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-900 file:px-3 file:py-1.5 file:text-sm file:text-white hover:file:bg-neutral-800"
@@ -213,7 +213,10 @@ export function PhotoManager({ boardingHouseId, images }: Props) {
           const ids = [...selected];
           setConfirmDelete(false);
           setSelected(new Set());
-          startDelete(() => deletePhotosAction(boardingHouseId, ids));
+          startDelete(async () => {
+            const result = await deletePhotosAction(boardingHouseId, ids);
+            if (result.error) setSizeError(result.error);
+          });
         }}
       />
     </div>
