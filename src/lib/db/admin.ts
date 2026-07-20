@@ -59,6 +59,14 @@ export function findAllListingsForAdmin() {
   });
 }
 
+export async function isListingVerified(id: string): Promise<boolean> {
+  const row = await prisma.boardingHouse.findUnique({
+    where: { id },
+    select: { verifiedAt: true },
+  });
+  return row?.verifiedAt != null;
+}
+
 export function setListingVerified(id: string, verified: boolean) {
   return prisma.boardingHouse.update({
     where: { id },

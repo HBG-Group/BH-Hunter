@@ -21,6 +21,7 @@ export function toOwnerListingViews(rows: OwnerRow[]): OwnerListingView[] {
       lastConfirmedAt: row.lastConfirmedAt?.toISOString() ?? null,
       favorites: row._count.favorites,
       viewingRequests: row._count.viewingRequests,
+      photoCount: row._count.images,
     };
   });
 }

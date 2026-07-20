@@ -43,8 +43,8 @@ export function FavoriteButton({
 
   const base =
     variant === "overlay"
-      ? "flex h-8 w-8 items-center justify-center rounded-full bg-white/85 backdrop-blur hover:bg-white"
-      : "flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-inset ring-neutral-200 hover:ring-neutral-300";
+      ? "flex h-9 w-9 items-center justify-center rounded-full bg-white/85 backdrop-blur hover:bg-white"
+      : "flex h-10 w-10 items-center justify-center rounded-full ring-1 ring-inset ring-neutral-200 hover:ring-neutral-300";
 
   return (
     <button

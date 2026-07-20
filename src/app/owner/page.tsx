@@ -17,24 +17,27 @@ export default async function OwnerDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Your listings</h1>
-        <div className="flex items-center gap-3">
-          <Link href="/owner/requests" className="text-sm text-neutral-600 hover:text-neutral-900">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Your listings</h1>
+          <Link
+            href="/owner/requests"
+            className="text-sm text-neutral-600 hover:text-neutral-900"
+          >
             Viewing requests
           </Link>
-          <Link
-            href="/owner/listings/new"
-            className="rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-          >
-            Add listing
-          </Link>
         </div>
+        <Link
+          href="/owner/listings/new"
+          aria-label="Add listing"
+          className="flex h-9 items-center gap-1.5 rounded-full bg-neutral-900 pl-3 pr-4 text-sm font-medium text-white hover:bg-neutral-800"
+        >
+          <span aria-hidden className="text-base leading-none">
+            +
+          </span>
+          Add
+        </Link>
       </div>
-
-      <p className="text-sm text-neutral-500">
-        Submit a listing for review — an admin verifies and publishes it before it appears on the map.
-      </p>
 
       <StatCards summary={analytics} />
 

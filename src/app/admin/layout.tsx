@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/profile";
-import { signOutAction } from "@/lib/auth/actions";
+import { ProfileMenu } from "@/components/layout/ProfileMenu";
 
 const navLinks = [
   { href: "/admin", label: "Overview" },
@@ -32,12 +32,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </nav>
           </div>
 
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-neutral-500">{admin.fullName}</span>
-            <form action={signOutAction}>
-              <button className="text-neutral-500 hover:text-neutral-900">Sign out</button>
-            </form>
-          </div>
+          <ProfileMenu
+            name={admin.fullName}
+            avatarUrl={admin.avatarUrl}
+            links={[
+              { href: "/", label: "Back to site" },
+              { href: "/admin", label: "Overview" },
+            ]}
+          />
         </div>
       </header>
 

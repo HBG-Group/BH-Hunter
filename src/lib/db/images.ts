@@ -10,6 +10,10 @@ export function findImages(boardingHouseId: string) {
   });
 }
 
+export function countImages(boardingHouseId: string) {
+  return prisma.image.count({ where: { boardingHouseId } });
+}
+
 async function ownsListing(ownerId: string, boardingHouseId: string): Promise<boolean> {
   const listing = await prisma.boardingHouse.findFirst({
     where: { id: boardingHouseId, ownerId },

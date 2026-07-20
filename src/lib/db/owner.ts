@@ -37,7 +37,7 @@ export function findListingsByOwner(ownerId: string) {
     where: { ownerId },
     include: {
       rooms: true,
-      _count: { select: { favorites: true, viewingRequests: true } },
+      _count: { select: { favorites: true, viewingRequests: true, images: true } },
     },
     orderBy: { createdAt: "desc" },
   });

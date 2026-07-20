@@ -17,11 +17,20 @@ interface Props {
   submitLabel: string;
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white p-5">
-      <h2 className="mb-3 text-sm font-semibold text-neutral-900">{title}</h2>
-      {children}
+      <h2 className="text-base font-semibold text-neutral-900">{title}</h2>
+      {description && <p className="mt-1 text-sm text-neutral-500">{description}</p>}
+      <div className="mt-4">{children}</div>
     </section>
   );
 }
@@ -46,11 +55,11 @@ export function ListingForm({ action, initialValues, submitLabel }: Props) {
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="payload" value={JSON.stringify(values)} />
 
-      <Section title="Details">
+      <Section title="Details" description="The basics students see first — name, address, price, and contact.">
         <ListingFields values={values} update={update} />
       </Section>
 
-      <Section title="Location">
+      <Section title="Location" description="Tap the map or drag the pin to your exact address.">
         <LocationPicker
           latitude={values.latitude}
           longitude={values.longitude}
@@ -58,7 +67,7 @@ export function ListingForm({ action, initialValues, submitLabel }: Props) {
         />
       </Section>
 
-      <Section title="Amenities">
+      <Section title="Amenities" description="Select everything your boarding house offers.">
         <div className="flex flex-wrap gap-1.5">
           {AMENITIES.map((amenity) => (
             <AmenityToggle
@@ -71,19 +80,28 @@ export function ListingForm({ action, initialValues, submitLabel }: Props) {
         </div>
       </Section>
 
-      <Section title="Rooms">
+      <Section
+        title="Rooms"
+        description="The vacancy students see is calculated from these rooms, so keep them accurate."
+      >
         <RoomsEditor rooms={values.rooms} onChange={(rooms) => update({ rooms })} />
       </Section>
 
-      {state.error && <p className="text-sm text-rose-600">{state.error}</p>}
-
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-60"
-      >
-        {pending ? "Saving…" : submitLabel}
-      </button>
+      {/* Sticky submit so it stays reachable on long forms */}
+      <div className="sticky bottom-0 z-10 -mx-4 border-t border-neutral-200 bg-neutral-50/95 px-4 py-3 backdrop-blur">
+        {state.error && (
+          <p role="alert" className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {state.error}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={pending}
+          className="w-full rounded-xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-60 sm:w-auto"
+        >
+          {pending ? "Saving…" : submitLabel}
+        </button>
+      </div>
     </form>
   );
 }

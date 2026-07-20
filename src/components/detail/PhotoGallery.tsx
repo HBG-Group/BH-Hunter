@@ -15,6 +15,7 @@ export function PhotoGallery({ images, name }: Props) {
   // Two stacked layers; picking a thumbnail loads the new image on the hidden
   // layer, then reveals it — a cross-fade with no layers left behind.
   const [layers, setLayers] = useState({ a: 0, b: 0, showA: true });
+  const [failed, setFailed] = useState(false);
   const activeIndex = layers.showA ? layers.a : layers.b;
 
   if (!images[0]) {
@@ -41,8 +42,16 @@ export function PhotoGallery({ images, name }: Props) {
             layers.showA ? "opacity-100" : "opacity-0"
           }`}
         >
-          {imgA && (
-            <Image src={imgA.url} alt={imgA.alt ?? name} fill priority sizes={sizes} className="object-cover" />
+          {imgA && !failed && (
+            <Image
+              src={imgA.url}
+              alt={imgA.alt ?? name}
+              fill
+              priority
+              sizes={sizes}
+              onError={() => setFailed(true)}
+              className="object-cover"
+            />
           )}
         </div>
         {/* Fade image B */}
@@ -51,8 +60,25 @@ export function PhotoGallery({ images, name }: Props) {
             layers.showA ? "opacity-0" : "opacity-100"
           }`}
         >
-          {imgB && <Image src={imgB.url} alt={imgB.alt ?? name} fill sizes={sizes} className="object-cover" />}
+          {imgB && !failed && (
+            <Image
+              src={imgB.url}
+              alt={imgB.alt ?? name}
+              fill
+              sizes={sizes}
+              onError={() => setFailed(true)}
+              className="object-cover"
+            />
+          )}
         </div>
+        {/* Never show a broken image area */}
+        {failed && (
+          <div className="flex h-full w-full items-center justify-center text-neutral-300">
+            <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M18 9h.008v.008H18V9Zm.75 12H5.25A2.25 2.25 0 0 1 3 18.75V5.25A2.25 2.25 0 0 1 5.25 3h13.5A2.25 2.25 0 0 1 21 5.25v13.5A2.25 2.25 0 0 1 18.75 21Z" />
+            </svg>
+          </div>
+        )}
       </div>
 
       {images.length > 1 && (
@@ -61,6 +87,8 @@ export function PhotoGallery({ images, name }: Props) {
             <button
               key={image.url}
               onClick={() => select(index)}
+              aria-label={image.alt ?? `View photo ${index + 1}`}
+              aria-pressed={index === activeIndex}
               // Active thumbnail
               className={`relative h-16 w-24 shrink-0 overflow-hidden rounded-lg ring-2 transition ${
                 index === activeIndex ? "ring-neutral-900" : "ring-transparent"

@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { REVIEW_ASPECTS } from "@/lib/validation/review";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { deleteReviewAction } from "@/lib/student/review-actions";
 import type { ReviewFormState } from "@/lib/student/review-actions";
 
@@ -30,6 +31,7 @@ interface Props {
 export function ReviewForm({ action, slug, existing }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   const [deleting, startDelete] = useTransition();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
     <form action={formAction} className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-5">
@@ -79,13 +81,27 @@ export function ReviewForm({ action, slug, existing }: Props) {
           <button
             type="button"
             disabled={deleting}
-            onClick={() => startDelete(() => deleteReviewAction(existing.id, slug))}
+            onClick={() => setConfirmDelete(true)}
             className="rounded-xl px-4 py-2 text-sm text-rose-600 ring-1 ring-inset ring-rose-200 hover:ring-rose-300 disabled:opacity-60"
           >
             Delete
           </button>
         )}
       </div>
+
+      {existing && (
+        <ConfirmDialog
+          open={confirmDelete}
+          title="Delete your review?"
+          message="This permanently removes your rating and comment from this listing."
+          confirmLabel="Delete review"
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => {
+            setConfirmDelete(false);
+            startDelete(() => deleteReviewAction(existing.id, slug));
+          }}
+        />
+      )}
     </form>
   );
 }

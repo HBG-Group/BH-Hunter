@@ -23,6 +23,7 @@ const genderLabels: Record<string, string> = { MALE: "Male", FEMALE: "Female", M
 // One boarding house in the grid. Hovering highlights its pin on the map.
 function ListingCardBase({ listing, isActive, isFavorited, isAuthenticated, onHover }: Props) {
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   return (
     <motion.article
@@ -38,24 +39,39 @@ function ListingCardBase({ listing, isActive, isFavorited, isAuthenticated, onHo
       onMouseLeave={() => onHover?.(null)}
       className={`group overflow-hidden rounded-2xl bg-white ring-1 transition-shadow duration-200 [will-change:transform] ${
         isActive ? "ring-primary/30 shadow-md" : "ring-line hover:shadow-md"
-      }`}
+      } ${listing.isPublished ? "" : "opacity-75 grayscale"}`}
     >
       <Link href={`/listings/${listing.slug}`} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
-          {listing.coverImage && (
+          {listing.coverImage && !failed && (
             <Image
               src={listing.coverImage}
               alt={listing.name}
               fill
               sizes="(max-width: 768px) 100vw, 320px"
               onLoad={() => setLoaded(true)}
+              onError={() => setFailed(true)}
               className={`object-cover transition-all duration-500 group-hover:scale-105 ${
                 loaded ? "opacity-100" : "opacity-0"
               }`}
             />
           )}
+          {/* Never show a broken image area */}
+          {(!listing.coverImage || failed) && (
+            <div className="flex h-full w-full items-center justify-center text-neutral-300">
+              <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M18 9h.008v.008H18V9Zm.75 12H5.25A2.25 2.25 0 0 1 3 18.75V5.25A2.25 2.25 0 0 1 5.25 3h13.5A2.25 2.25 0 0 1 21 5.25v13.5A2.25 2.25 0 0 1 18.75 21Z" />
+              </svg>
+            </div>
+          )}
           <div className="absolute left-3 top-3">
-            <AvailabilityBadge state={listing.availabilityState} remaining={listing.remainingVacancies} />
+            {listing.isPublished ? (
+              <AvailabilityBadge state={listing.availabilityState} remaining={listing.remainingVacancies} />
+            ) : (
+              <span className="rounded-full bg-neutral-900/85 px-2.5 py-1 text-xs font-medium text-white">
+                Unpublished
+              </span>
+            )}
           </div>
           <div className="absolute right-3 top-3">
             <FavoriteButton

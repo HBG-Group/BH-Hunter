@@ -14,7 +14,7 @@ export async function getCurrentUser() {
 
 // Our own Profile row for the signed-in user. Created on first access so a Supabase
 // account always has a matching profile without needing a database trigger.
-export async function getCurrentProfile(): Promise<Profile | null> {
+export async function getCurrentProfile(roleHint?: "OWNER" | "STUDENT"): Promise<Profile | null> {
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -34,7 +34,9 @@ export async function getCurrentProfile(): Promise<Profile | null> {
     (metadata.full_name as string | undefined) ?? (metadata.name as string | undefined) ?? "New user";
   const avatarUrl =
     (metadata.avatar_url as string | undefined) ?? (metadata.picture as string | undefined) ?? null;
-  const role = metadata.role === "OWNER" ? "OWNER" : "STUDENT";
+  // Email sign-up carries the role in metadata; Google sign-up passes it as a hint
+  // from whichever sign-up page the user started on.
+  const role = metadata.role === "OWNER" || roleHint === "OWNER" ? "OWNER" : "STUDENT";
 
   return prisma.profile.create({
     data: {

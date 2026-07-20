@@ -10,6 +10,8 @@ import {
   setListingStatus,
   updateOwnerListing,
 } from "@/lib/db/owner";
+import { countImages } from "@/lib/db/images";
+import { MIN_LISTING_PHOTOS, PHOTO_REQUIREMENT_MESSAGE } from "@/config/listing";
 import { listingSchema } from "@/lib/validation/listing";
 import { toWriteData } from "@/services/owner-listings";
 import { summarizeAvailability } from "@/services/availability";
@@ -81,8 +83,19 @@ export async function confirmVacanciesAction(id: string) {
 
 // Owners can submit for review (PENDING) or pull a listing back to DRAFT — but never
 // publish. Publishing is an admin action.
-export async function setStatusAction(id: string, status: "DRAFT" | "PENDING") {
+export async function setStatusAction(
+  id: string,
+  status: "DRAFT" | "PENDING",
+): Promise<{ error?: string }> {
   const owner = await requireOwner();
+
+  // A listing needs enough photos before it can go up for review.
+  if (status === "PENDING") {
+    const photos = await countImages(id);
+    if (photos < MIN_LISTING_PHOTOS) return { error: PHOTO_REQUIREMENT_MESSAGE };
+  }
+
   await setListingStatus(owner.id, id, status);
   revalidatePath("/owner");
+  return {};
 }

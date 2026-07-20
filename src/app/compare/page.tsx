@@ -23,8 +23,10 @@ export default async function ComparePage() {
 
         {favorites.length < 2 ? (
           <EmptyState
-            title="Save at least two"
-            message="Add a couple of boarding houses to your favorites to compare them side by side."
+            title="Save at least two to compare"
+            message="Comparison needs two or more saved boarding houses. Tap the heart on listings you like, then come back."
+            actionLabel="Browse boarding houses"
+            actionHref="/"
           />
         ) : (
           <CompareTable listings={favorites} />

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AMENITIES } from "@/config/amenities";
 import { Pill } from "@/components/ui/Pill";
+import { SORT_OPTIONS, type SortOption } from "@/config/sorting";
 import type { ListingFilters } from "@/lib/validation/filters";
 import type { GenderPolicy } from "@/types/domain";
 
@@ -13,6 +14,8 @@ interface Props {
   filters: ListingFilters;
   onChange: (patch: Partial<ListingFilters>) => void;
   resultCount: number;
+  sort: SortOption;
+  onSortChange: (sort: SortOption) => void;
 }
 
 const genders: { value: GenderPolicy; label: string }[] = [
@@ -31,7 +34,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 // Mobile filter bottom sheet — thumb-reachable, categorized, and scalable.
-export function FilterSheet({ open, onClose, filters, onChange, resultCount }: Props) {
+export function FilterSheet({ open, onClose, filters, onChange, resultCount, sort, onSortChange }: Props) {
   const amenities = filters.amenities ?? [];
 
   // Close on Escape and lock background scroll while open.
@@ -72,10 +75,25 @@ export function FilterSheet({ open, onClose, filters, onChange, resultCount }: P
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 320, damping: 34 }}
-            className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white p-5 pb-8"
+            className="absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col rounded-t-2xl bg-white"
           >
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-line" />
-            <div className="space-y-5">
+            <div className="mx-auto mb-2 mt-3 h-1 w-10 shrink-0 rounded-full bg-line" />
+            <div className="flex-1 space-y-5 overflow-y-auto px-5 pb-4">
+              <Section title="Sort by">
+                <select
+                  value={sort}
+                  onChange={(e) => onSortChange(e.target.value as SortOption)}
+                  aria-label="Sort listings"
+                  className="w-full rounded-xl bg-white px-3 py-2 text-sm text-ink outline-none ring-1 ring-inset ring-line focus:ring-primary"
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </Section>
+
               <Section title="Availability">
                 <Pill
                   label="Available now"
@@ -102,6 +120,7 @@ export function FilterSheet({ open, onClose, filters, onChange, resultCount }: P
                   value={filters.maxPrice ?? ""}
                   onChange={(e) => onChange({ maxPrice: e.target.value ? Number(e.target.value) : undefined })}
                   placeholder="Max ₱ / month"
+                  aria-label="Maximum monthly price in pesos"
                   className="w-40 rounded-full bg-white px-4 py-2 text-sm outline-none ring-1 ring-inset ring-line focus:ring-primary"
                 />
               </Section>
@@ -118,7 +137,7 @@ export function FilterSheet({ open, onClose, filters, onChange, resultCount }: P
               </Section>
             </div>
 
-            <div className="mt-6 flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-3 border-t border-line px-5 py-4">
               <button onClick={clearAll} className="text-sm font-medium text-muted hover:text-ink">
                 Clear all
               </button>

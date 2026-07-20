@@ -188,7 +188,12 @@ export default async function ListingDetailPage({ params }: PageProps) {
             {profile ? (
               <ViewingRequestForm action={requestViewingAction.bind(null, target)} />
             ) : (
-              <SignInPrompt slug={slug} />
+              <Link
+                href={`/login?next=/listings/${slug}`}
+                className="block rounded-2xl border border-line bg-white p-4 text-center text-sm text-muted hover:text-ink"
+              >
+                Sign in to request a viewing →
+              </Link>
             )}
           </aside>
         </div>

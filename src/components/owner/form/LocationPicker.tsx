@@ -22,7 +22,9 @@ export function LocationPicker({ latitude, longitude, onChange }: Props) {
     <div className="space-y-2">
       {/* The map needs an explicitly-sized parent — the global .leaflet-container
           rule forces height:100%, so without this the map collapses to nothing. */}
-      <div className="h-72 w-full overflow-hidden rounded-xl border border-neutral-200">
+      {/* isolate + z-0 traps Leaflet's internal z-indexes (panes go up to 700) so the
+          map can't paint over the sticky submit bar while scrolling. */}
+      <div className="isolate z-0 h-72 w-full overflow-hidden rounded-xl border border-neutral-200">
         <LocationPickerMap latitude={latitude} longitude={longitude} onChange={onChange} />
       </div>
       <p className="text-xs text-neutral-500">

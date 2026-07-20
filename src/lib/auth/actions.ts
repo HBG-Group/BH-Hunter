@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/profile";
-import { isAllowedStudentEmail, STUDENT_EMAIL_HINT } from "@/config/auth";
 
 export interface AuthFormState {
   error?: string;
@@ -40,12 +39,8 @@ export async function signUpAction(
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   // Owners sign up from the "list your property" flow; everyone else is a student.
+  // Any email is accepted — incoming freshmen may not have a VSU email yet.
   const role = formData.get("role") === "OWNER" ? "OWNER" : "STUDENT";
-
-  // Students must use a VSU email; owners can use any address.
-  if (role === "STUDENT" && !isAllowedStudentEmail(email)) {
-    return { error: STUDENT_EMAIL_HINT };
-  }
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({

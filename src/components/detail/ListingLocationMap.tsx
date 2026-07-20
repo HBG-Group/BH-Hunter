@@ -7,6 +7,8 @@ import { activeTileProvider } from "@/lib/map/provider";
 import { buildMarkerIcon } from "@/components/map/markerIcon";
 import { CampusMarker } from "@/components/map/CampusMarker";
 import { GestureHandler } from "@/components/map/GestureHandler";
+import { MapFallback } from "@/components/map/MapFallback";
+import { useTileFailure } from "@/hooks/useTileFailure";
 import type { AvailabilityState } from "@/types/domain";
 
 interface Props {
@@ -27,17 +29,26 @@ function FixMapSize() {
 
 // A read-only map showing where the boarding house sits relative to campus.
 export function ListingLocationMap({ latitude, longitude, availabilityState }: Props) {
+  const { failed, retryKey, retry, handlers } = useTileFailure();
+  const googleMapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+
   return (
-    <MapContainer center={[latitude, longitude]} zoom={16} className="h-full w-full">
-      <GestureHandler />
-      <TileLayer
-        url={activeTileProvider.urlTemplate}
-        attribution={activeTileProvider.attribution}
-        maxZoom={activeTileProvider.maxZoom}
-      />
-      <FixMapSize />
-      <CampusMarker />
-      <Marker position={[latitude, longitude]} icon={buildMarkerIcon(availabilityState, true)} />
-    </MapContainer>
+    <div className="relative h-full w-full">
+      <MapContainer center={[latitude, longitude]} zoom={16} className="h-full w-full">
+        <GestureHandler />
+        <TileLayer
+          key={retryKey}
+          url={activeTileProvider.urlTemplate}
+          attribution={activeTileProvider.attribution}
+          maxZoom={activeTileProvider.maxZoom}
+          eventHandlers={handlers}
+        />
+        <FixMapSize />
+        <CampusMarker />
+        <Marker position={[latitude, longitude]} icon={buildMarkerIcon(availabilityState, true)} />
+      </MapContainer>
+
+      {failed && <MapFallback onRetry={retry} googleMapsUrl={googleMapsUrl} />}
+    </div>
   );
 }

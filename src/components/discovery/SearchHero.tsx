@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AMENITIES } from "@/config/amenities";
 import { Pill } from "@/components/ui/Pill";
 import { FilterSheet } from "@/components/discovery/FilterSheet";
+import { SORT_OPTIONS, type SortOption } from "@/config/sorting";
 import type { ListingFilters } from "@/lib/validation/filters";
 import type { GenderPolicy } from "@/types/domain";
 
@@ -11,6 +12,9 @@ interface Props {
   filters: ListingFilters;
   onChange: (patch: Partial<ListingFilters>) => void;
   resultCount: number;
+  sort: SortOption;
+  onSortChange: (sort: SortOption) => void;
+  onClearFilters: () => void;
 }
 
 const genders: { value: GenderPolicy; label: string }[] = [
@@ -20,7 +24,14 @@ const genders: { value: GenderPolicy; label: string }[] = [
 ];
 
 // Large floating search bar plus filter controls — the hero of the home page.
-export function SearchHero({ filters, onChange, resultCount }: Props) {
+export function SearchHero({
+  filters,
+  onChange,
+  resultCount,
+  sort,
+  onSortChange,
+  onClearFilters,
+}: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const amenities = filters.amenities ?? [];
 
@@ -46,6 +57,7 @@ export function SearchHero({ filters, onChange, resultCount }: Props) {
           value={filters.query ?? ""}
           onChange={(event) => onChange({ query: event.target.value })}
           placeholder="Search by name or area near VSU…"
+          aria-label="Search boarding houses by name or area"
           className="w-full bg-transparent text-base text-ink outline-none placeholder:text-muted"
         />
         <span className="hidden shrink-0 text-sm text-muted sm:block">{resultCount} places</span>
@@ -72,6 +84,7 @@ export function SearchHero({ filters, onChange, resultCount }: Props) {
           value={filters.maxPrice ?? ""}
           onChange={(e) => onChange({ maxPrice: e.target.value ? Number(e.target.value) : undefined })}
           placeholder="Max ₱"
+          aria-label="Maximum monthly price in pesos"
           className="w-24 rounded-full bg-white px-3.5 py-1.5 text-sm outline-none ring-1 ring-inset ring-line focus:ring-primary"
         />
         <span className="mx-1 w-px self-stretch bg-line" />
@@ -83,6 +96,32 @@ export function SearchHero({ filters, onChange, resultCount }: Props) {
             onClick={() => toggleAmenity(amenity.key)}
           />
         ))}
+
+        <span className="mx-1 w-px self-stretch bg-line" />
+        <label className="flex items-center gap-2 text-sm text-muted">
+          Sort
+          <select
+            value={sort}
+            onChange={(e) => onSortChange(e.target.value as SortOption)}
+            aria-label="Sort listings"
+            className="rounded-full bg-white px-3 py-1.5 text-sm text-ink outline-none ring-1 ring-inset ring-line focus:ring-primary"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {activeCount > 0 && (
+          <button
+            onClick={onClearFilters}
+            className="rounded-full px-3 py-1.5 text-sm font-medium text-muted underline hover:text-ink"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
 
       {/* Mobile: one quick pill + a Filters button that opens the sheet */}
@@ -114,6 +153,8 @@ export function SearchHero({ filters, onChange, resultCount }: Props) {
         filters={filters}
         onChange={onChange}
         resultCount={resultCount}
+        sort={sort}
+        onSortChange={onSortChange}
       />
     </div>
   );

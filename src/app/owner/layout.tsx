@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireOwner } from "@/lib/auth/profile";
-import { signOutAction } from "@/lib/auth/actions";
+import { ProfileMenu } from "@/components/layout/ProfileMenu";
 
 // Every /owner page shares this shell. requireOwner here means the whole area is
 // protected in one place (the middleware guards it too, as defence in depth).
@@ -18,12 +18,15 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
             <span className="font-semibold tracking-tight">Owner dashboard</span>
           </Link>
 
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-neutral-500">{owner.fullName}</span>
-            <form action={signOutAction}>
-              <button className="text-neutral-500 hover:text-neutral-900">Sign out</button>
-            </form>
-          </div>
+          <ProfileMenu
+            name={owner.fullName}
+            avatarUrl={owner.avatarUrl}
+            links={[
+              { href: "/", label: "Back to site" },
+              { href: "/owner", label: "My listings" },
+              { href: "/owner/requests", label: "Viewing requests" },
+            ]}
+          />
         </div>
       </header>
 

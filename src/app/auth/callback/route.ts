@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       // Make sure a Profile row exists (creates one on first Google sign-in).
-      await getCurrentProfile();
+      await getCurrentProfile(searchParams.get("role") === "OWNER" ? "OWNER" : undefined);
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

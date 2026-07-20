@@ -10,7 +10,11 @@ export interface NotificationItem {
 
 export function NotificationList({ notifications }: { notifications: NotificationItem[] }) {
   if (notifications.length === 0) {
-    return <p className="text-sm text-neutral-500">No notifications yet.</p>;
+    return (
+      <p className="text-sm text-neutral-500">
+        No notifications yet. Favorite a boarding house to get alerts when a room opens up.
+      </p>
+    );
   }
 
   return (
