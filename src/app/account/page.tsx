@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth/profile";
-import { signOutAction } from "@/lib/auth/actions";
 import { findFavoriteListings, getFavoriteIds } from "@/lib/db/favorites";
 import { findRecentlyViewed } from "@/lib/db/recently-viewed";
 import { findReviewsByStudent } from "@/lib/db/reviews";
@@ -45,27 +44,20 @@ export default async function AccountPage() {
   );
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-canvas">
       <SiteHeader />
       <main className="mx-auto max-w-5xl space-y-8 px-4 py-6">
-        <section className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-5">
-          <div className="flex items-center gap-4">
-            <Avatar name={profile.fullName} src={profile.avatarUrl} size={56} />
-            <div>
-              <h1 className="text-lg font-semibold text-neutral-900">{profile.fullName}</h1>
-              <p className="text-sm text-neutral-500">{profile.email}</p>
-            </div>
+        <section className="flex items-center gap-4 rounded-2xl border border-neutral-200 bg-white p-5">
+          <Avatar name={profile.fullName} src={profile.avatarUrl} size={56} />
+          <div>
+            <h1 className="text-lg font-semibold text-neutral-900">{profile.fullName}</h1>
+            <p className="text-sm text-neutral-500">{profile.email}</p>
           </div>
-          <form action={signOutAction}>
-            <button className="rounded-xl px-4 py-2 text-sm text-neutral-600 ring-1 ring-inset ring-neutral-200 hover:ring-neutral-300">
-              Log out
-            </button>
-          </form>
         </section>
 
         <section id="favorites" className="scroll-mt-20 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Saved boarding houses</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Places you saved</h2>
             {favorites.length >= 2 && (
               <Link href="/compare" className="text-sm text-neutral-600 hover:text-neutral-900">
                 Compare →
@@ -73,7 +65,12 @@ export default async function AccountPage() {
             )}
           </div>
           {favorites.length === 0 ? (
-            <EmptyState title="No favorites yet" message="Tap the heart on any listing to save it here." />
+            <EmptyState
+              title="Nothing saved yet"
+              message="Tap the heart on a place you like and it will be waiting here."
+              actionLabel="Browse listings"
+              actionHref="/"
+            />
           ) : (
             grid(favorites)
           )}
@@ -89,7 +86,12 @@ export default async function AccountPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Reviews written</h2>
           {reviews.length === 0 ? (
-            <EmptyState title="No reviews yet" message="Share your experience from any listing page." />
+            <EmptyState
+              title="No reviews yet"
+              message="Tell other students what living somewhere was really like — it helps more than you think."
+              actionLabel="Browse listings"
+              actionHref="/"
+            />
           ) : (
             <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
               {reviews.map((review) => (
@@ -133,7 +135,7 @@ export default async function AccountPage() {
                 <Link
                   key={viewing.id}
                   href={`/listings/${viewing.boardingHouse.slug}`}
-                  className="block px-4 py-3 text-sm text-neutral-900 hover:bg-neutral-50"
+                  className="block px-4 py-3 text-sm text-neutral-900 hover:bg-canvas"
                 >
                   {viewing.boardingHouse.name}
                   <span className="ml-2 text-xs text-neutral-500">{viewing.status.toLowerCase()}</span>

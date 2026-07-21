@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { moderateStatusAction, setVerifiedAction } from "@/lib/admin/actions";
 
 export interface AdminListingView {
@@ -21,8 +22,14 @@ interface Props {
 
 export function AdminListingRow({ listing, showModeration }: Props) {
   const [pending, startTransition] = useTransition();
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const run = (fn: () => Promise<void>) => startTransition(() => fn());
+  const run = (fn: () => Promise<{ error?: string } | void>) =>
+    startTransition(async () => {
+      const result = await fn();
+      setError(result && "error" in result ? (result.error ?? null) : null);
+    });
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -62,8 +69,9 @@ export function AdminListingRow({ listing, showModeration }: Props) {
           ) : (
             <button
               onClick={() => run(() => moderateStatusAction(listing.id, "PUBLISHED"))}
-              disabled={pending}
-              className="rounded-lg px-3 py-1.5 text-neutral-700 ring-1 ring-inset ring-neutral-200 hover:ring-neutral-300 disabled:opacity-60"
+              disabled={pending || !listing.isVerified}
+              title={listing.isVerified ? undefined : "Verify this listing first"}
+              className="rounded-lg px-3 py-1.5 text-neutral-700 ring-1 ring-inset ring-neutral-200 hover:ring-neutral-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Publish
             </button>
@@ -71,7 +79,7 @@ export function AdminListingRow({ listing, showModeration }: Props) {
 
         {showModeration && listing.status !== "ARCHIVED" && (
           <button
-            onClick={() => run(() => moderateStatusAction(listing.id, "ARCHIVED"))}
+            onClick={() => setConfirmArchive(true)}
             disabled={pending}
             className="rounded-lg px-3 py-1.5 text-rose-600 ring-1 ring-inset ring-rose-200 hover:ring-rose-300 disabled:opacity-60"
           >
@@ -79,6 +87,24 @@ export function AdminListingRow({ listing, showModeration }: Props) {
           </button>
         )}
       </div>
+
+      {error && (
+        <p role="alert" className="mt-2 w-full rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {error}
+        </p>
+      )}
+
+      <ConfirmDialog
+        open={confirmArchive}
+        title={`Archive "${listing.name}"?`}
+        message="It will be removed from the public map and search. You can publish it again later."
+        confirmLabel="Archive"
+        onCancel={() => setConfirmArchive(false)}
+        onConfirm={() => {
+          setConfirmArchive(false);
+          run(() => moderateStatusAction(listing.id, "ARCHIVED"));
+        }}
+      />
     </div>
   );
 }

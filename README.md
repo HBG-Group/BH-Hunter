@@ -1,4 +1,4 @@
-# BH Hunter
+# Meino
 
 A boarding house discovery platform for students of **Visayas State University (VSU)
 Main Campus**, Baybay, Leyte. Find available boarding houses on an interactive map:

@@ -38,6 +38,11 @@ export interface ListingCard {
   availabilityState: AvailabilityState;
   isAvailabilityStale: boolean;
   isVerified: boolean;
+  // False once an admin unpublishes it — saved copies stay visible but greyed out.
+  isPublished: boolean;
+  averageRating: number;
+  reviewCount: number;
+  createdAt: string;
   walkingMinutesToCampus: number;
   motorcycleMinutesToCampus: number;
   lastConfirmedAt: string | null;

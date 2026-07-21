@@ -18,6 +18,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.supabase.co" },
       // Google account profile photos (from OAuth sign-in).
       { protocol: "https", hostname: "*.googleusercontent.com" },
+      // Themed demo photos used by the seed data.
+      { protocol: "https", hostname: "loremflickr.com" },
     ],
   },
 };

@@ -1,39 +1,72 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { PHOTO_BUCKET, ALLOWED_PHOTO_MIME, MAX_PHOTO_BYTES } from "@/config/storage";
 
-// All listing photos live in one public bucket. Public-read so the browser can show
-// them directly; writes only ever happen here on the server with the service role.
-export const PHOTO_BUCKET = "listing-photos";
+export { PHOTO_BUCKET };
 
-// Creates the bucket on first use so setup is one less manual step. Safe to call
-// repeatedly — an "already exists" error is expected and ignored.
-async function ensureBucket(client: ReturnType<typeof createSupabaseAdminClient>) {
+type Client = ReturnType<typeof createSupabaseAdminClient>;
+
+// Bucket constraints are the last line of defence: Supabase rejects the signed PUT
+// itself, so a tampered client cannot upload an oversized or non-image file.
+const BUCKET_OPTIONS = {
+  public: true,
+  fileSizeLimit: MAX_PHOTO_BYTES,
+  allowedMimeTypes: [...ALLOWED_PHOTO_MIME],
+};
+
+// Create on first use, and keep constraints current on buckets made before them.
+async function ensureBucket(client: Client) {
   const { data } = await client.storage.getBucket(PHOTO_BUCKET);
-  if (data) return;
-  await client.storage.createBucket(PHOTO_BUCKET, { public: true });
+  if (!data) {
+    await client.storage.createBucket(PHOTO_BUCKET, BUCKET_OPTIONS);
+    return;
+  }
+  const limitsMissing =
+    data.file_size_limit !== MAX_PHOTO_BYTES ||
+    (data.allowed_mime_types?.length ?? 0) !== ALLOWED_PHOTO_MIME.length;
+  if (limitsMissing) await client.storage.updateBucket(PHOTO_BUCKET, BUCKET_OPTIONS);
 }
 
-function extensionFor(fileName: string): string {
-  const match = /\.([a-z0-9]+)$/i.exec(fileName);
-  return match ? match[1].toLowerCase() : "jpg";
-}
-
-// Uploads one image and returns its public URL.
-export async function uploadListingPhoto(
-  boardingHouseId: string,
-  file: File,
-): Promise<string> {
+// Signed ticket for one server-chosen path. The browser sends the bytes; Supabase
+// enforces type and size on receipt.
+export async function createSignedPhotoUpload(path: string): Promise<string> {
   const client = createSupabaseAdminClient();
   await ensureBucket(client);
 
-  const path = `${boardingHouseId}/${crypto.randomUUID()}.${extensionFor(file.name)}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const { data, error } = await client.storage.from(PHOTO_BUCKET).createSignedUploadUrl(path);
+  if (error || !data) throw error ?? new Error("Could not prepare the upload");
+  return data.token;
+}
 
-  const { error } = await client.storage
+export interface StoredObject {
+  size: number;
+  mimeType: string;
+}
+
+// Verify the object really landed, and inspect what was actually stored rather than
+// what the browser claimed. Returns null when the file is absent or empty.
+export async function describeStoredPhoto(path: string): Promise<StoredObject | null> {
+  const client = createSupabaseAdminClient();
+  const folder = path.slice(0, path.lastIndexOf("/"));
+  const name = path.slice(path.lastIndexOf("/") + 1);
+
+  const { data, error } = await client.storage
     .from(PHOTO_BUCKET)
-    .upload(path, buffer, { contentType: file.type, upsert: false });
-  if (error) throw error;
+    .list(folder, { search: name, limit: 1 });
+  if (error || !data || data.length === 0) return null;
 
+  const file = data.find((entry) => entry.name === name);
+  if (!file) return null;
+
+  const size = file.metadata?.size ?? 0;
+  const mimeType = String(file.metadata?.mimetype ?? "");
+  if (size <= 0) return null;
+
+  return { size, mimeType };
+}
+
+export function publicPhotoUrl(path: string): string {
+  const client = createSupabaseAdminClient();
   return client.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
@@ -44,6 +77,12 @@ export async function removeListingPhoto(publicUrl: string): Promise<void> {
   if (index === -1) return;
 
   const path = publicUrl.slice(index + marker.length);
+  const client = createSupabaseAdminClient();
+  await client.storage.from(PHOTO_BUCKET).remove([path]);
+}
+
+// Drop an object that failed post-upload validation, so rejects don't accumulate.
+export async function discardStoredPhoto(path: string): Promise<void> {
   const client = createSupabaseAdminClient();
   await client.storage.from(PHOTO_BUCKET).remove([path]);
 }

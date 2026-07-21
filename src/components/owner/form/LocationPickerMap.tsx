@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { activeCampus } from "@/config/campus";
 import { activeTileProvider } from "@/lib/map/provider";
+import { GestureHandler } from "@/components/map/GestureHandler";
 
 interface Props {
   latitude: number;
@@ -49,13 +50,14 @@ export function LocationPickerMap({ latitude, longitude, onChange }: Props) {
       center={[latitude, longitude]}
       zoom={activeCampus.defaultZoom}
       scrollWheelZoom
-      className="h-64 w-full overflow-hidden rounded-xl"
+      className="h-full w-full"
     >
       <TileLayer
         url={activeTileProvider.urlTemplate}
         attribution={activeTileProvider.attribution}
         maxZoom={activeTileProvider.maxZoom}
       />
+      <GestureHandler />
       <FixMapSize />
       <ClickToPlace onPick={onChange} />
       <Marker

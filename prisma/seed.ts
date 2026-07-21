@@ -9,6 +9,13 @@ const prisma = new PrismaClient();
 
 const OWNER_ID = "seed-owner-0001";
 
+// Believable demo photos: real images themed by room type, locked so each listing
+// keeps the same set. Five per listing to meet the published-listing minimum.
+export const PHOTO_THEMES = ["bedroom", "house", "kitchen", "bathroom", "apartment"];
+
+export const photoUrl = (theme: string, lock: number) =>
+  `https://loremflickr.com/1200/800/${theme}?lock=${lock}`;
+
 // Coordinates cluster around VSU Main (Visca, Baybay, Leyte).
 const listings = [
   {
@@ -126,12 +133,12 @@ async function main() {
       id: OWNER_ID,
       role: "OWNER",
       fullName: "Demo Owner",
-      email: "owner@bhhunter.local",
+      email: "owner@meino.local",
       phone: "0917-555-0000",
     },
   });
 
-  for (const listing of listings) {
+  for (const [listingIndex, listing] of listings.entries()) {
     const { amenities, rooms, nearby, ...core } = listing;
 
     // Start clean so re-running the seed is safe (idempotent).
@@ -147,9 +154,9 @@ async function main() {
         rooms: { create: rooms },
         nearbyPlaces: { create: nearby },
         images: {
-          create: [0, 1, 2].map((index) => ({
-            url: `https://picsum.photos/seed/${core.slug}-${index}/1200/800`,
-            alt: `${core.name} photo ${index + 1}`,
+          create: PHOTO_THEMES.map((theme, index) => ({
+            url: photoUrl(theme, listingIndex * 10 + index + 1),
+            alt: `${core.name} — ${theme}`,
             sortOrder: index,
           })),
         },

@@ -1,5 +1,6 @@
 "use client";
 
+import { MAX_MONTHLY_PRICE, PHONE_MAX_DIGITS } from "@/lib/validation/listing";
 import type { ListingFormValues } from "@/components/owner/form/types";
 import type { GenderPolicy } from "@/types/domain";
 
@@ -9,30 +10,51 @@ interface Props {
 }
 
 const input =
-  "w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400";
+  "w-full min-w-0 rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400";
 
-function Label({ text, children }: { text: string; children: React.ReactNode }) {
+function Label({
+  text,
+  hint,
+  children,
+}: {
+  text: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block space-y-1">
       <span className="text-xs font-medium text-neutral-600">{text}</span>
       {children}
+      {hint && <span className="block text-[11px] text-neutral-400">{hint}</span>}
     </label>
   );
 }
+
+// Keep numbers inside sane bounds while typing.
+const bound = (raw: string, min: number, max: number) =>
+  Math.min(max, Math.max(min, Number(raw) || 0));
 
 // The plain text/number fields of a listing. Rooms and amenities are handled by
 // their own editors — kept out of here so this file stays about simple inputs.
 export function ListingFields({ values, update }: Props) {
   return (
     <div className="space-y-3">
-      <Label text="Boarding house name">
-        <input className={input} value={values.name} onChange={(e) => update({ name: e.target.value })} />
+      <Label text="Boarding house name" hint="3–120 characters.">
+        <input
+          className={input}
+          value={values.name}
+          maxLength={120}
+          required
+          onChange={(e) => update({ name: e.target.value })}
+        />
       </Label>
 
-      <Label text="Address">
+      <Label text="Address" hint="Street or purok, barangay, city.">
         <input
           className={input}
           value={values.addressLine}
+          maxLength={160}
+          required
           onChange={(e) => update({ addressLine: e.target.value })}
         />
       </Label>
@@ -49,28 +71,37 @@ export function ListingFields({ values, update }: Props) {
             <option value="FEMALE">Female</option>
           </select>
         </Label>
-        <Label text="Rent / mo">
+        <Label text="Rent / mo" hint="In pesos.">
           <input
             type="number"
+            inputMode="numeric"
+            min={0}
+            max={MAX_MONTHLY_PRICE}
             className={input}
             value={values.priceMonthly}
-            onChange={(e) => update({ priceMonthly: Number(e.target.value) })}
+            onChange={(e) => update({ priceMonthly: bound(e.target.value, 0, MAX_MONTHLY_PRICE) })}
           />
         </Label>
-        <Label text="Advance (mo)">
+        <Label text="Advance (mo)" hint="0–12.">
           <input
             type="number"
+            inputMode="numeric"
+            min={0}
+            max={12}
             className={input}
             value={values.advanceMonths}
-            onChange={(e) => update({ advanceMonths: Number(e.target.value) })}
+            onChange={(e) => update({ advanceMonths: bound(e.target.value, 0, 12) })}
           />
         </Label>
-        <Label text="Deposit (mo)">
+        <Label text="Deposit (mo)" hint="0–12.">
           <input
             type="number"
+            inputMode="numeric"
+            min={0}
+            max={12}
             className={input}
             value={values.depositMonths}
-            onChange={(e) => update({ depositMonths: Number(e.target.value) })}
+            onChange={(e) => update({ depositMonths: bound(e.target.value, 0, 12) })}
           />
         </Label>
       </div>
@@ -95,39 +126,57 @@ export function ListingFields({ values, update }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Label text="Curfew (optional)">
-          <input className={input} value={values.curfew} onChange={(e) => update({ curfew: e.target.value })} />
-        </Label>
-        <Label text="Contact phone">
+        <Label text="Curfew (optional)" hint="e.g. 10:00 PM.">
           <input
             className={input}
+            value={values.curfew}
+            maxLength={40}
+            onChange={(e) => update({ curfew: e.target.value })}
+          />
+        </Label>
+        <Label text="Contact phone" hint={`Digits only, max ${PHONE_MAX_DIGITS}.`}>
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={PHONE_MAX_DIGITS}
+            required
+            className={input}
             value={values.contactPhone}
-            onChange={(e) => update({ contactPhone: e.target.value })}
+            placeholder="09171234567"
+            onChange={(e) =>
+              update({ contactPhone: e.target.value.replace(/\D/g, "").slice(0, PHONE_MAX_DIGITS) })
+            }
           />
         </Label>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Label text="Messenger URL (optional)">
+        <Label text="Messenger URL (optional)" hint="Full link (https://…).">
           <input
+            type="url"
             className={input}
             value={values.messengerUrl}
+            maxLength={300}
+            placeholder="https://m.me/yourpage"
             onChange={(e) => update({ messengerUrl: e.target.value })}
           />
         </Label>
         <Label text="Email (optional)">
           <input
+            type="email"
             className={input}
             value={values.contactEmail}
+            maxLength={160}
             onChange={(e) => update({ contactEmail: e.target.value })}
           />
         </Label>
       </div>
 
-      <Label text="House rules (optional)">
+      <Label text="House rules (optional)" hint="Max 1000 characters.">
         <textarea
           className={input}
           rows={3}
+          maxLength={1000}
           value={values.houseRules}
           onChange={(e) => update({ houseRules: e.target.value })}
         />

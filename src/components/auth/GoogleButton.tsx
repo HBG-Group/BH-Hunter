@@ -5,17 +5,20 @@ import { signInWithGoogle } from "@/lib/auth/oauth";
 
 interface Props {
   next?: string;
+  label?: string;
+  // Which kind of profile to create if this Google account is new here.
+  role?: "OWNER" | "STUDENT";
 }
 
-// "Continue with Google" — handles the cancelled-login / network error cases.
-export function GoogleButton({ next = "/" }: Props) {
+// Google sign-in — handles the cancelled-login / network error cases.
+export function GoogleButton({ next = "/", label = "Continue with Google", role }: Props) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const start = async () => {
     setPending(true);
     setError(null);
-    const message = await signInWithGoogle(next);
+    const message = await signInWithGoogle(next, role);
     // A message means it failed; otherwise the browser is redirecting to Google.
     if (message) {
       setError("Google sign-in was cancelled or failed. Please try again.");
@@ -37,7 +40,7 @@ export function GoogleButton({ next = "/" }: Props) {
           <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z" />
           <path fill="#EA4335" d="M12 4.75c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.46 14.97.5 12 .5A11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 6.68 9.14 4.75 12 4.75z" />
         </svg>
-        {pending ? "Redirecting…" : "Continue with Google"}
+        {pending ? "Redirecting…" : label}
       </button>
       {error && <p className="text-xs text-rose-600">{error}</p>}
     </div>

@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
+import { useState } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { MIN_LISTING_PHOTOS } from "@/config/listing";
 import { AvailabilityBadge } from "@/components/ui/AvailabilityBadge";
 import { formatRelativeTime } from "@/lib/utils/format";
 import { confirmVacanciesAction, setStatusAction } from "@/lib/owner/actions";
@@ -18,6 +20,7 @@ export interface OwnerListingView {
   lastConfirmedAt: string | null;
   favorites: number;
   viewingRequests: number;
+  photoCount: number;
 }
 
 const STATUS_LABELS: Record<OwnerListingView["status"], string> = {
@@ -28,13 +31,26 @@ const STATUS_LABELS: Record<OwnerListingView["status"], string> = {
 };
 
 export function OwnerListingCard({ listing }: { listing: OwnerListingView }) {
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
+  const [confirmTakeDown, setConfirmTakeDown] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const isPublished = listing.status === "PUBLISHED";
   const isPending = listing.status === "PENDING";
+  const needsPhotos = listing.photoCount < MIN_LISTING_PHOTOS;
 
-  const confirm = () => startTransition(() => confirmVacanciesAction(listing.id));
-  const setStatus = (status: "DRAFT" | "PENDING") =>
-    startTransition(() => setStatusAction(listing.id, status));
+  const confirm = async () => {
+    setPending(true);
+    await confirmVacanciesAction(listing.id);
+    setPending(false);
+  };
+
+  const setStatus = async (status: "DRAFT" | "PENDING") => {
+    setPending(true);
+    setError(null);
+    const result = await setStatusAction(listing.id, status);
+    setPending(false);
+    setError(result?.error ?? null);
+  };
 
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-4">
@@ -64,13 +80,17 @@ export function OwnerListingCard({ listing }: { listing: OwnerListingView }) {
         </Link>
         <Link
           href={`/owner/listings/${listing.id}/photos`}
-          className="rounded-lg px-3 py-1.5 text-neutral-700 ring-1 ring-inset ring-neutral-200 hover:ring-neutral-300"
+          className={`rounded-lg px-3 py-1.5 ring-1 ring-inset ${
+            needsPhotos
+              ? "text-amber-700 ring-amber-300 hover:ring-amber-400"
+              : "text-neutral-700 ring-neutral-200 hover:ring-neutral-300"
+          }`}
         >
           Photos
         </Link>
         {isPublished ? (
           <button
-            onClick={() => setStatus("DRAFT")}
+            onClick={() => setConfirmTakeDown(true)}
             disabled={pending}
             className="rounded-lg px-3 py-1.5 text-neutral-700 ring-1 ring-inset ring-neutral-200 hover:ring-neutral-300 disabled:opacity-60"
           >
@@ -104,6 +124,24 @@ export function OwnerListingCard({ listing }: { listing: OwnerListingView }) {
           </Link>
         )}
       </div>
+
+      {error && (
+        <p role="alert" className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {error}
+        </p>
+      )}
+
+      <ConfirmDialog
+        open={confirmTakeDown}
+        title={`Take down "${listing.name}"?`}
+        message="Students won't see it on the map anymore. You can submit it for review again anytime."
+        confirmLabel="Take down"
+        onCancel={() => setConfirmTakeDown(false)}
+        onConfirm={() => {
+          setConfirmTakeDown(false);
+          setStatus("DRAFT");
+        }}
+      />
     </div>
   );
 }

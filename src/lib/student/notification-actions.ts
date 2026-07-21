@@ -2,18 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth/profile";
-import { markNotificationsRead, setRoomAvailableAlerts } from "@/lib/db/notifications";
+import { setRoomAvailableAlerts } from "@/lib/db/notifications";
+import { allow, LIMITS } from "@/lib/security/rate-limit";
+import { reportError } from "@/lib/security/errors";
 
 // Toggle "room available" alerts for the signed-in student.
 export async function updateRoomAlertsAction(enabled: boolean): Promise<void> {
   const profile = await requireProfile("/account");
-  await setRoomAvailableAlerts(profile.id, enabled);
-  revalidatePath("/account");
-}
+  if (!(await allow("write", LIMITS.write, profile.id))) return;
 
-// Mark all of the student's notifications as read.
-export async function markNotificationsReadAction(): Promise<void> {
-  const profile = await requireProfile("/account");
-  await markNotificationsRead(profile.id);
-  revalidatePath("/account");
+  try {
+    await setRoomAvailableAlerts(profile.id, Boolean(enabled));
+    revalidatePath("/account");
+  } catch (error) {
+    reportError("updateRoomAlerts", error);
+  }
 }

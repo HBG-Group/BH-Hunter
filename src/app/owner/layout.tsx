@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { requireOwner } from "@/lib/auth/profile";
-import { signOutAction } from "@/lib/auth/actions";
+import { ProfileMenu } from "@/components/layout/ProfileMenu";
+import { Logo } from "@/components/brand/Logo";
 
 // Every /owner page shares this shell. requireOwner here means the whole area is
 // protected in one place (the middleware guards it too, as defence in depth).
@@ -8,22 +8,20 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   const owner = await requireOwner();
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <header className="border-b border-neutral-200 bg-white">
+    <div className="min-h-screen bg-canvas">
+      <header className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <Link href="/owner" className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-900 text-sm font-bold text-white">
-              BH
-            </span>
-            <span className="font-semibold tracking-tight">Owner dashboard</span>
-          </Link>
+          <Logo href="/owner" label="Owner" />
 
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-neutral-500">{owner.fullName}</span>
-            <form action={signOutAction}>
-              <button className="text-neutral-500 hover:text-neutral-900">Sign out</button>
-            </form>
-          </div>
+          <ProfileMenu
+            name={owner.fullName}
+            avatarUrl={owner.avatarUrl}
+            links={[
+              { href: "/", label: "Back to site" },
+              { href: "/owner", label: "My listings" },
+              { href: "/owner/requests", label: "Viewing requests" },
+            ]}
+          />
         </div>
       </header>
 

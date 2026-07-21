@@ -18,7 +18,7 @@ export default async function OwnerRequestsPage() {
       </div>
 
       {requests.length === 0 ? (
-        <EmptyState title="No viewing requests yet" message="Requests from students will appear here." />
+        <EmptyState title="No viewing requests yet" message="When a student asks to visit one of your places, it will show up here." />
       ) : (
         <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
           {requests.map((request) => (

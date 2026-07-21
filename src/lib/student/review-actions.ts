@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth/profile";
 import { deleteOwnReview, upsertReview } from "@/lib/db/reviews";
 import { reviewSchema } from "@/lib/validation/review";
+import { publishedListingExists } from "@/lib/db/listing-guards";
+import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
+import { guarded } from "@/lib/security/errors";
 
 export interface ReviewFormState {
   error?: string;
@@ -22,6 +25,12 @@ export async function submitReviewAction(
   formData: FormData,
 ): Promise<ReviewFormState> {
   const profile = await requireProfile(`/listings/${target.slug}`);
+  if (!(await allow("review", LIMITS.review, profile.id))) return { error: RATE_LIMITED };
+
+  // Verify the listing is real and public before accepting a review for it.
+  if (!(await publishedListingExists(target.boardingHouseId))) {
+    return { error: "That listing is no longer available." };
+  }
 
   const parsed = reviewSchema.safeParse({
     cleanliness: formData.get("cleanliness"),
@@ -36,14 +45,23 @@ export async function submitReviewAction(
     return { error: parsed.error.issues[0]?.message ?? "Please check your ratings" };
   }
 
-  await upsertReview(profile.id, target.boardingHouseId, parsed.data);
-  revalidatePath(`/listings/${target.slug}`);
-  return { success: true };
+  return guarded<ReviewFormState>(
+    "submitReview",
+    async () => {
+      await upsertReview(profile.id, target.boardingHouseId, parsed.data);
+      revalidatePath(`/listings/${target.slug}`);
+      return { success: true };
+    },
+    (message) => ({ error: message }),
+  );
 }
 
 // Delete the student's own review.
 export async function deleteReviewAction(reviewId: string, slug: string): Promise<void> {
   const profile = await requireProfile(`/listings/${slug}`);
+  if (!(await allow("write", LIMITS.write, profile.id))) return;
+
+  // Verify ownership — deleteOwnReview is scoped to the author.
   await deleteOwnReview(reviewId, profile.id);
   revalidatePath(`/listings/${slug}`);
 }

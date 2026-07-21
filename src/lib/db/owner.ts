@@ -3,6 +3,7 @@
 // (Prisma connects as the DB owner and bypasses row-level security).
 
 import { prisma } from "@/lib/db/prisma";
+import { uniqueSlug } from "@/lib/utils/slug";
 
 export interface RoomInput {
   label: string;
@@ -37,7 +38,7 @@ export function findListingsByOwner(ownerId: string) {
     where: { ownerId },
     include: {
       rooms: true,
-      _count: { select: { favorites: true, viewingRequests: true } },
+      _count: { select: { favorites: true, viewingRequests: true, images: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -55,11 +56,19 @@ function amenityLinks(amenityKeys: string[]) {
   return amenityKeys.map((key) => ({ amenity: { connect: { key } } }));
 }
 
-export function createOwnerListing(ownerId: string, data: ListingWriteData) {
+async function slugTaken(slug: string): Promise<boolean> {
+  const existing = await prisma.boardingHouse.findUnique({ where: { slug }, select: { id: true } });
+  return existing !== null;
+}
+
+export async function createOwnerListing(ownerId: string, data: Omit<ListingWriteData, "slug">) {
   const { amenityKeys, rooms, ...scalars } = data;
+  const slug = await uniqueSlug(data.name, slugTaken);
+
   return prisma.boardingHouse.create({
     data: {
       ...scalars,
+      slug,
       curfew: scalars.curfew ?? undefined,
       houseRules: scalars.houseRules ?? undefined,
       messengerUrl: scalars.messengerUrl ?? undefined,
@@ -74,13 +83,17 @@ export function createOwnerListing(ownerId: string, data: ListingWriteData) {
 
 // Full edit: verify ownership, then replace scalars, rooms, and amenities in one
 // transaction so the listing is never left half-updated.
-export async function updateOwnerListing(ownerId: string, id: string, data: ListingWriteData) {
+export async function updateOwnerListing(
+  ownerId: string,
+  id: string,
+  data: Omit<ListingWriteData, "slug">,
+) {
+  // Verify ownership before any write.
   const owned = await prisma.boardingHouse.findFirst({ where: { id, ownerId }, select: { id: true } });
   if (!owned) return false;
 
   // Keep the existing slug so public URLs stay stable across edits.
-  const { amenityKeys, rooms, slug, ...scalars } = data;
-  void slug;
+  const { amenityKeys, rooms, ...scalars } = data;
 
   await prisma.boardingHouse.update({
     where: { id },

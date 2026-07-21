@@ -5,7 +5,6 @@
 import type { ListingWriteData, findOwnerListing } from "@/lib/db/owner";
 import type { ListingInput } from "@/lib/validation/listing";
 import type { ListingFormValues } from "@/components/owner/form/types";
-import { slugify } from "@/lib/utils/slug";
 
 type OwnerListingRow = NonNullable<Awaited<ReturnType<typeof findOwnerListing>>>;
 
@@ -41,10 +40,10 @@ function emptyToNull(value: string | undefined): string | null {
   return value && value.trim() !== "" ? value : null;
 }
 
-export function toWriteData(input: ListingInput): ListingWriteData {
+// The slug is resolved against the database by the data layer, so it isn't set here.
+export function toWriteData(input: ListingInput): Omit<ListingWriteData, "slug"> {
   return {
     name: input.name,
-    slug: slugify(input.name),
     addressLine: input.addressLine,
     latitude: input.latitude,
     longitude: input.longitude,
