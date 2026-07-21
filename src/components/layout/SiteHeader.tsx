@@ -4,6 +4,7 @@ import { MobileMenu } from "@/components/layout/MobileMenu";
 import { SignInButton } from "@/components/layout/SignInButton";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { getCurrentProfile } from "@/lib/auth/profile";
+import { Logo } from "@/components/brand/Logo";
 
 // Public header. Shows a Sign in button for guests and a profile menu once signed in.
 export async function SiteHeader() {
@@ -14,12 +15,7 @@ export async function SiteHeader() {
       <div className="relative mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-6">
           <MobileMenu />
-          <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-900 text-sm font-bold text-white">
-              BH
-            </span>
-            <span className="font-semibold tracking-tight text-neutral-900">BH Hunter</span>
-          </Link>
+          <Logo />
           <nav className="hidden items-center gap-5 text-sm text-neutral-600 sm:flex">
             {NAV_LINKS.map((link) => (
               <Link key={link.href} href={link.href} className="hover:text-neutral-900">

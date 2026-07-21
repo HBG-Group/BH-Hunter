@@ -133,7 +133,7 @@ async function main() {
       id: OWNER_ID,
       role: "OWNER",
       fullName: "Demo Owner",
-      email: "owner@bhhunter.local",
+      email: "owner@meino.local",
       phone: "0917-555-0000",
     },
   });

@@ -1,4 +1,4 @@
-// BH Hunter database schema.
+// Meino database schema.
 // One campus for now (VSU Main), so there is no Campus table yet — campus settings
 // live in src/config/campus.ts. When we expand, we add a Campus model and a
 // campusId on BoardingHouse; nothing else here needs to change.

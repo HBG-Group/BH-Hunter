@@ -30,7 +30,7 @@ export default async function OwnerDashboardPage() {
         <Link
           href="/owner/listings/new"
           aria-label="Add listing"
-          className="flex h-9 items-center gap-1.5 rounded-full bg-neutral-900 pl-3 pr-4 text-sm font-medium text-white hover:bg-neutral-800"
+          className="flex h-9 items-center gap-1.5 rounded-full bg-primary pl-3 pr-4 text-sm font-medium text-white hover:bg-primary-hover"
         >
           <span aria-hidden className="text-base leading-none">
             +
@@ -44,7 +44,7 @@ export default async function OwnerDashboardPage() {
       {listings.length === 0 ? (
         <EmptyState
           title="No listings yet"
-          message="Add your first boarding house to put it on the map."
+          message="Add your first boarding house and students will find it on the map."
         />
       ) : (
         <div className="space-y-3">

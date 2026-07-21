@@ -7,9 +7,9 @@ import Link from "next/link";
 export default function Error({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
-      <h1 className="text-xl font-semibold text-ink">Something went wrong</h1>
+      <h1 className="text-xl font-semibold text-ink">That didn&apos;t load</h1>
       <p className="mt-2 max-w-sm text-sm text-muted">
-        We couldn&apos;t load this page. This is usually a brief connection hiccup — please try again.
+        Usually just a brief connection hiccup. Give it another go.
       </p>
       <div className="mt-5 flex gap-3">
         <button

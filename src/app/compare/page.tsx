@@ -11,7 +11,7 @@ export default async function ComparePage() {
   const favorites = toListingCards(await findFavoriteListings(profile.id));
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-canvas">
       <SiteHeader />
       <main className="mx-auto max-w-5xl space-y-4 px-4 py-6">
         <div className="flex items-center justify-between">
@@ -23,9 +23,9 @@ export default async function ComparePage() {
 
         {favorites.length < 2 ? (
           <EmptyState
-            title="Save at least two to compare"
-            message="Comparison needs two or more saved boarding houses. Tap the heart on listings you like, then come back."
-            actionLabel="Browse boarding houses"
+            title="Save two to compare"
+            message="Pick a couple of places you are torn between and see them side by side."
+            actionLabel="Browse places"
             actionHref="/"
           />
         ) : (

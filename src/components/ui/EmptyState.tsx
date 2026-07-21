@@ -11,10 +11,10 @@ interface Props {
 // A calm, intentional empty state — not a jarring "no results" dump.
 export function EmptyState({ title, message, actionLabel, actionHref }: Props) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/50 px-6 py-16 text-center">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100">
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-canvas/60 px-6 py-16 text-center">
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft">
         <svg
-          className="h-6 w-6 text-neutral-400"
+          className="h-6 w-6 text-primary"
           fill="none"
           viewBox="0 0 24 24"
           strokeWidth={1.5}
@@ -27,8 +27,8 @@ export function EmptyState({ title, message, actionLabel, actionHref }: Props) {
           />
         </svg>
       </div>
-      <h3 className="font-medium text-neutral-900">{title}</h3>
-      <p className="mt-1 max-w-xs text-sm text-neutral-500">{message}</p>
+      <h3 className="font-medium text-ink">{title}</h3>
+      <p className="mt-1 max-w-xs text-sm text-muted">{message}</p>
       {actionLabel && actionHref && (
         <Link
           href={actionHref}

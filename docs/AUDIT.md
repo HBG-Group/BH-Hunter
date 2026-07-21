@@ -1,4 +1,4 @@
-# BH Hunter — Final Engineering Audit
+# Meino — Final Engineering Audit
 
 Pre-production audit of the whole repository: structure, security, database, Supabase,
 server actions, forms, uploads, performance, accessibility, dependencies, deployment.
@@ -16,7 +16,7 @@ Baseline: `npx tsc --noEmit` clean, `npx eslint src` clean, `npm run build` succ
 `?next=` query string. The action passes it straight to `redirect(next)` without
 checking that it is a relative path.
 
-**Risk.** `/login?next=https://evil-vsu-bh.com` renders a legitimate BH Hunter login
+**Risk.** `/login?next=https://evil-vsu-bh.com` renders a legitimate Meino login
 page and, on successful sign-in, drops the student on an attacker's site. This is the
 classic credential-phishing chain: the victim sees the real domain, signs in for real,
 and lands on a cloned page asking them to "sign in again". Also usable to bounce users
@@ -101,7 +101,7 @@ scheme. Verified locally: `javascript:alert(1)` and `data:text/html,...` both pa
 value is rendered directly as an `href` on the public listing page.
 
 **Risk.** An owner can store `javascript:` in their contact link. Any student who taps
-"Message on Messenger" executes attacker script in their authenticated BH Hunter
+"Message on Messenger" executes attacker script in their authenticated Meino
 session — session-scoped actions, favorites manipulation, or a convincing fake login
 overlay. Listings are admin-verified, which reduces but does not remove exposure: the
 field is editable *after* verification.

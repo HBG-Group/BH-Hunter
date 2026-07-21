@@ -1,4 +1,4 @@
-# BH Hunter — Security Model
+# Meino — Security Model
 
 How the app defends itself, and the two things that must be done outside the codebase.
 

@@ -32,10 +32,10 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const row = await findBoardingHouseBySlug(slug);
-  if (!row) return { title: "Listing not found — BH Hunter" };
+  if (!row) return { title: "Listing not found — Meino" };
 
   return {
-    title: `${row.name} — BH Hunter`,
+    title: `${row.name} — Meino`,
     description: `${row.name} near VSU: ${row.addressLine}. Check vacancies, price, and amenities.`,
   };
 }

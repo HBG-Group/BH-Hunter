@@ -9,7 +9,7 @@ export default function SignUpPage() {
   return (
     <AuthLayout
       title="Student account"
-      subtitle="For students looking for a boarding house — save favorites, leave reviews, and request viewings."
+      subtitle="For students looking for a room — save the places you like, share honest reviews, and ask for a viewing."
     >
       <GoogleButton next="/account" role="STUDENT" />
       <AuthDivider />

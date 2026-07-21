@@ -16,7 +16,7 @@ export default async function LoginPage({ searchParams }: Props) {
   const next = safeRedirectPath(rawNext, "");
 
   return (
-    <AuthLayout title="Sign in" subtitle="Students and owners both sign in here.">
+    <AuthLayout title="Welcome back" subtitle="Students and owners both sign in here.">
       {error === "oauth" && (
         <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
           Sign-in didn&apos;t complete. Please try again.

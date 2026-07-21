@@ -2,20 +2,21 @@ import Link from "next/link";
 import { FadeIn } from "@/components/ui/FadeIn";
 
 const points = [
-  { title: "Real vacancies", body: "Owners keep availability current, so a green pin means a room is actually open." },
-  { title: "Walk-time, not guesswork", body: "Every listing shows the minutes to VSU's main gate, not just a distance." },
-  { title: "Built for VSU", body: "Focused on Baybay boarding houses near campus — nothing irrelevant to sift through." },
+  { title: "Rooms that are really free", body: "Owners keep availability current, so a green pin means a room is genuinely open — not gone last week." },
+  { title: "Know the walk", body: "Every listing shows the real minutes to VSU's main gate, so you know what mornings will feel like." },
+  { title: "Made for Baybay", body: "Only boarding houses around VSU. Nothing to sift through that was never near campus." },
 ];
 
 // Homepage "about" band. The standalone /about page has the fuller story.
 export function AboutSection() {
   return (
-    <section id="about" className="scroll-mt-20 border-t border-neutral-200 py-14">
+    <section id="about" className="scroll-mt-20 border-t border-line py-14">
       <FadeIn className="mx-auto max-w-3xl text-center">
-        <h2 className="text-3xl font-semibold tracking-tight text-ink">Why BH Hunter</h2>
+        <h2 className="text-3xl font-semibold tracking-tight text-ink">A place to land</h2>
         <p className="mt-3 text-lg text-muted">
-          Finding a boarding house near VSU shouldn&apos;t mean scrolling Facebook groups and walking
-          around Baybay. BH Hunter puts every option on one map — free to browse, no sign-in needed.
+          Looking for a room shouldn&apos;t mean scrolling Facebook groups and walking Baybay in the
+          heat. Meino gathers every option in one place, so you can spend less time hunting and more
+          time settling in.
         </p>
       </FadeIn>
 
@@ -31,8 +32,8 @@ export function AboutSection() {
       </div>
 
       <div className="mt-8 text-center">
-        <Link href="/about" className="text-sm text-neutral-600 underline hover:text-neutral-900">
-          More about the project
+        <Link href="/about" className="text-sm text-muted underline hover:text-ink">
+          More about Meino
         </Link>
       </div>
     </section>

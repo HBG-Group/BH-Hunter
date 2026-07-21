@@ -78,16 +78,16 @@ export function SignInModal({ next, onClose }: Props) {
             className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
           >
             <h2 id="signin-modal-title" className="text-lg font-semibold text-neutral-900">
-              Sign in to unlock extra features
+              Make it yours
             </h2>
             <p className="mt-1 text-sm text-neutral-500">
-              Save favorites, leave reviews, and get room alerts. Browsing stays free.
+              Save the places you like, leave a review, and hear first when a room opens up. Browsing always stays free.
             </p>
 
             <div className="mt-5 space-y-2.5">
               <button
                 onClick={goToEmail}
-                className="w-full rounded-xl bg-neutral-900 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
+                className="w-full rounded-xl bg-primary py-2.5 text-sm font-medium text-white hover:bg-primary-hover"
               >
                 Sign in with Email
               </button>

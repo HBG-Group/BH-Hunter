@@ -7,9 +7,9 @@ import { RouteProgress } from "@/components/system/RouteProgress";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BH Hunter — Boarding houses near VSU",
+  title: "Meino — Find your place near VSU",
   description:
-    "Discover available boarding houses around Visayas State University. Compare prices, check vacancies, and see the walk to campus on an interactive map.",
+    "Meino helps Visayas State University students find a boarding house that feels like home. Every option on one map, with real vacancies and honest walk times.",
 };
 
 export default function RootLayout({

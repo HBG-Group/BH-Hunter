@@ -1,6 +1,6 @@
 # Architecture
 
-This document explains *how* BH Hunter is put together and *why*. Read it once and the
+This document explains *how* Meino is put together and *why*. Read it once and the
 folder layout should make sense.
 
 ## The layering rule

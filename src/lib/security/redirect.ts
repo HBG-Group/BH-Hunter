@@ -44,11 +44,11 @@ export function safeRedirectPath(
   // confirm the result still points at that same origin.
   let url: URL;
   try {
-    url = new URL(raw, "https://bh-hunter.internal");
+    url = new URL(raw, "https://meino.internal");
   } catch {
     return fallback;
   }
-  if (url.origin !== "https://bh-hunter.internal") return fallback;
+  if (url.origin !== "https://meino.internal") return fallback;
   if (BLOCKED_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) return fallback;
 
   // Re-check after normalisation: "/..//evil.com" collapses to "//evil.com", which

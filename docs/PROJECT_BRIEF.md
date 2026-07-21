@@ -1,4 +1,4 @@
-# BH Hunter — Original Project Brief
+# Meino — Original Project Brief
 
 > This is the founding brief for the project, preserved verbatim in intent. It is the
 > source of truth for the product vision. The root `README.md` is the developer-facing
@@ -6,14 +6,14 @@
 
 ## Project Vision
 
-BH Hunter is a modern boarding house discovery platform specifically designed for
+Meino is a modern boarding house discovery platform specifically designed for
 students of Visayas State University (VSU) Main Campus in Baybay, Leyte, Philippines.
 
 Every semester, hundreds of students struggle to find available boarding houses.
 Currently they rely on Facebook posts, Messenger chats, walking around Baybay, and
 asking friends. This process wastes time and often results in outdated information.
 
-BH Hunter aims to become the official digital directory of boarding houses surrounding
+Meino aims to become the official digital directory of boarding houses surrounding
 VSU. Think of it as: Airbnb + Google Maps + University Housing Portal.
 
 ## Primary Goals

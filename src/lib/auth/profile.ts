@@ -42,7 +42,7 @@ export async function getCurrentProfile(roleHint?: "OWNER" | "STUDENT"): Promise
   return prisma.profile.create({
     data: {
       id: user.id,
-      email: user.email ?? `${user.id}@bhhunter.local`,
+      email: user.email ?? `${user.id}@meino.local`,
       fullName,
       avatarUrl,
       role,

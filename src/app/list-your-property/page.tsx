@@ -9,7 +9,7 @@ export default function OwnerSignUpPage() {
   return (
     <AuthLayout
       title="Owner account"
-      subtitle="For boarding house owners — post listings, keep vacancies updated, and handle viewing requests."
+      subtitle="For boarding house owners — list your place, keep vacancies honest, and meet students looking for a home."
     >
       <GoogleButton next="/owner" role="OWNER" />
       <AuthDivider />

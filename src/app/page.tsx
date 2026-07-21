@@ -18,15 +18,15 @@ export default async function HomePage() {
   const favoritedIds = profile ? await getFavoriteIds(profile.id) : [];
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-canvas">
       <SiteHeader />
       <main className="mx-auto max-w-7xl px-4 py-6">
         <FadeIn className="mb-8 max-w-2xl">
           <h1 className="text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-            Find your boarding house near VSU
+            Find your place near VSU
           </h1>
           <p className="mt-3 text-lg text-muted">
-            Browse every option on one map, compare prices, and check real vacancies — no sign-in needed.
+            Every boarding house around campus on one map — real vacancies, honest walk times, and no sign-in needed to look around.
           </p>
         </FadeIn>
 
