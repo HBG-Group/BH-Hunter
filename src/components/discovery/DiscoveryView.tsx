@@ -13,6 +13,10 @@ import { DEFAULT_SORT, type SortOption } from "@/config/sorting";
 import type { ListingFilters } from "@/lib/validation/filters";
 import type { ListingCard } from "@/types/listing";
 
+// How many cards to render before the "Load more" button. The map still gets every
+// listing, so no pins are lost — this only limits how many cards are in the DOM.
+const PAGE_SIZE = 20;
+
 // Leaflet touches `window`, so the map is loaded client-only, never server-rendered.
 const MapView = dynamic(() => import("@/components/map/MapView").then((m) => m.MapView), {
   ssr: false,
@@ -31,6 +35,7 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
   const [sort, setSort] = useState<SortOption>(DEFAULT_SORT);
+  const [shownCount, setShownCount] = useState(PAGE_SIZE);
 
   const favoritedSet = useMemo(() => new Set(favoritedIds), [favoritedIds]);
 
@@ -39,8 +44,16 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
     [listings, filters, sort],
   );
 
+  // The cards actually rendered; the map always receives the full set.
+  const shownListings = visibleListings.slice(0, shownCount);
+  const hasMore = shownCount < visibleListings.length;
+
+  // Any change to the result set starts the list back at the first page.
+  const resetPaging = () => setShownCount(PAGE_SIZE);
+
   // Reset filters (keeps the search text)
-  const clearFilters = () =>
+  const clearFilters = () => {
+    resetPaging();
     setFilters((current) => ({
       query: current.query,
       availableOnly: undefined,
@@ -48,11 +61,19 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
       maxPrice: undefined,
       amenities: [],
     }));
+  };
 
   const selected = visibleListings.find((listing) => listing.id === selectedId) ?? null;
 
-  const patchFilters = (patch: Partial<ListingFilters>) =>
+  const patchFilters = (patch: Partial<ListingFilters>) => {
+    resetPaging();
     setFilters((current) => ({ ...current, ...patch }));
+  };
+
+  const changeSort = (next: SortOption) => {
+    resetPaging();
+    setSort(next);
+  };
 
   return (
     <div className="space-y-10">
@@ -63,7 +84,7 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
           onChange={patchFilters}
           resultCount={visibleListings.length}
           sort={sort}
-          onSortChange={setSort}
+          onSortChange={changeSort}
           onClearFilters={clearFilters}
         />
         {/* Mobile: the map sits below the list, so offer a quick jump to it */}
@@ -78,12 +99,23 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
         </a>
 
         <ListingGrid
-          listings={visibleListings}
+          listings={shownListings}
           activeId={hoverId}
           favoritedSet={favoritedSet}
           isAuthenticated={isAuthenticated}
           onHover={setHoverId}
         />
+
+        {hasMore && (
+          <div className="flex justify-center pt-2">
+            <button
+              onClick={() => setShownCount((c) => c + PAGE_SIZE)}
+              className="rounded-xl bg-white px-5 py-2.5 text-sm font-medium text-ink ring-1 ring-inset ring-line hover:ring-neutral-300"
+            >
+              Load more ({visibleListings.length - shownCount} left)
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Full-width map at the bottom — scroll here to see every BH on the map. */}

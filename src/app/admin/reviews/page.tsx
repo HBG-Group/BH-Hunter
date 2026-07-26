@@ -1,10 +1,10 @@
-import { requireAdmin } from "@/lib/auth/profile";
+import { getAdminOrNull } from "@/lib/auth/profile";
 import { findRecentReviews } from "@/lib/db/admin";
 import { AdminReviewRow } from "@/components/admin/AdminReviewRow";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 export default async function AdminReviewsPage() {
-  await requireAdmin();
+  if (!(await getAdminOrNull())) return null;
   const rows = await findRecentReviews();
 
   return (

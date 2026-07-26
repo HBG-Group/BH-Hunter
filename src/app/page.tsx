@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { AdStrip } from "@/components/ads/AdStrip";
 import { DiscoveryView } from "@/components/discovery/DiscoveryView";
 import { AboutSection } from "@/components/home/AboutSection";
 import { FadeIn } from "@/components/ui/FadeIn";
@@ -29,6 +31,11 @@ export default async function HomePage() {
             Every boarding house around campus on one map — real vacancies, honest walk times, and no sign-in needed to look around.
           </p>
         </FadeIn>
+
+        {/* Local business ads stream in without holding up the listings. */}
+        <Suspense fallback={null}>
+          <AdStrip />
+        </Suspense>
 
         <DiscoveryView
           listings={listings}

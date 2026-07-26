@@ -4,6 +4,7 @@ import { MobileMenu } from "@/components/layout/MobileMenu";
 import { SignInButton } from "@/components/layout/SignInButton";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { getCurrentProfile } from "@/lib/auth/profile";
+import { adminHref } from "@/config/admin";
 import { Logo } from "@/components/brand/Logo";
 
 // Public header. Shows a Sign in button for guests and a profile menu once signed in.
@@ -27,7 +28,12 @@ export async function SiteHeader() {
 
         <div className="flex items-center gap-3">
           {profile ? (
-            <ProfileMenu name={profile.fullName} avatarUrl={profile.avatarUrl} />
+            <ProfileMenu
+              name={profile.fullName}
+              avatarUrl={profile.avatarUrl}
+              isAdmin={profile.role === "ADMIN"}
+              adminHref={adminHref()}
+            />
           ) : (
             <>
               <Link

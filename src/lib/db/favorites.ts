@@ -40,6 +40,7 @@ export async function findFavoriteListings(studentId: string) {
           amenities: { include: { amenity: true } },
           nearbyPlaces: true,
           reviews: { select: { overall: true } },
+          owner: { select: { fullName: true, verified: true } },
         },
       },
     },

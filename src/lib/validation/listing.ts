@@ -6,6 +6,8 @@ import { isSafeExternalUrl } from "@/lib/security/url";
 export const MAX_MONTHLY_PRICE = 100_000;
 export const MAX_ROOMS = 50;
 export const PHONE_MAX_DIGITS = 11;
+export const MAX_CONTACT_NUMBERS = 5;
+export const CARRIER_MAX_LENGTH = 20;
 
 // One room row inside the listing form. Occupied can't exceed capacity.
 export const roomSchema = z
@@ -20,14 +22,17 @@ export const roomSchema = z
     path: ["occupied"],
   });
 
-// Digits only, at most 11 (e.g. 09171234567).
-const phoneSchema = z
-  .string()
-  .trim()
-  .transform((value) => value.replace(/\D/g, ""))
-  .refine((digits) => digits.length >= 7 && digits.length <= PHONE_MAX_DIGITS, {
-    message: `Enter 7–${PHONE_MAX_DIGITS} digits, e.g. 09171234567`,
-  });
+// One contact number: digits only (7–11), plus an optional free-text SIM carrier.
+const contactNumberSchema = z.object({
+  number: z
+    .string()
+    .trim()
+    .transform((value) => value.replace(/\D/g, ""))
+    .refine((digits) => digits.length >= 7 && digits.length <= PHONE_MAX_DIGITS, {
+      message: `Enter 7–${PHONE_MAX_DIGITS} digits, e.g. 09171234567`,
+    }),
+  carrier: z.string().trim().max(CARRIER_MAX_LENGTH, "Carrier name is too long").default(""),
+});
 
 export const listingSchema = z.object({
   name: z.string().trim().min(3, "Name is too short").max(120),
@@ -49,7 +54,10 @@ export const listingSchema = z.object({
   curfew: z.string().trim().max(40).optional(),
   houseRules: z.string().trim().max(1000, "Keep house rules under 1000 characters").optional(),
 
-  contactPhone: phoneSchema,
+  contactNumbers: z
+    .array(contactNumberSchema)
+    .min(1, "Add at least one contact number")
+    .max(MAX_CONTACT_NUMBERS, `Up to ${MAX_CONTACT_NUMBERS} numbers`),
   // Sanitize URL: https only (http allowed outside production), no other scheme.
   messengerUrl: z
     .string()

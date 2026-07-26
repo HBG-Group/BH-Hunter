@@ -1,11 +1,12 @@
-import { requireAdmin } from "@/lib/auth/profile";
+import { getAdminOrNull } from "@/lib/auth/profile";
 import { findListingsAwaitingReview, getPlatformStats } from "@/lib/db/admin";
 import { PlatformStatCards } from "@/components/admin/PlatformStatCards";
 import { AdminListingRow } from "@/components/admin/AdminListingRow";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 export default async function AdminOverviewPage() {
-  await requireAdmin();
+  // Gate before any admin data is read; the layout renders the sign-in form.
+  if (!(await getAdminOrNull())) return null;
   const [stats, queue] = await Promise.all([getPlatformStats(), findListingsAwaitingReview()]);
 
   return (
@@ -32,7 +33,10 @@ export default async function AdminOverviewPage() {
                   slug: row.slug,
                   status: row.status,
                   isVerified: row.verifiedAt !== null,
+                  featured: row.featured,
+                  ownerId: row.owner.id,
                   ownerName: row.owner.fullName,
+                  ownerVerified: row.owner.verified,
                 }}
               />
             ))}

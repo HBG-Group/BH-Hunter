@@ -6,6 +6,7 @@ import { toOwnerListingViews } from "@/services/owner-dashboard";
 import { StatCards } from "@/components/owner/StatCards";
 import { OwnerListingCard } from "@/components/owner/OwnerListingCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { VerifiedOwnerBadge } from "@/components/ui/VerifiedOwnerBadge";
 
 export default async function OwnerDashboardPage() {
   const owner = await requireOwner();
@@ -19,7 +20,10 @@ export default async function OwnerDashboardPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Your listings</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Your listings</h1>
+            {owner.verified && <VerifiedOwnerBadge compact />}
+          </div>
           <Link
             href="/owner/requests"
             className="text-sm text-neutral-600 hover:text-neutral-900"

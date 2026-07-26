@@ -18,6 +18,7 @@ import { summarizeAvailability } from "@/services/availability";
 import { maybeNotifyRoomAvailable } from "@/services/notifications";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
 import { guarded, reportError } from "@/lib/security/errors";
+import { getListingQuota } from "@/lib/owner/billing";
 
 export interface ListingFormState {
   error?: string;
@@ -56,6 +57,12 @@ export async function createListingAction(
 
   const result = parsePayload(formData);
   if (!result.ok) return { error: result.error };
+
+  // Free-tier gate. Inert while BILLING_ENABLED is false (Phase 1), so nothing blocks.
+  const quota = await getListingQuota(owner.id);
+  if (quota.nextNeedsPayment) {
+    return { error: `You've used all ${quota.freeLimit} free listings. Additional listings cost ₱${quota.extraPrice} each.` };
+  }
 
   const created = await guarded<{ error?: string }>(
     "createListing",

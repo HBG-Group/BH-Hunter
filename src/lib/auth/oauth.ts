@@ -2,6 +2,7 @@
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { OAUTH_CALLBACK_PATH } from "@/config/auth";
+import { PUBLIC_SITE_URL } from "@/config/site";
 import { safeRedirectPath } from "@/lib/security/redirect";
 
 // Start the Google sign-in redirect. After Google, users return to /auth/callback,
@@ -12,7 +13,10 @@ export async function signInWithGoogle(next = "/", role?: "OWNER" | "STUDENT"): 
   const supabase = createSupabaseBrowserClient();
   const params = new URLSearchParams({ next: safeRedirectPath(next, "/") });
   if (role) params.set("role", role);
-  const redirectTo = `${window.location.origin}${OAUTH_CALLBACK_PATH}?${params}`;
+  // Prefer the configured canonical origin so a preview or misread host can't send
+  // the user back to localhost; fall back to the live origin when it isn't set.
+  const base = PUBLIC_SITE_URL ?? window.location.origin;
+  const redirectTo = `${base}${OAUTH_CALLBACK_PATH}?${params}`;
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",

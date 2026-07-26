@@ -1,6 +1,7 @@
 import { activeCampus } from "@/config/campus";
 import type { RoomValue } from "@/components/owner/form/RoomsEditor";
 import type { GenderPolicy } from "@/types/domain";
+import type { ContactNumber } from "@/lib/contact/phones";
 
 // The editable state of the listing form. Kept loose (numbers/strings) for the inputs;
 // the Zod schema on the server does the real validation and coercion.
@@ -17,7 +18,7 @@ export interface ListingFormValues {
   internetIncluded: boolean;
   curfew: string;
   houseRules: string;
-  contactPhone: string;
+  contactNumbers: ContactNumber[];
   messengerUrl: string;
   contactEmail: string;
   amenityKeys: string[];
@@ -39,7 +40,7 @@ export function emptyListingForm(): ListingFormValues {
     internetIncluded: false,
     curfew: "",
     houseRules: "",
-    contactPhone: "",
+    contactNumbers: [{ number: "", carrier: "" }],
     messengerUrl: "",
     contactEmail: "",
     amenityKeys: [],

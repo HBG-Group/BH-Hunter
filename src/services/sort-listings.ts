@@ -18,6 +18,7 @@ export function sortListings(listings: ListingCard[], sort: SortOption): Listing
     case "newest":
       return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     default:
-      return items; // recommended = the order the server returned
+      // Recommended = the server order, but featured listings float to the top.
+      return items.sort((a, b) => Number(b.featured) - Number(a.featured));
   }
 }

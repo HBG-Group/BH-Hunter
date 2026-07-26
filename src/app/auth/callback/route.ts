@@ -2,12 +2,15 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/profile";
 import { safeRedirectPath } from "@/lib/security/redirect";
+import { resolveSiteOrigin } from "@/lib/auth/site-origin";
 
-// Google sends the user back here with a code. We exchange it for a session (stored
-// in cookies) and then send them on to where they came from.
+// Google (and the confirmation email) send the user back here with a code. We exchange
+// it for a session and send them on. The final hop uses the canonical origin, so it
+// can't land on an internal Vercel host or on localhost.
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = request.nextUrl;
+  const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
+  const origin = await resolveSiteOrigin();
 
   // Validate redirect — never concatenate a raw query parameter onto the origin.
   const next = safeRedirectPath(searchParams.get("next"), "/");

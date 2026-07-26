@@ -6,6 +6,8 @@ import { getCurrentProfile } from "@/lib/auth/profile";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
 import { credentialsSchema, signUpSchema } from "@/lib/validation/auth";
+import { resolveSiteOrigin } from "@/lib/auth/site-origin";
+import { OAUTH_CALLBACK_PATH } from "@/config/auth";
 
 export interface AuthFormState {
   error?: string;
@@ -55,15 +57,20 @@ export async function signUpAction(
     email: formData.get("email"),
     password: formData.get("password"),
     role: formData.get("role") === "OWNER" ? "OWNER" : "STUDENT",
+    terms: formData.get("terms"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check your details" };
   const { fullName, email, password, role } = parsed.data;
+
+  // Confirmation link must return to the canonical site, not localhost.
+  const origin = await resolveSiteOrigin();
+  const emailRedirectTo = `${origin}${OAUTH_CALLBACK_PATH}?next=${role === "OWNER" ? "/owner" : "/account"}`;
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName, role } },
+    options: { data: { full_name: fullName, role }, emailRedirectTo },
   });
   if (error) return { error: error.message };
 

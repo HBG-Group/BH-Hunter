@@ -2,6 +2,28 @@
 
 How the app defends itself, and the two things that must be done outside the codebase.
 
+## Auth redirect configuration (fixes the localhost redirect)
+
+Google sign-in and confirmation-email links are controlled by Supabase, not just by
+the app. When Supabase receives a `redirectTo` that isn't in its allowlist, it silently
+falls back to the **Site URL** — if that's `http://localhost:3000`, every user lands on
+localhost. Set both, in **Supabase → Authentication → URL Configuration**:
+
+1. **Site URL** → the production origin, e.g. `https://meino.vercel.app`.
+2. **Redirect URLs** allowlist → add the production and preview callbacks:
+   - `https://meino.vercel.app/auth/callback`
+   - `https://*.vercel.app/auth/callback` (preview deployments)
+   - `http://localhost:3000/auth/callback` (local dev)
+
+Then set **`NEXT_PUBLIC_SITE_URL`** in the Vercel project env to the production origin.
+The app uses it to build the OAuth `redirectTo` and the confirmation-email link, so both
+always point at the canonical site regardless of which host served the request. Without
+it the code falls back to Vercel's forwarded headers (server) and the live origin
+(browser), which is correct in most cases but not for preview builds.
+
+Also confirm the Google OAuth client's **Authorized redirect URI** (Google Cloud
+Console) is the Supabase callback: `https://<ref>.supabase.co/auth/v1/callback`.
+
 ## Manual steps required before launch
 
 1. **Enable Row Level Security** on every table in the `public` schema, with **no

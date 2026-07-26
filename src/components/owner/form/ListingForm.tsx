@@ -6,6 +6,7 @@ import { AmenityToggle } from "@/components/filters/AmenityToggle";
 import { ListingFields } from "@/components/owner/form/ListingFields";
 import { LocationPicker } from "@/components/owner/form/LocationPicker";
 import { RoomsEditor } from "@/components/owner/form/RoomsEditor";
+import { Spinner } from "@/components/ui/Spinner";
 import { emptyListingForm, type ListingFormValues } from "@/components/owner/form/types";
 import type { ListingFormState } from "@/lib/owner/actions";
 
@@ -97,8 +98,9 @@ export function ListingForm({ action, initialValues, submitLabel }: Props) {
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-60 sm:w-auto"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-60 sm:w-auto"
         >
+          {pending && <Spinner />}
           {pending ? "Saving…" : submitLabel}
         </button>
       </div>

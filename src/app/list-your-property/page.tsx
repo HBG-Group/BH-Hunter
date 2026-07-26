@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/AuthLayout";
-import { AuthForm } from "@/components/auth/AuthForm";
-import { GoogleButton } from "@/components/auth/GoogleButton";
-import { AuthDivider } from "@/components/auth/AuthDivider";
-import { signUpAction } from "@/lib/auth/actions";
+import { SignUpAuth } from "@/components/auth/SignUpAuth";
 
 export default function OwnerSignUpPage() {
   return (
@@ -11,9 +8,7 @@ export default function OwnerSignUpPage() {
       title="Owner account"
       subtitle="For boarding house owners — list your place, keep vacancies honest, and meet students looking for a home."
     >
-      <GoogleButton next="/owner" role="OWNER" />
-      <AuthDivider />
-      <AuthForm mode="signup" action={signUpAction} role="OWNER" />
+      <SignUpAuth role="OWNER" next="/owner" />
 
       <p className="mt-4 text-center text-xs text-neutral-500">
         Looking for a place to stay?{" "}

@@ -37,6 +37,7 @@ function toCard(row: BoardingHouseWithRelations): ListingCard {
     availabilityState: availability.state,
     isAvailabilityStale: isAvailabilityStale(row.lastConfirmedAt),
     isVerified: row.verifiedAt !== null,
+    featured: row.featured,
     isPublished: row.status === "PUBLISHED",
     averageRating,
     reviewCount,
@@ -73,5 +74,7 @@ export function toListingDetail(row: BoardingHouseWithRelations): ListingDetail 
       name: place.name,
       walkMinutes: place.walkMinutes,
     })),
+    ownerName: row.owner.fullName,
+    ownerVerified: row.owner.verified,
   };
 }

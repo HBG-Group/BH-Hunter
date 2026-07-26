@@ -2,6 +2,7 @@
 
 import { logContactClickAction } from "@/lib/analytics/actions";
 import { safeExternalUrl, safeMailtoHref, safeTelHref } from "@/lib/security/url";
+import { parseContactNumbers, formatContactNumber } from "@/lib/contact/phones";
 
 interface Props {
   boardingHouseId: string;
@@ -18,22 +19,27 @@ const linkClass =
 export function ContactButtons({ boardingHouseId, contactPhone, messengerUrl, contactEmail }: Props) {
   const track = () => void logContactClickAction(boardingHouseId);
 
-  // Sanitize every href at render time as well, so rows stored before validation
-  // tightened can never produce a javascript: or data: link.
-  const tel = safeTelHref(contactPhone);
+  // One listing can have several numbers, each with its SIM carrier.
+  const numbers = parseContactNumbers(contactPhone)
+    .map((entry) => ({ entry, tel: safeTelHref(entry.number) }))
+    .filter((item): item is { entry: (typeof item)["entry"]; tel: string } => item.tel !== null);
+
   const messenger = safeExternalUrl(messengerUrl);
   const mailto = contactEmail ? safeMailtoHref(contactEmail) : null;
 
   return (
     <div className="mt-4 space-y-2">
-      {tel ? (
-        <a
-          href={tel}
-          onClick={track}
-          className="block rounded-xl bg-neutral-900 py-2.5 text-center text-sm font-medium text-white hover:bg-neutral-800"
-        >
-          Call {contactPhone}
-        </a>
+      {numbers.length > 0 ? (
+        numbers.map(({ entry, tel }) => (
+          <a
+            key={entry.number}
+            href={tel}
+            onClick={track}
+            className="block rounded-xl bg-neutral-900 py-2.5 text-center text-sm font-medium text-white hover:bg-neutral-800"
+          >
+            Call {formatContactNumber(entry)}
+          </a>
+        ))
       ) : (
         <p className="rounded-xl bg-neutral-100 py-2.5 text-center text-sm text-neutral-500">
           No valid contact number

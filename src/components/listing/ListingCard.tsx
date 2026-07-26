@@ -64,12 +64,17 @@ function ListingCardBase({ listing, isActive, isFavorited, isAuthenticated, onHo
               </svg>
             </div>
           )}
-          <div className="absolute left-3 top-3">
+          <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
             {listing.isPublished ? (
               <AvailabilityBadge state={listing.availabilityState} remaining={listing.remainingVacancies} />
             ) : (
               <span className="rounded-full bg-neutral-900/85 px-2.5 py-1 text-xs font-medium text-white">
                 Unpublished
+              </span>
+            )}
+            {listing.featured && listing.isPublished && (
+              <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-medium text-white shadow-sm">
+                ★ Featured
               </span>
             )}
           </div>

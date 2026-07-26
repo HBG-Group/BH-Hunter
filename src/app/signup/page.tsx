@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/AuthLayout";
-import { AuthForm } from "@/components/auth/AuthForm";
-import { GoogleButton } from "@/components/auth/GoogleButton";
-import { AuthDivider } from "@/components/auth/AuthDivider";
-import { signUpAction } from "@/lib/auth/actions";
+import { SignUpAuth } from "@/components/auth/SignUpAuth";
 
 export default function SignUpPage() {
   return (
@@ -11,9 +8,7 @@ export default function SignUpPage() {
       title="Student account"
       subtitle="For students looking for a room — save the places you like, share honest reviews, and ask for a viewing."
     >
-      <GoogleButton next="/account" role="STUDENT" />
-      <AuthDivider />
-      <AuthForm mode="signup" action={signUpAction} role="STUDENT" />
+      <SignUpAuth role="STUDENT" next="/account" />
 
       <p className="mt-4 text-center text-xs text-neutral-500">
         Own a boarding house?{" "}
