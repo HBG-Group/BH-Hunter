@@ -35,8 +35,9 @@ const adminListingSelect = {
   slug: true,
   status: true,
   verifiedAt: true,
+  featured: true,
   createdAt: true,
-  owner: { select: { fullName: true, email: true } },
+  owner: { select: { id: true, fullName: true, email: true, verified: true } },
 } as const;
 
 // Listings that need an admin's attention: submitted for review (PENDING) or not yet
@@ -52,10 +53,37 @@ export function findListingsAwaitingReview() {
   });
 }
 
-export function findAllListingsForAdmin() {
+export type AdminListingFilter = "all" | "unverified" | "unpublished";
+
+// The moderation list, optionally narrowed. "unverified" = not yet verified;
+// "unpublished" = anything not live on the map.
+export function findAllListingsForAdmin(filter: AdminListingFilter = "all") {
+  const where =
+    filter === "unverified"
+      ? { verifiedAt: null }
+      : filter === "unpublished"
+        ? { status: { not: "PUBLISHED" as const } }
+        : {};
+
   return prisma.boardingHouse.findMany({
+    where,
     select: adminListingSelect,
     orderBy: { createdAt: "desc" },
+  });
+}
+
+// Full listing for the admin review page — every field and image, regardless of
+// status, so an admin can vet a pending listing before publishing it.
+export function findListingForAdmin(id: string) {
+  return prisma.boardingHouse.findUnique({
+    where: { id },
+    include: {
+      rooms: { orderBy: { label: "asc" } },
+      images: { orderBy: { sortOrder: "asc" } },
+      amenities: { include: { amenity: true } },
+      nearbyPlaces: true,
+      owner: { select: { id: true, fullName: true, email: true, phone: true, verified: true } },
+    },
   });
 }
 
@@ -82,6 +110,36 @@ export async function setListingStatusAsAdmin(
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
 ): Promise<boolean> {
   const result = await prisma.boardingHouse.updateMany({ where: { id }, data: { status } });
+  return result.count > 0;
+}
+
+// Permanently delete a listing. Related rows (rooms, images, amenities, reviews,
+// favorites, viewing requests, analytics) fall away via onDelete: Cascade. Returns the
+// image URLs so the caller can remove the files from Storage too. null if not found.
+export async function deleteListingAsAdmin(id: string): Promise<string[] | null> {
+  const listing = await prisma.boardingHouse.findUnique({
+    where: { id },
+    select: { images: { select: { url: true } } },
+  });
+  if (!listing) return null;
+
+  await prisma.boardingHouse.delete({ where: { id } });
+  return listing.images.map((image) => image.url);
+}
+
+// Promote or demote a listing on the homepage. Admin-only.
+export async function setListingFeatured(id: string, featured: boolean): Promise<boolean> {
+  const result = await prisma.boardingHouse.updateMany({ where: { id }, data: { featured } });
+  return result.count > 0;
+}
+
+// Grant or revoke an owner's "Verified Owner" badge. Scoped to OWNER profiles, so an
+// admin can't accidentally flag a student, and owners can never verify themselves.
+export async function setOwnerVerified(ownerId: string, verified: boolean): Promise<boolean> {
+  const result = await prisma.profile.updateMany({
+    where: { id: ownerId, role: "OWNER" },
+    data: { verified },
+  });
   return result.count > 0;
 }
 

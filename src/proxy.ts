@@ -1,11 +1,31 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAnonKey, supabaseUrl } from "@/config/env";
+import { ADMIN_HOST, isAdminHost } from "@/config/admin";
 import { safeRedirectPath } from "@/lib/security/redirect";
 
 // Next 16's replacement for middleware. Runs before a route renders: it refreshes the
 // Supabase session cookie and bounces signed-out visitors away from the owner area.
 export async function proxy(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+
+  // ── Domain separation ──────────────────────────────────────────────────────
+  // When an admin domain is configured, the admin panel lives there and nowhere
+  // else. This runs before anything else so /admin can't leak on the main site.
+  if (ADMIN_HOST) {
+    const onAdminHost = isAdminHost(request.headers.get("host"));
+
+    // Main site: pretend /admin doesn't exist, so users can't reach it.
+    if (path.startsWith("/admin") && !onAdminHost) {
+      return new NextResponse(null, { status: 404 });
+    }
+
+    // Admin domain: its root shows the dashboard instead of the public homepage.
+    if (onAdminHost && path === "/") {
+      return NextResponse.rewrite(new URL("/admin", request.url));
+    }
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -27,11 +47,10 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Owner and admin areas both require a signed-in session; the pages themselves
-  // then check the specific role (requireOwner / requireAdmin).
-  const path = request.nextUrl.pathname;
-  const isProtected = path.startsWith("/owner") || path.startsWith("/admin");
-  if (isProtected && !user) {
+  // Owners are sent to the shared sign-in. The /admin area is intentionally NOT here:
+  // it renders its own sign-in form in place of the dashboard, and its layout and every
+  // page re-check the ADMIN role server-side. Redirecting it would hide that form.
+  if (path.startsWith("/owner") && !user) {
     const loginUrl = new URL("/login", request.url);
     // Only ever round-trip a validated in-app path.
     loginUrl.searchParams.set("next", safeRedirectPath(path, "/"));

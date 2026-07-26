@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    // Serve modern formats where the browser supports them; Next negotiates and falls
+    // back to the original automatically.
+    formats: ["image/avif", "image/webp"],
     // Hosts we load listing photos from. Add real storage/CDN hosts here later.
     remotePatterns: [
       { protocol: "https", hostname: "picsum.photos" },

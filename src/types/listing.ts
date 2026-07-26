@@ -38,6 +38,8 @@ export interface ListingCard {
   availabilityState: AvailabilityState;
   isAvailabilityStale: boolean;
   isVerified: boolean;
+  // Admin-promoted; floats to the top of the recommended homepage order.
+  featured: boolean;
   // False once an admin unpublishes it — saved copies stay visible but greyed out.
   isPublished: boolean;
   averageRating: number;
@@ -60,4 +62,6 @@ export interface ListingDetail extends ListingCard {
   contactEmail: string | null;
   images: ListingImage[];
   nearbyPlaces: ListingNearbyPlace[];
+  ownerName: string;
+  ownerVerified: boolean;
 }

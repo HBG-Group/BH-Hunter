@@ -1,4 +1,5 @@
 import { formatPeso } from "@/lib/utils/format";
+import { formatCurfew } from "@/lib/utils/curfew";
 import type { ListingDetail } from "@/types/listing";
 
 interface Props {
@@ -32,7 +33,7 @@ export function FactList({ listing }: Props) {
       <Fact label="Walk to campus" value={`${listing.walkingMinutesToCampus} min`} />
       <Fact label="Utilities" value={listing.utilitiesIncluded ? "Included" : "Separate"} />
       <Fact label="Internet" value={listing.internetIncluded ? "Included" : "Not included"} />
-      <Fact label="Curfew" value={listing.curfew ?? "None"} />
+      <Fact label="Curfew" value={formatCurfew(listing.curfew)} />
     </dl>
   );
 }

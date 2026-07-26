@@ -57,6 +57,7 @@ export async function signUpAction(
     email: formData.get("email"),
     password: formData.get("password"),
     role: formData.get("role") === "OWNER" ? "OWNER" : "STUDENT",
+    terms: formData.get("terms"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check your details" };
   const { fullName, email, password, role } = parsed.data;

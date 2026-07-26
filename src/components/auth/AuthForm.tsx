@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { PasswordField } from "@/components/auth/PasswordField";
+import { Spinner } from "@/components/ui/Spinner";
 import type { AuthFormState } from "@/lib/auth/actions";
 
 type AuthAction = (state: AuthFormState, formData: FormData) => Promise<AuthFormState>;
@@ -15,19 +16,27 @@ interface Props {
   role?: "OWNER" | "STUDENT";
   // Hidden for the admin login, which has no public sign-up.
   showFooter?: boolean;
+  // Sign-up only: whether the Terms & Conditions box is ticked. When defined, the
+  // submit button stays disabled until it's true and the value is sent to the server.
+  agreed?: boolean;
 }
 
 const fieldClass =
   "w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-neutral-400";
 
-export function AuthForm({ mode, action, next, role, showFooter = true }: Props) {
+export function AuthForm({ mode, action, next, role, showFooter = true, agreed }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   const isSignUp = mode === "signup";
+  // Only gate on the terms box when the parent actually passes it (sign-up pages).
+  const blockedByTerms = isSignUp && agreed !== undefined && !agreed;
 
   return (
     <form action={formAction} className="space-y-3">
       {next && <input type="hidden" name="next" value={next} />}
       {isSignUp && role && <input type="hidden" name="role" value={role} />}
+      {isSignUp && agreed !== undefined && (
+        <input type="hidden" name="terms" value={agreed ? "on" : ""} />
+      )}
 
       {isSignUp && (
         <input name="fullName" placeholder="Full name" required className={fieldClass} />
@@ -40,9 +49,10 @@ export function AuthForm({ mode, action, next, role, showFooter = true }: Props)
 
       <button
         type="submit"
-        disabled={pending}
-        className="w-full rounded-xl bg-primary py-2.5 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-60"
+        disabled={pending || blockedByTerms}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-60"
       >
+        {pending && <Spinner />}
         {pending
           ? "Please wait…"
           : isSignUp

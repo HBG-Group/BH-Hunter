@@ -5,6 +5,7 @@
 import type { ListingWriteData, findOwnerListing } from "@/lib/db/owner";
 import type { ListingInput } from "@/lib/validation/listing";
 import type { ListingFormValues } from "@/components/owner/form/types";
+import { parseContactNumbers, serializeContactNumbers } from "@/lib/contact/phones";
 
 type OwnerListingRow = NonNullable<Awaited<ReturnType<typeof findOwnerListing>>>;
 
@@ -23,7 +24,7 @@ export function toFormValues(row: OwnerListingRow): ListingFormValues {
     internetIncluded: row.internetIncluded,
     curfew: row.curfew ?? "",
     houseRules: row.houseRules ?? "",
-    contactPhone: row.contactPhone,
+    contactNumbers: ensureOneNumber(parseContactNumbers(row.contactPhone)),
     messengerUrl: row.messengerUrl ?? "",
     contactEmail: row.contactEmail ?? "",
     amenityKeys: row.amenities.map((link) => link.amenity.key),
@@ -38,6 +39,11 @@ export function toFormValues(row: OwnerListingRow): ListingFormValues {
 
 function emptyToNull(value: string | undefined): string | null {
   return value && value.trim() !== "" ? value : null;
+}
+
+// The edit form always needs at least one (blank) row to type into.
+function ensureOneNumber(numbers: ReturnType<typeof parseContactNumbers>) {
+  return numbers.length > 0 ? numbers : [{ number: "", carrier: "" }];
 }
 
 // The slug is resolved against the database by the data layer, so it isn't set here.
@@ -55,7 +61,7 @@ export function toWriteData(input: ListingInput): Omit<ListingWriteData, "slug">
     internetIncluded: input.internetIncluded,
     curfew: emptyToNull(input.curfew),
     houseRules: emptyToNull(input.houseRules),
-    contactPhone: input.contactPhone,
+    contactPhone: serializeContactNumbers(input.contactNumbers),
     messengerUrl: emptyToNull(input.messengerUrl),
     contactEmail: emptyToNull(input.contactEmail),
     amenityKeys: input.amenityKeys,

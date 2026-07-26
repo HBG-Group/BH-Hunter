@@ -19,3 +19,8 @@ export const PHOTO_SIZE_HINT = "JPG, PNG or WebP, up to 5 MB each — around 160
 export function isAllowedPhotoMime(type: string): boolean {
   return (ALLOWED_PHOTO_MIME as readonly string[]).includes(type);
 }
+
+// Ad images share the photo bucket under this folder. Upload tickets are bound to it,
+// so an ad ticket can't be replayed against a listing folder.
+export const AD_UPLOAD_SCOPE = "ads";
+export const MAX_AD_IMAGES = 5;

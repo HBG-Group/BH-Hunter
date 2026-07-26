@@ -76,3 +76,10 @@ export async function requireAdmin(): Promise<Profile> {
   if (profile.role !== "ADMIN") redirect("/");
   return profile;
 }
+
+// The signed-in admin, or null. Used by the /admin area to show its own login form
+// in place of the dashboard instead of redirecting away.
+export async function getAdminOrNull(): Promise<Profile | null> {
+  const profile = await getCurrentProfile();
+  return profile?.role === "ADMIN" ? profile : null;
+}

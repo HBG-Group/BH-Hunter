@@ -1,17 +1,30 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth/profile";
+import { getCurrentProfile } from "@/lib/auth/profile";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { Logo } from "@/components/brand/Logo";
+import { AdminLogin } from "@/components/admin/AdminLogin";
+
+// Keep the admin area out of search engines.
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 const navLinks = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/listings", label: "Listings" },
   { href: "/admin/reviews", label: "Reviews" },
+  { href: "/admin/ads", label: "Ads" },
 ];
 
-// The whole /admin area is admin-only, enforced once here (and by the proxy guard).
+// The whole /admin area is admin-only. A non-admin (signed out or wrong role) is shown
+// the sign-in form in place of the dashboard, never the dashboard itself. Each page
+// re-checks independently, so this is defence in depth, not the only gate.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const admin = await requireAdmin();
+  const profile = await getCurrentProfile();
+  const isAdmin = profile?.role === "ADMIN";
+
+  if (!isAdmin) {
+    return <AdminLogin denied={profile !== null} />;
+  }
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -29,8 +42,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
 
           <ProfileMenu
-            name={admin.fullName}
-            avatarUrl={admin.avatarUrl}
+            name={profile.fullName}
+            avatarUrl={profile.avatarUrl}
             links={[
               { href: "/", label: "Back to site" },
               { href: "/admin", label: "Overview" },

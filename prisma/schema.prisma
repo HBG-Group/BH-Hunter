@@ -78,6 +78,7 @@ model Profile {
   email     String   @unique
   phone     String?
   avatarUrl String?  // profile photo (auto-filled from Google when available)
+  verified  Boolean  @default(false) // admin-granted "Verified Owner" trust badge
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -88,8 +89,49 @@ model Profile {
   notifications          Notification[]
   recentlyViewed         RecentlyViewed[]
   notificationPreference NotificationPreference?
+  subscription           Subscription?
 
   @@map("profiles")
+}
+
+// Scaffolding for a future owner subscription (Phase 2). Nothing enforces it yet —
+// no code reads status to gate features. See docs/CACHING.md roadmap and config/billing.ts.
+model Subscription {
+  id               String    @id @default(cuid())
+  ownerId          String    @unique
+  owner            Profile   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  plan             String    @default("FREE") // FREE | OWNER_MONTHLY
+  status           String    @default("INACTIVE") // INACTIVE | ACTIVE | PAST_DUE | CANCELLED
+  startedAt        DateTime?
+  expiresAt        DateTime?
+  renewalDate      DateTime?
+  paymentReference String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("subscriptions")
+}
+
+// Scaffolding for local business ads (Part 6). Admin-managed; not rendered yet.
+model Advertisement {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  imageUrls    String[]  // uploaded to Supabase Storage, first is the cover
+  websiteUrl   String?
+  facebookUrl  String?
+  messengerUrl String?
+  startAt      DateTime  @default(now())
+  expiresAt    DateTime?
+  active       Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, expiresAt])
+  @@map("advertisements")
 }
 
 // A student's recently viewed listings. One row per student+listing (upserted).
@@ -144,6 +186,7 @@ model BoardingHouse {
   contactEmail String?
 
   status          ListingStatus @default(DRAFT)
+  featured        Boolean       @default(false) // admin-promoted; shown first on the homepage
   lastConfirmedAt DateTime?     // last time the owner confirmed vacancies
   verifiedAt      DateTime?     // set by an admin after verification
 
@@ -162,6 +205,7 @@ model BoardingHouse {
 
   @@index([status])
   @@index([ownerId])
+  @@index([featured])
   @@map("boarding_houses")
 }
 

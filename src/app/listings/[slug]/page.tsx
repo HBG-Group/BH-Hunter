@@ -15,6 +15,7 @@ import { SectionTabs } from "@/components/detail/SectionTabs";
 import { AvailabilitySummary } from "@/components/detail/AvailabilitySummary";
 import { AmenityChips } from "@/components/ui/AmenityChips";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
+import { VerifiedOwnerBadge } from "@/components/ui/VerifiedOwnerBadge";
 import { Stars } from "@/components/ui/Stars";
 import { FavoriteButton } from "@/components/student/FavoriteButton";
 import { findBoardingHouseBySlug } from "@/lib/db/boarding-houses";
@@ -184,6 +185,12 @@ export default async function ListingDetailPage({ params }: PageProps) {
           </div>
 
           <aside id="owner" className="scroll-mt-32 space-y-4 lg:sticky lg:top-24 lg:self-start">
+            <div className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-white px-4 py-3">
+              <span className="text-sm text-muted">
+                Listed by <span className="font-medium text-ink">{listing.ownerName}</span>
+              </span>
+              {listing.ownerVerified && <VerifiedOwnerBadge compact />}
+            </div>
             <ContactPanel listing={listing} />
             {profile ? (
               <ViewingRequestForm action={requestViewingAction.bind(null, target)} />

@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { AuthModalProvider } from "@/components/auth/AuthModalProvider";
 import { RouteProgress } from "@/components/system/RouteProgress";
+import { TermsGate } from "@/components/system/TermsGate";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,6 +26,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <RouteProgress />
+        <TermsGate />
         <AuthModalProvider>{children}</AuthModalProvider>
       </body>
     </html>

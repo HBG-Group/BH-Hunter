@@ -33,4 +33,9 @@ export const signUpSchema = z.object({
   email,
   password,
   role: z.enum(["OWNER", "STUDENT"]).default("STUDENT"),
+  // A checked box submits "on"; anything else means they didn't agree. Enforced on the
+  // server so account creation is blocked even if the client control is bypassed.
+  terms: z.literal("on", {
+    message: "Please accept the Terms & Conditions to continue",
+  }),
 });

@@ -1,6 +1,7 @@
 "use client";
 
-import { MAX_MONTHLY_PRICE, PHONE_MAX_DIGITS } from "@/lib/validation/listing";
+import { MAX_MONTHLY_PRICE } from "@/lib/validation/listing";
+import { ContactNumbersEditor } from "@/components/owner/form/ContactNumbersEditor";
 import type { ListingFormValues } from "@/components/owner/form/types";
 import type { GenderPolicy } from "@/types/domain";
 
@@ -126,39 +127,12 @@ export function ListingFields({ values, update }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Label text="Curfew (optional)" hint="e.g. 10:00 PM.">
+        <Label text="Curfew (optional)" hint="Leave blank for N/A.">
           <input
+            type="time"
             className={input}
             value={values.curfew}
-            maxLength={40}
             onChange={(e) => update({ curfew: e.target.value })}
-          />
-        </Label>
-        <Label text="Contact phone" hint={`Digits only, max ${PHONE_MAX_DIGITS}.`}>
-          <input
-            type="tel"
-            inputMode="numeric"
-            maxLength={PHONE_MAX_DIGITS}
-            required
-            className={input}
-            value={values.contactPhone}
-            placeholder="09171234567"
-            onChange={(e) =>
-              update({ contactPhone: e.target.value.replace(/\D/g, "").slice(0, PHONE_MAX_DIGITS) })
-            }
-          />
-        </Label>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Label text="Messenger URL (optional)" hint="Full link (https://…).">
-          <input
-            type="url"
-            className={input}
-            value={values.messengerUrl}
-            maxLength={300}
-            placeholder="https://m.me/yourpage"
-            onChange={(e) => update({ messengerUrl: e.target.value })}
           />
         </Label>
         <Label text="Email (optional)">
@@ -171,6 +145,22 @@ export function ListingFields({ values, update }: Props) {
           />
         </Label>
       </div>
+
+      <ContactNumbersEditor
+        numbers={values.contactNumbers}
+        onChange={(contactNumbers) => update({ contactNumbers })}
+      />
+
+      <Label text="Messenger URL (optional)" hint="Full link (https://…).">
+        <input
+          type="url"
+          className={input}
+          value={values.messengerUrl}
+          maxLength={300}
+          placeholder="https://m.me/yourpage"
+          onChange={(e) => update({ messengerUrl: e.target.value })}
+        />
+      </Label>
 
       <Label text="House rules (optional)" hint="Max 1000 characters.">
         <textarea

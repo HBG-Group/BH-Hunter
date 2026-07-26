@@ -15,6 +15,10 @@ interface Props {
   name: string;
   avatarUrl: string | null;
   links?: MenuLink[];
+  isAdmin?: boolean;
+  // Where "Admin view" points. Defaults to same-site /admin; on production it's the
+  // separate admin domain.
+  adminHref?: string;
 }
 
 const studentLinks: MenuLink[] = [
@@ -24,9 +28,16 @@ const studentLinks: MenuLink[] = [
 ];
 
 // The signed-in avatar with a dropdown. Closes on outside click.
-export function ProfileMenu({ name, avatarUrl, links = studentLinks }: Props) {
+export function ProfileMenu({
+  name,
+  avatarUrl,
+  links = studentLinks,
+  isAdmin = false,
+  adminHref = "/admin",
+}: Props) {
   const [open, setOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,6 +62,15 @@ export function ProfileMenu({ name, avatarUrl, links = studentLinks }: Props) {
       {open && (
         <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
           <p className="truncate px-4 py-2 text-xs text-neutral-500">{name}</p>
+          {isAdmin && (
+            <a
+              href={adminHref}
+              onClick={() => setOpen(false)}
+              className="block border-b border-neutral-100 px-4 py-2 text-sm font-medium text-primary hover:bg-neutral-50"
+            >
+              Admin view
+            </a>
+          )}
           {links.map((link) => (
             <Link
               key={link.href}
@@ -78,10 +98,12 @@ export function ProfileMenu({ name, avatarUrl, links = studentLinks }: Props) {
         open={confirmSignOut}
         title="Log out?"
         message="You'll need to sign in again to manage your listings and favorites."
-        confirmLabel="Log out"
+        confirmLabel={signingOut ? "Logging out…" : "Log out"}
+        pending={signingOut}
         onCancel={() => setConfirmSignOut(false)}
         onConfirm={() => {
-          setConfirmSignOut(false);
+          // Keep the dialog open with a spinner; the server action redirects on success.
+          setSigningOut(true);
           void signOutAction();
         }}
       />

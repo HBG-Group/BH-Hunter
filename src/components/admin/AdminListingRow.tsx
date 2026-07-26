@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { moderateStatusAction, setVerifiedAction } from "@/lib/admin/actions";
+import {
+  deleteListingAction,
+  moderateStatusAction,
+  setFeaturedAction,
+  setOwnerVerifiedAction,
+  setVerifiedAction,
+} from "@/lib/admin/actions";
+import { VerifiedOwnerBadge } from "@/components/ui/VerifiedOwnerBadge";
 
 export interface AdminListingView {
   id: string;
@@ -11,7 +18,10 @@ export interface AdminListingView {
   slug: string;
   status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
   isVerified: boolean;
+  featured: boolean;
+  ownerId: string;
   ownerName: string;
+  ownerVerified: boolean;
 }
 
 interface Props {
@@ -22,7 +32,7 @@ interface Props {
 
 export function AdminListingRow({ listing, showModeration }: Props) {
   const [pending, startTransition] = useTransition();
-  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const run = (fn: () => Promise<{ error?: string } | void>) =>
@@ -35,7 +45,10 @@ export function AdminListingRow({ listing, showModeration }: Props) {
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div>
         <div className="flex items-center gap-2">
-          <Link href={`/listings/${listing.slug}`} className="text-sm font-medium text-neutral-900 hover:underline">
+          <Link
+            href={`/admin/listings/${listing.id}`}
+            className="text-sm font-medium text-neutral-900 hover:underline"
+          >
             {listing.name}
           </Link>
           {listing.isVerified && (
@@ -44,8 +57,16 @@ export function AdminListingRow({ listing, showModeration }: Props) {
           <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-500">
             {listing.status.toLowerCase()}
           </span>
+          {listing.featured && (
+            <span className="rounded-md bg-primary-soft px-1.5 py-0.5 text-xs font-medium text-primary">
+              ★ Featured
+            </span>
+          )}
         </div>
-        <p className="text-xs text-neutral-500">by {listing.ownerName}</p>
+        <div className="mt-0.5 flex items-center gap-2">
+          <p className="text-xs text-neutral-500">by {listing.ownerName}</p>
+          {listing.ownerVerified && <VerifiedOwnerBadge compact />}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -56,6 +77,26 @@ export function AdminListingRow({ listing, showModeration }: Props) {
         >
           {listing.isVerified ? "Unverify" : "Verify"}
         </button>
+
+        <button
+          onClick={() => run(() => setOwnerVerifiedAction(listing.ownerId, !listing.ownerVerified))}
+          disabled={pending}
+          title="Grant or revoke the Verified Owner badge"
+          className="rounded-lg px-3 py-1.5 text-neutral-700 ring-1 ring-inset ring-neutral-200 hover:ring-neutral-300 disabled:opacity-60"
+        >
+          {listing.ownerVerified ? "Unverify owner" : "Verify owner"}
+        </button>
+
+        {showModeration && (
+          <button
+            onClick={() => run(() => setFeaturedAction(listing.id, !listing.featured))}
+            disabled={pending}
+            title="Show this listing first on the homepage"
+            className="rounded-lg px-3 py-1.5 text-neutral-700 ring-1 ring-inset ring-neutral-200 hover:ring-neutral-300 disabled:opacity-60"
+          >
+            {listing.featured ? "Unfeature" : "Feature"}
+          </button>
+        )}
 
         {showModeration &&
           (listing.status === "PUBLISHED" ? (
@@ -77,13 +118,13 @@ export function AdminListingRow({ listing, showModeration }: Props) {
             </button>
           ))}
 
-        {showModeration && listing.status !== "ARCHIVED" && (
+        {showModeration && (
           <button
-            onClick={() => setConfirmArchive(true)}
+            onClick={() => setConfirmDelete(true)}
             disabled={pending}
             className="rounded-lg px-3 py-1.5 text-rose-600 ring-1 ring-inset ring-rose-200 hover:ring-rose-300 disabled:opacity-60"
           >
-            Archive
+            Delete
           </button>
         )}
       </div>
@@ -95,14 +136,14 @@ export function AdminListingRow({ listing, showModeration }: Props) {
       )}
 
       <ConfirmDialog
-        open={confirmArchive}
-        title={`Archive "${listing.name}"?`}
-        message="It will be removed from the public map and search. You can publish it again later."
-        confirmLabel="Archive"
-        onCancel={() => setConfirmArchive(false)}
+        open={confirmDelete}
+        title={`Delete "${listing.name}"?`}
+        message="This permanently removes the listing and all its photos. This cannot be undone."
+        confirmLabel="Delete"
+        onCancel={() => setConfirmDelete(false)}
         onConfirm={() => {
-          setConfirmArchive(false);
-          run(() => moderateStatusAction(listing.id, "ARCHIVED"));
+          setConfirmDelete(false);
+          run(() => deleteListingAction(listing.id));
         }}
       />
     </div>
