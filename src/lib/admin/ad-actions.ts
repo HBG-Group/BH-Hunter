@@ -1,15 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { AD_UPLOAD_SCOPE, isAllowedPhotoMime, MAX_AD_IMAGES, MAX_PHOTO_BYTES } from "@/config/storage";
 import { requireAdmin } from "@/lib/auth/profile";
 import {
   createAdvertisement,
   deleteAdvertisement,
   setAdvertisementActive,
 } from "@/lib/db/advertisements";
-import { advertisementSchema } from "@/lib/validation/advertisement";
-import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
 import { guarded } from "@/lib/security/errors";
+import { logSecurityEvent } from "@/lib/security/events";
+import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
+import { RECENT_AUTH_REQUIRED, requireRecentAuth } from "@/lib/security/recent-auth";
 import { verifyTicket, type TicketClaims } from "@/lib/security/upload-ticket";
 import {
   describeStoredPhoto,
@@ -17,16 +19,13 @@ import {
   publicPhotoUrl,
   removeListingPhoto,
 } from "@/lib/storage/photos";
-import { AD_UPLOAD_SCOPE, isAllowedPhotoMime, MAX_AD_IMAGES, MAX_PHOTO_BYTES } from "@/config/storage";
+import { advertisementSchema } from "@/lib/validation/advertisement";
 
 export interface AdFormState {
   error?: string;
   success?: boolean;
 }
 
-// Verify each upload ticket the same way listing photos are: server-issued signature,
-// bound to this admin and the ads folder, the object actually exists, and it really is
-// an image within the size limit. Returns the public URLs, or an error string.
 async function resolveTicketUrls(
   raw: string,
   adminId: string,
@@ -58,13 +57,29 @@ async function resolveTicketUrls(
 
 function revalidateAds() {
   revalidatePath("/admin/ads");
-  revalidatePath("/"); // ads show on the homepage
+  revalidatePath("/");
 }
 
-// Create an advertisement from the admin form. Validated server-side like every write.
+async function ensureRecentAdminAuth(adminId: string, adId?: string): Promise<AdFormState | null> {
+  if (await requireRecentAuth()) return null;
+
+  await logSecurityEvent({
+    action: "admin.ad",
+    outcome: "denied",
+    actorId: adminId,
+    actorRole: "ADMIN",
+    targetType: "advertisement",
+    targetId: adId,
+    detail: "recent_auth_required",
+  });
+  return { error: RECENT_AUTH_REQUIRED };
+}
+
 export async function createAdAction(_prev: AdFormState, formData: FormData): Promise<AdFormState> {
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id);
+  if (recent) return recent;
 
   const parsed = advertisementSchema.safeParse({
     title: formData.get("title"),
@@ -84,6 +99,13 @@ export async function createAdAction(_prev: AdFormState, formData: FormData): Pr
     "createAd",
     async () => {
       await createAdvertisement(parsed.data, images.urls!);
+      await logSecurityEvent({
+        action: "admin.createAd",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "advertisement",
+      });
       revalidateAds();
       return { success: true };
     },
@@ -94,12 +116,24 @@ export async function createAdAction(_prev: AdFormState, formData: FormData): Pr
 export async function toggleAdAction(id: string, active: boolean): Promise<AdFormState> {
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, id);
+  if (recent) return recent;
 
   return guarded<AdFormState>(
     "toggleAd",
     async () => {
       const ok = await setAdvertisementActive(id, Boolean(active));
       if (!ok) return { error: "That advertisement no longer exists." };
+
+      await logSecurityEvent({
+        action: "admin.toggleAd",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "advertisement",
+        targetId: id,
+        detail: active ? "activated" : "deactivated",
+      });
       revalidateAds();
       return { success: true };
     },
@@ -110,6 +144,8 @@ export async function toggleAdAction(id: string, active: boolean): Promise<AdFor
 export async function deleteAdAction(id: string): Promise<AdFormState> {
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, id);
+  if (recent) return recent;
 
   return guarded<AdFormState>(
     "deleteAd",
@@ -117,9 +153,16 @@ export async function deleteAdAction(id: string): Promise<AdFormState> {
       const urls = await deleteAdvertisement(id);
       if (urls === null) return { error: "That advertisement no longer exists." };
 
-      // Remove the stored image files once the row is gone (best-effort).
       for (const url of urls) await removeListingPhoto(url);
 
+      await logSecurityEvent({
+        action: "admin.deleteAd",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "advertisement",
+        targetId: id,
+      });
       revalidateAds();
       return { success: true };
     },

@@ -1,9 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { ALLOWED_PHOTO_EXTENSIONS, MAX_PHOTO_BYTES, PHOTO_SIZE_HINT, isAllowedPhotoMime } from "@/config/storage";
 import { requireOwner } from "@/lib/auth/profile";
 import { addImageForOwner, deleteImagesForOwner, imageUrlExists } from "@/lib/db/images";
 import { findOwnerListing } from "@/lib/db/owner";
+import { guarded } from "@/lib/security/errors";
+import { logSecurityEvent } from "@/lib/security/events";
+import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
+import { RECENT_AUTH_REQUIRED, requireRecentAuth } from "@/lib/security/recent-auth";
+import { buildStoragePath, issueTicket, verifyTicket, type TicketClaims } from "@/lib/security/upload-ticket";
 import {
   createSignedPhotoUpload,
   describeStoredPhoto,
@@ -11,15 +17,6 @@ import {
   publicPhotoUrl,
   removeListingPhoto,
 } from "@/lib/storage/photos";
-import {
-  ALLOWED_PHOTO_EXTENSIONS,
-  MAX_PHOTO_BYTES,
-  PHOTO_SIZE_HINT,
-  isAllowedPhotoMime,
-} from "@/config/storage";
-import { buildStoragePath, issueTicket, verifyTicket, type TicketClaims } from "@/lib/security/upload-ticket";
-import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
-import { guarded } from "@/lib/security/errors";
 
 export interface PhotoFormState {
   error?: string;
@@ -42,9 +39,6 @@ interface PendingFile {
 
 const MAX_BATCH = 10;
 
-// Step 1 — verify ownership, validate the declared files, then hand back signed
-// tickets for server-chosen paths. Metadata here is only a UX filter; Storage and
-// step 2 re-check what actually arrived.
 export async function prepareUploadsAction(
   boardingHouseId: string,
   files: PendingFile[],
@@ -52,7 +46,6 @@ export async function prepareUploadsAction(
   const owner = await requireOwner();
   if (!(await allow("upload", LIMITS.upload, owner.id))) return { error: RATE_LIMITED };
 
-  // Verify ownership before anything else.
   if (!(await findOwnerListing(owner.id, boardingHouseId))) {
     return { error: "You don't own this listing" };
   }
@@ -76,7 +69,6 @@ export async function prepareUploadsAction(
     async () => {
       const tickets: UploadTicket[] = [];
       for (const file of files) {
-        // Extension comes from the allowlist, never from the filename.
         const path = buildStoragePath(boardingHouseId, ALLOWED_PHOTO_EXTENSIONS[file.type]);
         const token = await createSignedPhotoUpload(path);
         const { claims, signature } = issueTicket(path, owner.id, boardingHouseId);
@@ -88,8 +80,6 @@ export async function prepareUploadsAction(
   );
 }
 
-// Step 2 — record only files this server issued a ticket for, that exist in Storage,
-// that hold real image bytes, and that have not already been registered.
 export async function registerPhotosAction(
   boardingHouseId: string,
   tickets: { claims: TicketClaims; signature: string }[],
@@ -105,11 +95,9 @@ export async function registerPhotosAction(
       let saved = 0;
 
       for (const ticket of tickets) {
-        // Verify the ticket: server-issued, unexpired, bound to this owner + listing.
         const path = verifyTicket(ticket?.claims, ticket?.signature, owner.id, boardingHouseId);
         if (!path) return { error: "That upload could not be verified. Please try again." };
 
-        // Confirm the object exists and inspect what was actually stored.
         const stored = await describeStoredPhoto(path);
         if (!stored) return { error: "The upload did not complete. Please try again." };
 
@@ -118,7 +106,6 @@ export async function registerPhotosAction(
           return { error: PHOTO_SIZE_HINT };
         }
 
-        // One registration per object — a replayed ticket cannot add a second row.
         const url = publicPhotoUrl(path);
         if (await imageUrlExists(url)) continue;
 
@@ -135,7 +122,6 @@ export async function registerPhotosAction(
   );
 }
 
-// Removes several selected photos in one go, scoped to the owner.
 export async function deletePhotosAction(
   boardingHouseId: string,
   imageIds: string[],
@@ -143,6 +129,7 @@ export async function deletePhotosAction(
   const owner = await requireOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
   if (!Array.isArray(imageIds) || imageIds.length === 0) return { error: "Nothing selected" };
+  if (!(await requireRecentAuth())) return { error: RECENT_AUTH_REQUIRED };
 
   return guarded<PhotoFormState>(
     "deletePhotos",
@@ -150,6 +137,15 @@ export async function deletePhotosAction(
       const urls = await deleteImagesForOwner(owner.id, boardingHouseId, imageIds);
       for (const url of urls) await removeListingPhoto(url);
 
+      await logSecurityEvent({
+        action: "owner.deletePhotos",
+        outcome: "allowed",
+        actorId: owner.id,
+        actorRole: owner.role,
+        targetType: "listing",
+        targetId: boardingHouseId,
+        detail: `${imageIds.length}_images`,
+      });
       revalidatePath(`/owner/listings/${boardingHouseId}/photos`);
       revalidatePath("/owner");
       return { success: true };
