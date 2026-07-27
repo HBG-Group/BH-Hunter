@@ -1,12 +1,19 @@
 import type { NextConfig } from "next";
+import { securityHeaders } from "@/lib/security/headers";
+
+const isProduction = process.env.NODE_ENV === "production";
+const devTunnelHost = process.env.DEV_TUNNEL_HOST?.trim();
+
+const allowedOrigins = ["localhost:3000"];
+if (!isProduction && devTunnelHost) {
+  allowedOrigins.push(devTunnelHost);
+}
 
 const nextConfig: NextConfig = {
-  // We access the dev server through a VS Code Dev Tunnel, whose host differs from
-  // localhost. Server Actions reject cross-origin requests by default (CSRF guard),
-  // so we explicitly trust the tunnel domain during development.
   experimental: {
     serverActions: {
-      allowedOrigins: ["localhost:3000", "*.devtunnels.ms"],
+      allowedOrigins,
+      bodySizeLimit: "256kb",
     },
   },
   images: {
@@ -24,6 +31,14 @@ const nextConfig: NextConfig = {
       // Themed demo photos used by the seed data.
       { protocol: "https", hostname: "loremflickr.com" },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: securityHeaders(isProduction),
+      },
+    ];
   },
 };
 
