@@ -30,6 +30,11 @@ export default async function OwnerDashboardPage() {
           >
             Viewing requests
           </Link>
+          <p className="text-sm text-neutral-600">
+            <Link href="/account/privacy" className="hover:text-neutral-900">
+              Privacy controls
+            </Link>
+          </p>
         </div>
         <Link
           href="/owner/listings/new"

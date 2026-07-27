@@ -125,6 +125,11 @@ export default async function AccountPage() {
         <section id="settings" className="scroll-mt-20 space-y-3">
           <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Settings</h2>
           <NotificationSettings roomAlerts={preference.roomAvailableAlerts} />
+          <p className="text-sm text-neutral-600">
+            <Link href="/account/privacy" className="underline hover:text-neutral-900">
+              Privacy controls
+            </Link>
+          </p>
         </section>
 
         {viewings.length > 0 && (
