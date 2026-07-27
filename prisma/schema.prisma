@@ -79,6 +79,8 @@ model Profile {
   phone     String?
   avatarUrl String?  // profile photo (auto-filled from Google when available)
   verified  Boolean  @default(false) // admin-granted "Verified Owner" trust badge
+  verifiedUntil           DateTime? // when the current verification lapses (auto-expires monthly)
+  verificationRequestedAt DateTime? // set when an owner requests verification; cleared once granted
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

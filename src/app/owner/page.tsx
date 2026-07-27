@@ -7,6 +7,8 @@ import { StatCards } from "@/components/owner/StatCards";
 import { OwnerListingCard } from "@/components/owner/OwnerListingCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { VerifiedOwnerBadge } from "@/components/ui/VerifiedOwnerBadge";
+import { OwnerVerification } from "@/components/owner/OwnerVerification";
+import { isVerified, verificationStatus } from "@/lib/owner/verification";
 
 export default async function OwnerDashboardPage() {
   const owner = await requireOwner();
@@ -16,13 +18,19 @@ export default async function OwnerDashboardPage() {
   ]);
   const listings = toOwnerListingViews(rows);
 
+  const ownerVerified = isVerified(owner);
+  const status = verificationStatus(owner);
+  const verifiedUntilLabel = owner.verifiedUntil
+    ? owner.verifiedUntil.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+    : null;
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Your listings</h1>
-            {owner.verified && <VerifiedOwnerBadge compact />}
+            {ownerVerified && <VerifiedOwnerBadge compact />}
           </div>
           <Link
             href="/owner/requests"
@@ -42,6 +50,8 @@ export default async function OwnerDashboardPage() {
           Add
         </Link>
       </div>
+
+      <OwnerVerification status={status} verifiedUntilLabel={verifiedUntilLabel} />
 
       <StatCards summary={analytics} />
 

@@ -119,6 +119,17 @@ export async function confirmVacancies(ownerId: string, id: string) {
   return result.count > 0;
 }
 
+// An owner asks to be verified. Only stamps the request time when they aren't already
+// verified and don't already have one pending, so repeat clicks are harmless. Returns
+// false when there was nothing to do (already verified/pending, or not an owner).
+export async function requestOwnerVerification(ownerId: string): Promise<boolean> {
+  const result = await prisma.profile.updateMany({
+    where: { id: ownerId, role: "OWNER", verified: false, verificationRequestedAt: null },
+    data: { verificationRequestedAt: new Date() },
+  });
+  return result.count > 0;
+}
+
 // Owners move a listing between DRAFT (private) and PENDING (submitted for review).
 // Only an admin can set it to PUBLISHED, so owners can never publish themselves.
 export async function setListingStatus(

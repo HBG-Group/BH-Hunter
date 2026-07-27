@@ -23,6 +23,7 @@ type Result = { error?: string };
 function revalidateAdmin() {
   revalidatePath("/admin");
   revalidatePath("/admin/listings");
+  revalidatePath("/admin/owners");
 }
 
 // Approve or revoke verification for a listing.

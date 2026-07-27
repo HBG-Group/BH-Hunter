@@ -3,6 +3,7 @@ import { requireOwner } from "@/lib/auth/profile";
 import { getListingQuota } from "@/lib/owner/billing";
 import { ListingForm } from "@/components/owner/form/ListingForm";
 import { ListingQuotaBanner } from "@/components/owner/ListingQuota";
+import { ContactAdminNotice } from "@/components/owner/ContactAdminNotice";
 import { createListingAction } from "@/lib/owner/actions";
 
 export default async function NewListingPage() {
@@ -18,8 +19,13 @@ export default async function NewListingPage() {
 
       <ListingQuotaBanner quota={quota} />
 
-      {/* When billing is on and the free tier is used up, the form waits until paid. */}
-      {quota.nextNeedsPayment ? null : (
+      {/* Past the free limit the form is blocked; the owner must contact the admin. */}
+      {quota.atLimit ? (
+        <ContactAdminNotice
+          title={`You've used all ${quota.freeLimit} free listings`}
+          message={`To add more listings (₱${quota.extraPrice} each), contact the admin to arrange it.`}
+        />
+      ) : (
         <ListingForm action={createListingAction} submitLabel="Create listing" />
       )}
     </div>

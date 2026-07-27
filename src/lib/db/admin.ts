@@ -3,6 +3,7 @@
 // action layer via requireAdmin().
 
 import { prisma } from "@/lib/db/prisma";
+import { verificationExpiry } from "@/lib/owner/verification";
 
 export interface PlatformStats {
   listings: number;
@@ -135,12 +136,57 @@ export async function setListingFeatured(id: string, featured: boolean): Promise
 
 // Grant or revoke an owner's "Verified Owner" badge. Scoped to OWNER profiles, so an
 // admin can't accidentally flag a student, and owners can never verify themselves.
+// Granting sets a one-month expiry and clears any pending request; revoking wipes both.
 export async function setOwnerVerified(ownerId: string, verified: boolean): Promise<boolean> {
   const result = await prisma.profile.updateMany({
     where: { id: ownerId, role: "OWNER" },
-    data: { verified },
+    data: verified
+      ? { verified: true, verifiedUntil: verificationExpiry(), verificationRequestedAt: null }
+      : { verified: false, verifiedUntil: null, verificationRequestedAt: null },
   });
   return result.count > 0;
+}
+
+// All owners for the admin "Owners" page, newest first, with their listing count and
+// verification fields so the list can show status at a glance.
+export function findAllOwners() {
+  return prisma.profile.findMany({
+    where: { role: "OWNER" },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      phone: true,
+      verified: true,
+      verifiedUntil: true,
+      verificationRequestedAt: true,
+      createdAt: true,
+      _count: { select: { boardingHouses: true } },
+    },
+    orderBy: [{ verificationRequestedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+  });
+}
+
+// Full owner record for the admin owner-detail page, including their listings.
+export function findOwnerForAdmin(ownerId: string) {
+  return prisma.profile.findFirst({
+    where: { id: ownerId, role: "OWNER" },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      phone: true,
+      avatarUrl: true,
+      verified: true,
+      verifiedUntil: true,
+      verificationRequestedAt: true,
+      createdAt: true,
+      boardingHouses: {
+        select: { id: true, name: true, slug: true, status: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
 }
 
 export function findRecentReviews(limit = 50) {
