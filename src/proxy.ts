@@ -3,6 +3,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAnonKey, supabaseUrl } from "@/config/env";
 import { ADMIN_HOST, isAdminHost } from "@/config/admin";
 import { safeRedirectPath } from "@/lib/security/redirect";
+import { securityHeaders } from "@/lib/security/headers";
+
+function applySecurityHeaders(response: NextResponse): NextResponse {
+  for (const header of securityHeaders(process.env.NODE_ENV === "production")) {
+    response.headers.set(header.key, header.value);
+  }
+  return response;
+}
 
 // Next 16's replacement for middleware. Runs before a route renders: it refreshes the
 // Supabase session cookie and bounces signed-out visitors away from the owner area.
@@ -17,7 +25,7 @@ export async function proxy(request: NextRequest) {
 
     // Main site: pretend /admin doesn't exist, so users can't reach it.
     if (path.startsWith("/admin") && !onAdminHost) {
-      return new NextResponse(null, { status: 404 });
+      return applySecurityHeaders(new NextResponse(null, { status: 404 }));
     }
 
     // Admin domain: its root shows the dashboard instead of the public homepage.
@@ -54,10 +62,10 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     // Only ever round-trip a validated in-app path.
     loginUrl.searchParams.set("next", safeRedirectPath(path, "/"));
-    return NextResponse.redirect(loginUrl);
+    return applySecurityHeaders(NextResponse.redirect(loginUrl));
   }
 
-  return response;
+  return applySecurityHeaders(response);
 }
 
 export const config = {
