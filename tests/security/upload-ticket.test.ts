@@ -7,7 +7,7 @@ import {
 } from "@/lib/security/upload-ticket-core";
 
 test("accepts a valid ticket for the original owner and listing", () => {
-  const env = { NODE_ENV: "test", UPLOAD_TICKET_SECRET: "test-secret" };
+  const env = { NODE_ENV: "test", UPLOAD_TICKET_SECRET: "test-secret" } as NodeJS.ProcessEnv;
 
   const { claims, signature } = issueTicket("listing-1/photo.jpg", "owner-1", "listing-1", env);
   assert.equal(
@@ -17,7 +17,7 @@ test("accepts a valid ticket for the original owner and listing", () => {
 });
 
 test("rejects cross-owner, cross-listing, and tampered claims", () => {
-  const env = { NODE_ENV: "test", UPLOAD_TICKET_SECRET: "test-secret" };
+  const env = { NODE_ENV: "test", UPLOAD_TICKET_SECRET: "test-secret" } as NodeJS.ProcessEnv;
 
   const { claims, signature } = issueTicket("listing-1/photo.jpg", "owner-1", "listing-1", env);
 
@@ -36,7 +36,7 @@ test("rejects cross-owner, cross-listing, and tampered claims", () => {
 });
 
 test("rejects expired tickets", () => {
-  const env = { NODE_ENV: "test", UPLOAD_TICKET_SECRET: "test-secret" };
+  const env = { NODE_ENV: "test", UPLOAD_TICKET_SECRET: "test-secret" } as NodeJS.ProcessEnv;
 
   const { claims, signature } = issueTicket("listing-1/photo.jpg", "owner-1", "listing-1", env);
   claims.expiresAt = Date.now() - 1;

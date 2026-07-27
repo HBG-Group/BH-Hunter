@@ -20,7 +20,6 @@ export async function exportAccountData(profileId: string) {
       notifications: true,
       recentlyViewed: { include: { boardingHouse: true } },
       reviews: { include: { boardingHouse: true } },
-      subscription: true,
       viewingRequests: { include: { boardingHouse: true } },
     },
   });
