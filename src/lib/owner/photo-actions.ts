@@ -9,6 +9,7 @@ import { guarded } from "@/lib/security/errors";
 import { logSecurityEvent } from "@/lib/security/events";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
 import { RECENT_AUTH_REQUIRED, requireRecentAuth } from "@/lib/security/recent-auth";
+import { MAX_PHOTO_BATCH, validatePendingPhotos, type PendingPhoto } from "@/lib/security/photo-validation";
 import { buildStoragePath, issueTicket, verifyTicket, type TicketClaims } from "@/lib/security/upload-ticket";
 import {
   createSignedPhotoUpload,
@@ -31,17 +32,9 @@ export interface UploadTicket {
   signature: string;
 }
 
-interface PendingFile {
-  name: string;
-  type: string;
-  size: number;
-}
-
-const MAX_BATCH = 10;
-
 export async function prepareUploadsAction(
   boardingHouseId: string,
-  files: PendingFile[],
+  files: PendingPhoto[],
 ): Promise<{ tickets?: UploadTicket[]; error?: string }> {
   const owner = await requireOwner();
   if (!(await allow("upload", LIMITS.upload, owner.id))) return { error: RATE_LIMITED };
@@ -50,19 +43,8 @@ export async function prepareUploadsAction(
     return { error: "You don't own this listing" };
   }
 
-  if (!Array.isArray(files) || files.length === 0) return { error: "Choose at least one image" };
-  if (files.length > MAX_BATCH) return { error: `Upload at most ${MAX_BATCH} photos at a time.` };
-
-  for (const file of files) {
-    if (!file || typeof file.type !== "string" || typeof file.size !== "number") {
-      return { error: "That file could not be read. Please pick it again." };
-    }
-    if (!isAllowedPhotoMime(file.type)) return { error: PHOTO_SIZE_HINT };
-    if (file.size <= 0) return { error: `"${file.name}" is empty.` };
-    if (file.size > MAX_PHOTO_BYTES) {
-      return { error: `"${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)} MB. ${PHOTO_SIZE_HINT}` };
-    }
-  }
+  const validationError = validatePendingPhotos(files);
+  if (validationError) return { error: validationError };
 
   return guarded<{ tickets?: UploadTicket[]; error?: string }>(
     "prepareUploads",
@@ -87,7 +69,7 @@ export async function registerPhotosAction(
   const owner = await requireOwner();
   if (!(await allow("upload", LIMITS.upload, owner.id))) return { error: RATE_LIMITED };
   if (!Array.isArray(tickets) || tickets.length === 0) return { error: "Nothing to save" };
-  if (tickets.length > MAX_BATCH) return { error: "Too many photos in one batch." };
+  if (tickets.length > MAX_PHOTO_BATCH) return { error: "Too many photos in one batch." };
 
   return guarded<PhotoFormState>(
     "registerPhotos",
