@@ -9,6 +9,10 @@ import { getFavoriteIds } from "@/lib/db/favorites";
 import { getCurrentProfile } from "@/lib/auth/profile";
 import { toListingCards } from "@/services/listings";
 
+// Listings and the current session come from runtime services; never query them
+// during `next build`, where deployment database access is intentionally absent.
+export const dynamic = "force-dynamic";
+
 // The homepage loads listings on the server, then hands plain data to the client
 // discovery view. No database code ever reaches the browser.
 export default async function HomePage() {
