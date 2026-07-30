@@ -10,6 +10,8 @@ if (!isProduction && devTunnelHost) {
 }
 
 const nextConfig: NextConfig = {
+  // Keep production source maps out of public deployment artifacts.
+  productionBrowserSourceMaps: false,
   experimental: {
     serverActions: {
       allowedOrigins,

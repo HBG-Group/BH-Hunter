@@ -36,3 +36,23 @@ Last updated: July 27, 2026
 - Document timeline, root cause, customer impact, and corrective actions.
 - Add regression tests or monitoring where applicable.
 - Update the security register and linked procedures.
+
+## Customer communication templates
+
+### Initial notice
+
+We are investigating a security incident affecting the service. We have contained the
+known impact and will provide an update after the investigation establishes what data
+or accounts were affected. Do not share passwords or verification codes with anyone.
+
+### Resolution notice
+
+The incident has been contained. The affected service has been restored and we have
+completed the required credential rotation and validation steps. If action is required
+for your account, we will contact you directly with the specific steps.
+
+### Service update
+
+We are investigating an availability or security issue. The service may be limited
+while we contain the problem. The next update will be published after the incident
+lead confirms the current impact and recovery status.
