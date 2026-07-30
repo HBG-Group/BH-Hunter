@@ -363,3 +363,14 @@ model Notification {
   @@index([userId])
   @@map("notifications")
 }
+
+// Shared fixed-window counters. This table is private to the server-side Prisma
+// connection and is never exposed through the Supabase Data API.
+model RateLimitWindow {
+  key     String   @id
+  count   Int
+  resetAt DateTime @map("reset_at") @db.Timestamptz(6)
+
+  @@index([resetAt])
+  @@map("rate_limit_windows")
+}
