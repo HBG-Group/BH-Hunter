@@ -3,6 +3,7 @@ import type { Profile } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { safeRedirectPath } from "@/lib/security/redirect";
+import { hasRole } from "@/lib/auth/authorization-core";
 
 // The Supabase auth user for this request, or null if signed out.
 export async function getCurrentUser() {
@@ -54,7 +55,7 @@ export async function getCurrentProfile(roleHint?: "OWNER" | "STUDENT"): Promise
 export async function requireOwner(): Promise<Profile> {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (profile.role !== "OWNER") redirect("/");
+  if (!hasRole(profile.role, "OWNER")) redirect("/");
   return profile;
 }
 
@@ -73,7 +74,7 @@ export async function requireProfile(next?: string): Promise<Profile> {
 export async function requireAdmin(): Promise<Profile> {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (profile.role !== "ADMIN") redirect("/");
+  if (!hasRole(profile.role, "ADMIN")) redirect("/");
   return profile;
 }
 
@@ -81,5 +82,5 @@ export async function requireAdmin(): Promise<Profile> {
 // in place of the dashboard instead of redirecting away.
 export async function getAdminOrNull(): Promise<Profile | null> {
   const profile = await getCurrentProfile();
-  return profile?.role === "ADMIN" ? profile : null;
+  return profile && hasRole(profile.role, "ADMIN") ? profile : null;
 }
