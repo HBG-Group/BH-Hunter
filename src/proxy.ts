@@ -51,9 +51,23 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const {
+      data: { user: currentUser },
+      error,
+    } = await supabase.auth.getUser();
+    if (error) throw error;
+    user = currentUser;
+  } catch {
+    // An expired or revoked refresh token must not turn a public page into a failed
+    // request. Remove only Supabase session cookies and let the visitor sign in again.
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith("sb-")) {
+        response.cookies.set(cookie.name, "", { maxAge: 0, path: "/" });
+      }
+    }
+  }
 
   // Owners are sent to the shared sign-in. The /admin area is intentionally NOT here:
   // it renders its own sign-in form in place of the dashboard, and its layout and every

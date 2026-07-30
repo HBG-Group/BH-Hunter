@@ -1,0 +1,12 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+
+test("proxy recovers from a stale Supabase refresh cookie", async () => {
+  const source = await readFile(resolve("src/proxy.ts"), "utf8");
+  assert.match(source, /try \{/);
+  assert.match(source, /catch \{/);
+  assert.match(source, /cookie\.name\.startsWith\("sb-"\)/);
+  assert.match(source, /maxAge: 0/);
+});
