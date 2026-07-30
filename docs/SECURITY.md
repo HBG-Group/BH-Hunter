@@ -149,6 +149,16 @@ password" for every failure so it can't be used to enumerate accounts. There are
 
 ### Secrets
 
+If a service credential, deployment token, database URL, or upload-ticket secret is
+suspected to be exposed:
+
+1. Disable or rotate the affected credential in its provider before changing code.
+2. Replace its value in each applicable Vercel environment without disclosing the value.
+3. Redeploy and verify the affected integration with the new credential.
+4. Invalidate affected Supabase sessions when an authentication or service credential is involved.
+5. Record the incident, scope, rotation time, validation result, and follow-up work in
+   the security register; review logs for misuse before closing it.
+
 Only `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are public — both
 intended to be. `SUPABASE_SERVICE_ROLE_KEY` and `UPLOAD_TICKET_SECRET` are guarded by
 `import "server-only"`. Verified: the built client bundle contains no service key,
