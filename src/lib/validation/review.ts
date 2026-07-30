@@ -12,7 +12,7 @@ export const reviewSchema = z.object({
   waterSupply: rating,
   ownerFriendliness: rating,
   body: z.string().trim().max(1000).optional(),
-});
+}).strict();
 
 export type ReviewInput = z.infer<typeof reviewSchema>;
 

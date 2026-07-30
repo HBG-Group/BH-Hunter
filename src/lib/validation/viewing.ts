@@ -7,6 +7,6 @@ export const viewingRequestSchema = z.object({
     message: "Pick a future date and time",
   }),
   message: z.string().trim().max(500).optional(),
-});
+}).strict();
 
 export type ViewingRequestInput = z.infer<typeof viewingRequestSchema>;

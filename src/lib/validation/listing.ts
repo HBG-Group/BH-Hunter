@@ -32,7 +32,7 @@ const contactNumberSchema = z.object({
       message: `Enter 7–${PHONE_MAX_DIGITS} digits, e.g. 09171234567`,
     }),
   carrier: z.string().trim().max(CARRIER_MAX_LENGTH, "Carrier name is too long").default(""),
-});
+}).strict();
 
 export const listingSchema = z.object({
   name: z.string().trim().min(3, "Name is too short").max(120),
@@ -70,6 +70,6 @@ export const listingSchema = z.object({
 
   amenityKeys: z.array(z.enum(AMENITY_KEYS as [string, ...string[]])).default([]),
   rooms: z.array(roomSchema).min(1, "Add at least one room").max(MAX_ROOMS),
-});
+}).strict();
 
 export type ListingInput = z.infer<typeof listingSchema>;
