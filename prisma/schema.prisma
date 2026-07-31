@@ -84,17 +84,20 @@ enum ModerationAction {
 // ---------------------------------------------------------------------------
 
 model Profile {
-  id        String   @id
-  role      Role     @default(STUDENT)
-  fullName  String
-  email     String   @unique
-  phone     String?
-  avatarUrl String?  // profile photo (auto-filled from Google when available)
-  verified  Boolean  @default(false) // admin-granted "Verified Owner" trust badge
-  verifiedUntil DateTime? @db.Timestamptz(6)
-  verificationRequestedAt DateTime? @db.Timestamptz(6)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                      String    @id
+  role                    Role      @default(STUDENT)
+  fullName                String
+  email                   String    @unique
+  phone                   String?
+  avatarUrl               String? // profile photo (auto-filled from Google when available)
+  verified                Boolean   @default(false) // admin-granted "Verified Owner" trust badge
+  verifiedUntil           DateTime? @db.Timestamptz(6) // when the current verification lapses (auto-expires monthly)
+  verificationRequestedAt DateTime? @db.Timestamptz(6) // set when an owner requests verification; cleared once granted
+  frozen                  Boolean   @default(false) // admin-frozen owner: read-only, blocked from the dashboard
+  plan                    String? // admin-assigned pricing plan: BASIC | ADVANCE | PREMIUM (null = none)
+  ownerTutorialCompleted  Boolean   @default(false) // has the owner finished/skipped onboarding once
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   boardingHouses         BoardingHouse[]         @relation("OwnerListings")
   reviews                Review[]
@@ -104,7 +107,7 @@ model Profile {
   recentlyViewed         RecentlyViewed[]
   notificationPreference NotificationPreference?
   subscription           Subscription?
-  moderationEvents       ModerationEvent[]      @relation("ModerationActor")
+  moderationEvents       ModerationEvent[]       @relation("ModerationActor")
 
   @@map("profiles")
 }
@@ -112,9 +115,9 @@ model Profile {
 // Scaffolding for a future owner subscription (Phase 2). Nothing enforces it yet —
 // no code reads status to gate features. See docs/CACHING.md roadmap and config/billing.ts.
 model Subscription {
-  id               String    @id @default(cuid())
-  ownerId          String    @unique
-  owner            Profile   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  id      String  @id @default(cuid())
+  ownerId String  @unique
+  owner   Profile @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   plan             String    @default("FREE") // FREE | OWNER_MONTHLY
   status           String    @default("INACTIVE") // INACTIVE | ACTIVE | PAST_DUE | CANCELLED
@@ -134,7 +137,7 @@ model Advertisement {
   id           String    @id @default(cuid())
   title        String
   description  String?
-  imageUrls    String[]  // uploaded to Supabase Storage, first is the cover
+  imageUrls    String[] // uploaded to Supabase Storage, first is the cover
   websiteUrl   String?
   facebookUrl  String?
   messengerUrl String?
@@ -164,8 +167,8 @@ model RecentlyViewed {
 
 // Per-student notification settings. One row per student.
 model NotificationPreference {
-  studentId          String  @id
-  student            Profile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId           String  @id
+  student             Profile @relation(fields: [studentId], references: [id], onDelete: Cascade)
   roomAvailableAlerts Boolean @default(true)
 
   @@map("notification_preferences")
@@ -176,25 +179,25 @@ model NotificationPreference {
 // ---------------------------------------------------------------------------
 
 model BoardingHouse {
-  id           String        @id @default(cuid())
-  slug         String        @unique
-  ownerId      String
-  owner        Profile       @relation("OwnerListings", fields: [ownerId], references: [id], onDelete: Cascade)
+  id      String  @id @default(cuid())
+  slug    String  @unique
+  ownerId String
+  owner   Profile @relation("OwnerListings", fields: [ownerId], references: [id], onDelete: Cascade)
 
-  name         String
-  addressLine  String
-  latitude     Float
-  longitude    Float
+  name        String
+  addressLine String
+  latitude    Float
+  longitude   Float
 
-  genderPolicy GenderPolicy
-  priceMonthly Int           // lowest room price, in PHP
-  advanceMonths Int          @default(1)
-  depositMonths Int          @default(1)
-  utilitiesIncluded Boolean  @default(false)
-  internetIncluded  Boolean  @default(false)
+  genderPolicy      GenderPolicy
+  priceMonthly      Int // lowest room price, in PHP
+  advanceMonths     Int          @default(1)
+  depositMonths     Int          @default(1)
+  utilitiesIncluded Boolean      @default(false)
+  internetIncluded  Boolean      @default(false)
 
-  curfew       String?
-  houseRules   String?
+  curfew     String?
+  houseRules String?
 
   contactPhone String
   messengerUrl String?
@@ -202,8 +205,8 @@ model BoardingHouse {
 
   status          ListingStatus @default(DRAFT)
   featured        Boolean       @default(false) // admin-promoted; shown first on the homepage
-  lastConfirmedAt DateTime?     // last time the owner confirmed vacancies
-  verifiedAt      DateTime?     // set by an admin after verification
+  lastConfirmedAt DateTime? // last time the owner confirmed vacancies
+  verifiedAt      DateTime? // set by an admin after verification
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -232,7 +235,7 @@ model Room {
 
   label        String
   capacity     Int
-  occupied     Int  @default(0)
+  occupied     Int    @default(0)
   priceMonthly Int?
 
   @@index([boardingHouseId])
@@ -301,15 +304,15 @@ model Review {
   authorId        String
   author          Profile       @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  overall          Int
-  cleanliness      Int
-  internet         Int
-  safety           Int
-  noiseLevel       Int
-  waterSupply      Int
+  overall           Int
+  cleanliness       Int
+  internet          Int
+  safety            Int
+  noiseLevel        Int
+  waterSupply       Int
   ownerFriendliness Int
-  body             String?
-  isVerified       Boolean @default(false)
+  body              String?
+  isVerified        Boolean @default(false)
 
   createdAt DateTime @default(now())
 
@@ -332,20 +335,20 @@ model Favorite {
 }
 
 model ViewingRequest {
-  id              String               @id @default(cuid())
+  id              String        @id @default(cuid())
   studentId       String
   boardingHouseId String
-  student         Profile              @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  boardingHouse   BoardingHouse        @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+  student         Profile       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  boardingHouse   BoardingHouse @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
 
   preferredAt DateTime
   status      ViewingRequestStatus @default(PENDING)
   message     String?
   createdAt   DateTime             @default(now())
 
+  @@unique([studentId, boardingHouseId, preferredAt])
   @@index([boardingHouseId])
   @@index([studentId])
-  @@unique([studentId, boardingHouseId, preferredAt])
   @@map("viewing_requests")
 }
 
@@ -368,9 +371,9 @@ model ModerationEvent {
 
 // One row per meaningful action, so owner analytics can be aggregated later.
 model AnalyticsEvent {
-  id              String             @id @default(cuid())
+  id              String        @id @default(cuid())
   boardingHouseId String
-  boardingHouse   BoardingHouse      @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+  boardingHouse   BoardingHouse @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
 
   type      AnalyticsEventType
   createdAt DateTime           @default(now())

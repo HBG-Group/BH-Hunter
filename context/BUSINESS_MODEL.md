@@ -14,6 +14,22 @@ the platform has students, and students arrive before there are listings, neithe
 shows up. Free removes all friction so we can build a critical mass of real listings and
 earn trust first. Feedback in this window shapes what's worth charging for.
 
+## Planned launch plans (display only during beta)
+
+A three-tier semester plan is now shown on `/pricing` and defined in `config/pricing.ts`.
+**No billing** is wired — the page is informational and buttons read "Coming After Beta"
+while `BILLING_ENABLED = false`.
+
+| Plan | Price | Free listings | Extra listing | Perks |
+|---|---|---|---|---|
+| **Basic** (blue) | ₱129 / sem | 3 | ₱29 | — |
+| **Advance** (purple, "Most Popular") | ₱179 / sem | 6 | ₱21 | Verified badge |
+| **Premium** (gold) | ₱239 / sem | 10 | ₱15 | Verified badge + Featured |
+
+Admins can already **assign** a plan to an owner on `/admin/owners`; that assignment
+applies the badge/featured perks today (see `CHANGELOG.md`) — it just doesn't charge.
+The older ₱99/month subscription idea below predates these plans; reconcile before launch.
+
 ## Future — the paid model
 
 ### Owner subscription — ₱99 / month
@@ -34,7 +50,8 @@ Scaffolded now in `config/billing.ts` (`FREE_LISTING_LIMIT = 5`, `EXTRA_LISTING_
 adding a gateway (Maya/GCash/PayMongo) turns it on.
 
 ### Verified owner
-Admin-granted trust badge (already built as a feature). **Why:** trust is the scarce
+Trust badge, now **granted by plan** (Advance/Premium) rather than a standalone manual
+toggle — see `CHANGELOG.md`. **Why:** trust is the scarce
 resource in student housing. A verified badge is valuable to owners because it converts
 more student enquiries. It can later become a vetted/paid tier, but verification integrity
 must never be for sale in a way that misleads students.

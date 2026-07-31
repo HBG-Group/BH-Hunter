@@ -11,6 +11,7 @@ import { ListingLocation } from "@/components/detail/ListingLocation";
 import { ReviewList } from "@/components/detail/ReviewList";
 import { ReviewForm } from "@/components/detail/ReviewForm";
 import { ViewingRequestForm } from "@/components/detail/ViewingRequestForm";
+import { ViewingCalendar } from "@/components/detail/ViewingCalendar";
 import { SectionTabs } from "@/components/detail/SectionTabs";
 import { AvailabilitySummary } from "@/components/detail/AvailabilitySummary";
 import { AmenityChips } from "@/components/ui/AmenityChips";
@@ -20,6 +21,7 @@ import { Stars } from "@/components/ui/Stars";
 import { FavoriteButton } from "@/components/student/FavoriteButton";
 import { findBoardingHouseBySlug } from "@/lib/db/boarding-houses";
 import { findReviews, findStudentReview, getRatingSummary } from "@/lib/db/reviews";
+import { findConfirmedViewingDates } from "@/lib/db/viewing-requests";
 import { getFavoriteIds } from "@/lib/db/favorites";
 import { getCurrentProfile } from "@/lib/auth/profile";
 import { submitReviewAction } from "@/lib/student/review-actions";
@@ -82,12 +84,21 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const target = { boardingHouseId: row.id, slug: row.slug };
 
   const profile = await getCurrentProfile();
-  const [reviewRows, summary, favoriteIds, myReview] = await resilientRead(() => Promise.all([
+  const [reviewRows, summary, favoriteIds, myReview, viewingDates] = await resilientRead(() => Promise.all([
     findReviews(row.id),
     getRatingSummary(row.id),
     profile ? getFavoriteIds(profile.id) : Promise.resolve<string[]>([]),
     profile ? findStudentReview(row.id, profile.id) : Promise.resolve(null),
+    findConfirmedViewingDates(row.id),
   ]));
+
+  // Local yyyy-mm-dd keys so the calendar marks the right day regardless of timezone.
+  const bookedDays = viewingDates.map((date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  });
 
   const reviews = reviewRows.map((review) => ({
     id: review.id,
@@ -203,6 +214,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 Sign in to request a viewing →
               </Link>
             )}
+            <ViewingCalendar bookedDays={bookedDays} />
           </aside>
         </div>
       </main>

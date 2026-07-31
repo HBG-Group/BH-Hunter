@@ -42,6 +42,7 @@ export function ListingFields({ values, update }: Props) {
     <div className="space-y-3">
       <Label text="Boarding house name" hint="3–120 characters.">
         <input
+          data-tour="lf-name"
           className={input}
           value={values.name}
           maxLength={120}
@@ -52,6 +53,7 @@ export function ListingFields({ values, update }: Props) {
 
       <Label text="Address" hint="Street or purok, barangay, city.">
         <input
+          data-tour="lf-address"
           className={input}
           value={values.addressLine}
           maxLength={160}
@@ -74,6 +76,7 @@ export function ListingFields({ values, update }: Props) {
         </Label>
         <Label text="Rent / mo" hint="In pesos.">
           <input
+            data-tour="lf-price"
             type="number"
             inputMode="numeric"
             min={0}
@@ -146,10 +149,12 @@ export function ListingFields({ values, update }: Props) {
         </Label>
       </div>
 
-      <ContactNumbersEditor
-        numbers={values.contactNumbers}
-        onChange={(contactNumbers) => update({ contactNumbers })}
-      />
+      <div data-tour="lf-contact">
+        <ContactNumbersEditor
+          numbers={values.contactNumbers}
+          onChange={(contactNumbers) => update({ contactNumbers })}
+        />
+      </div>
 
       <Label text="Messenger URL (optional)" hint="Full link (https://…).">
         <input

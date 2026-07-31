@@ -6,6 +6,8 @@ import { GeistMono } from "geist/font/mono";
 import { AuthModalProvider } from "@/components/auth/AuthModalProvider";
 import { RouteProgress } from "@/components/system/RouteProgress";
 import { TermsGate } from "@/components/system/TermsGate";
+import { Watermark } from "@/components/system/Watermark";
+import { BugReporter } from "@/components/system/BugReporter";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,6 +35,8 @@ export default async function RootLayout({
         <RouteProgress />
         <TermsGate />
         <AuthModalProvider>{children}</AuthModalProvider>
+        <Watermark />
+        <BugReporter />
       </body>
     </html>
   );

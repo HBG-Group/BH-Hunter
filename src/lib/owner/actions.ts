@@ -2,14 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireOwner } from "@/lib/auth/profile";
+import { requireWritableOwner } from "@/lib/auth/profile";
 import {
   confirmVacancies,
   createOwnerListing,
   findOwnerListing,
+  requestOwnerVerification,
   setListingStatus,
   updateOwnerListing,
 } from "@/lib/db/owner";
+import { deleteViewingRequest, setViewingRequestStatus } from "@/lib/db/viewing-requests";
 import { countImages } from "@/lib/db/images";
 import { MIN_LISTING_PHOTOS, PHOTO_REQUIREMENT_MESSAGE } from "@/config/listing";
 import { listingSchema } from "@/lib/validation/listing";
@@ -52,16 +54,17 @@ export async function createListingAction(
   _prev: ListingFormState,
   formData: FormData,
 ): Promise<ListingFormState> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
 
   const result = parsePayload(formData);
   if (!result.ok) return { error: result.error };
 
-  // Free-tier gate. Inert while BILLING_ENABLED is false (Phase 1), so nothing blocks.
+  // Hard gate at the free limit: extra listings must be arranged with the admin, so we
+  // never let the 6th+ listing through the server action regardless of the client UI.
   const quota = await getListingQuota(owner.id);
-  if (quota.nextNeedsPayment) {
-    return { error: `You've used all ${quota.freeLimit} free listings. Additional listings cost ₱${quota.extraPrice} each.` };
+  if (quota.atLimit) {
+    return { error: `You've used all ${quota.freeLimit} free listings. Contact the admin to add more (₱${quota.extraPrice} each).` };
   }
 
   const created = await guarded<{ error?: string }>(
@@ -83,7 +86,7 @@ export async function updateListingAction(
   _prev: ListingFormState,
   formData: FormData,
 ): Promise<ListingFormState> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
 
   const result = parsePayload(formData);
@@ -108,14 +111,47 @@ export async function updateListingAction(
   redirect("/owner");
 }
 
+// The owner taps "Be verified". Records the request so an admin can act on it. The
+// ₱ payment is arranged out-of-band with the admin; this only flags the intent.
+export async function requestVerificationAction(): Promise<{ ok: boolean }> {
+  const owner = await requireWritableOwner();
+  if (!(await allow("write", LIMITS.write, owner.id))) return { ok: false };
+
+  await requestOwnerVerification(owner.id);
+  revalidatePath("/owner");
+  return { ok: true };
+}
+
 // Small one-tap actions used by buttons on the dashboard.
 export async function confirmVacanciesAction(id: string) {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return;
 
   // Verify ownership — confirmVacancies is scoped by ownerId.
   await confirmVacancies(owner.id, id);
   revalidatePath("/owner");
+}
+
+// Confirm a viewing request. Scoped to the owner's own listings in the DB layer.
+export async function confirmViewingRequestAction(id: string): Promise<{ error?: string }> {
+  const owner = await requireWritableOwner();
+  if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
+
+  const ok = await setViewingRequestStatus(owner.id, id, "CONFIRMED");
+  if (!ok) return { error: "Request not found" };
+  revalidatePath("/owner/requests");
+  return {};
+}
+
+// Delete a viewing request the owner is done with. Scoped to their own listings.
+export async function deleteViewingRequestAction(id: string): Promise<{ error?: string }> {
+  const owner = await requireWritableOwner();
+  if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
+
+  const ok = await deleteViewingRequest(owner.id, id);
+  if (!ok) return { error: "Request not found" };
+  revalidatePath("/owner/requests");
+  return {};
 }
 
 // Owners can submit for review (PENDING) or pull a listing back to DRAFT — but never
@@ -124,7 +160,7 @@ export async function setStatusAction(
   id: string,
   status: "DRAFT" | "PENDING",
 ): Promise<{ error?: string }> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
 
   // Verify ownership before reading anything about the listing.

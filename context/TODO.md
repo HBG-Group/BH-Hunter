@@ -4,10 +4,19 @@ Living development tracker. Update this when you finish or add work. Grouped by 
 
 ## High priority
 
-- [ ] **Ship the current work.** A large amount is committed only locally (rebrand,
-      security hardening, admin detail page, delete, filters, verified owners, featured,
-      ads with gallery upload, performance pass, this knowledge base). Commit + push to
-      `develop` when the user approves (they control pushing).
+- [ ] **Fill `config/support.ts`** — admin/support contact shown to owners is still
+      placeholder text.
+- [ ] **Set env vars in Vercel** for both branches/projects (Supabase URL + keys,
+      `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_SITE_URL`) — a missing one fails the build.
+- [ ] **(Optional) Separate admin domain** — point a domain at the project and set
+      `ADMIN_HOST` to it (see `config/admin.ts` / `CHANGELOG.md`).
+- [ ] **Manual QA of new owner/admin flows** (auth-gated, tooling can't drive): plan
+      assignment → badge/featured; freeze/delete owner; Danger Zone self-delete; onboarding
+      tutorial (first-run + replay); viewing calendar (confirm a request → red date).
+- [ ] **Remove dead verification-request code** if desired (`requestOwnerVerification`,
+      `requestVerificationAction`) — replaced by plans.
+- [ ] **Ship the current work.** Recent features were merged to `main` (`ef2a8b2`); confirm
+      the production deploy succeeded after env vars are set.
 - [ ] **Manual end-to-end verification** by an admin (needs a logged-in session, which
       tooling can't drive):
   - Create an ad from `/admin/ads` (gallery upload, multiple images) → appears on the
@@ -50,6 +59,25 @@ Living development tracker. Update this when you finish or add work. Grouped by 
 
 ## Completed
 
+**Recent feature session (see `CHANGELOG.md` for detail):**
+- [x] Owner **plans** (Basic/Advance/Premium) assigned by admin, auto-applying Verified
+      badge + Featured; removed manual owner-verify / feature / "Be verified" request.
+- [x] **Pricing page** `/pricing` (display only, no billing) + nav item.
+- [x] DB-backed **owner onboarding tutorial** (first-run once, replay), practices on the
+      real listing form in a sandbox; Getting-Started checklist; empty states.
+- [x] Admin **freeze/unfreeze** + **delete owner**; self-serve **Danger Zone** deletion
+      (cascade + storage + auth user).
+- [x] **Admin domain** routing via `ADMIN_HOST` (`config/admin.ts` + `proxy.ts`).
+- [x] **Terms gate** + editable `/terms`; **Google onboarding** display-name step; sign-up
+      redesign (student vs owner); owner "List your property" → dashboard fix.
+- [x] Listing form: **curfew time picker** (blank → N/A), **multiple contact numbers with
+      SIM carrier** (JSON in `contactPhone`, back-compatible).
+- [x] Viewing requests: contact info, Confirm/Delete, Pending/Confirmed filters; **viewing
+      calendar** on listing detail (CONFIRMED dates in red).
+- [x] Ad detail modal (image gallery); **bug reporter → Google Form** (dropped
+      `bug_reports` table); "HBG Production" watermark; auth/create loading spinners.
+
+**Earlier:**
 - [x] Milestones M0–M4: foundation, discovery map, owner side, student accounts, admin.
 - [x] Rebrand BH Hunter → **Meino** (name, terracotta palette, doorway logo, warmer copy).
 - [x] Full engineering audit (`docs/AUDIT.md`) + security hardening pass (`docs/SECURITY.md`).

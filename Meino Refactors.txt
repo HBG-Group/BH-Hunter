@@ -1,0 +1,12 @@
+Meino Refactors:
+
+Bugs:
+- Report Bug redirect link is not the forms
+- Enter name for google sign-in directly
+
+
+Additional Feature:
+- Freeze account for owner accounts who have not yet paid the contract
+- Add calendar to the viewing of the boarding house on the side to showcase if there is any viewing request, if ever a student sends a viewing request to the owner and the owner accepts viewing request turn red the calendar on that specific date ONLY WHEN THE OWNER ACCEPTS THE VIEWING REQUEST.
+- "List your property" hamburger icon when logged in to the owner account. clicking on it should redirect to the logged in account listing and not log the account out.
+- Tutorial for owner that is not connected to the database and is hardcoded.

@@ -3,6 +3,7 @@ import {
   EXTRA_LISTING_PRICE,
   FREE_LISTING_LIMIT,
   freeListingsLeft,
+  isAtFreeLimit,
   nextListingNeedsPayment,
 } from "@/config/billing";
 
@@ -16,10 +17,13 @@ export interface ListingQuota {
   freeLimit: number;
   freeLeft: number;
   nextNeedsPayment: boolean;
+  // Reached the free ceiling — the create form is blocked and the owner must contact
+  // the admin. Always enforced (not tied to BILLING_ENABLED).
+  atLimit: boolean;
   extraPrice: number;
 }
 
-// Everything the UI needs to show the quota banner and, later, the paywall.
+// Everything the UI needs to show the quota banner and block over-limit creation.
 export async function getListingQuota(ownerId: string): Promise<ListingQuota> {
   const used = await countOwnerListings(ownerId);
   return {
@@ -27,6 +31,7 @@ export async function getListingQuota(ownerId: string): Promise<ListingQuota> {
     freeLimit: FREE_LISTING_LIMIT,
     freeLeft: freeListingsLeft(used),
     nextNeedsPayment: nextListingNeedsPayment(used),
+    atLimit: isAtFreeLimit(used),
     extraPrice: EXTRA_LISTING_PRICE,
   };
 }

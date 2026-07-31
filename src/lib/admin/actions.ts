@@ -11,8 +11,12 @@ import {
   setListingFeatured,
   setListingStatusAsAdmin,
   setListingVerified,
+  setOwnerFrozen,
+  setOwnerPlan,
   setOwnerVerified,
+  type OwnerPlanId,
 } from "@/lib/db/admin";
+import { deleteAccountCompletely } from "@/lib/account/deletion";
 import { listingExists } from "@/lib/db/listing-guards";
 import { guarded } from "@/lib/security/errors";
 import { logSecurityEvent } from "@/lib/security/events";
@@ -26,6 +30,7 @@ type Result = { error?: string };
 function revalidateAdmin() {
   revalidatePath("/admin");
   revalidatePath("/admin/listings");
+  revalidatePath("/admin/owners");
 }
 
 async function ensureRecentAdminAuth(
@@ -241,6 +246,98 @@ export async function setOwnerVerifiedAction(ownerId: string, verified: boolean)
   );
 }
 
+// Assign a pricing plan to an owner. This automatically applies the plan's perks
+// (Verified badge for Advance/Premium, Featured listings for Premium). Admin-only.
+export async function setOwnerPlanAction(ownerId: string, plan: string): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.setOwnerPlan");
+  if (recent) return recent;
+
+  if (plan !== "BASIC" && plan !== "ADVANCE" && plan !== "PREMIUM") {
+    return { error: "Unknown plan." };
+  }
+
+  return guarded<Result>(
+    "setOwnerPlan",
+    async () => {
+      const ok = await setOwnerPlan(ownerId, plan as OwnerPlanId);
+      if (!ok) return { error: "That owner no longer exists." };
+      await logSecurityEvent({
+        action: "admin.setOwnerPlan",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "owner",
+        targetId: ownerId,
+        detail: plan,
+      });
+      revalidateAdmin();
+      return {};
+    },
+    (message) => ({ error: message }),
+  );
+}
+
+// Freeze or unfreeze an owner. Frozen owners keep their listings live but lose write
+// access to the dashboard until an admin unfreezes them.
+export async function setOwnerFrozenAction(ownerId: string, frozen: boolean): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.setOwnerFrozen");
+  if (recent) return recent;
+
+  return guarded<Result>(
+    "setOwnerFrozen",
+    async () => {
+      const ok = await setOwnerFrozen(ownerId, Boolean(frozen));
+      if (!ok) return { error: "That owner no longer exists." };
+      await logSecurityEvent({
+        action: "admin.setOwnerFrozen",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "owner",
+        targetId: ownerId,
+        detail: frozen ? "frozen" : "unfrozen",
+      });
+      revalidateAdmin();
+      return {};
+    },
+    (message) => ({ error: message }),
+  );
+}
+
+// Permanently delete an owner and everything tied to them (listings, images, requests,
+// favorites, reviews, notifications, storage files, and the auth user).
+export async function deleteOwnerAction(ownerId: string): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  // An admin can't delete their own account from here.
+  if (ownerId === admin.id) return { error: "You can't delete your own account here." };
+  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.deleteOwner");
+  if (recent) return recent;
+
+  return guarded<Result>(
+    "deleteOwner",
+    async () => {
+      await deleteAccountCompletely(ownerId);
+      await logSecurityEvent({
+        action: "admin.deleteOwner",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "owner",
+        targetId: ownerId,
+      });
+      revalidateAdmin();
+      return {};
+    },
+    (message) => ({ error: message }),
+  );
+}
+
+// Remove an inappropriate review.
 export async function deleteReviewAction(id: string): Promise<Result> {
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };

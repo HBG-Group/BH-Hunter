@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { ALLOWED_PHOTO_EXTENSIONS, MAX_PHOTO_BYTES, PHOTO_SIZE_HINT, isAllowedPhotoMime } from "@/config/storage";
-import { requireOwner } from "@/lib/auth/profile";
+import { requireWritableOwner } from "@/lib/auth/profile";
 import { addImageForOwner, deleteImagesForOwner, imageUrlExists } from "@/lib/db/images";
 import { findOwnerListing } from "@/lib/db/owner";
 import { guarded } from "@/lib/security/errors";
@@ -36,7 +36,7 @@ export async function prepareUploadsAction(
   boardingHouseId: string,
   files: PendingPhoto[],
 ): Promise<{ tickets?: UploadTicket[]; error?: string }> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("upload", LIMITS.upload, owner.id))) return { error: RATE_LIMITED };
 
   if (!(await findOwnerListing(owner.id, boardingHouseId))) {
@@ -66,7 +66,7 @@ export async function registerPhotosAction(
   boardingHouseId: string,
   tickets: { claims: TicketClaims; signature: string }[],
 ): Promise<PhotoFormState> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("upload", LIMITS.upload, owner.id))) return { error: RATE_LIMITED };
   if (!Array.isArray(tickets) || tickets.length === 0) return { error: "Nothing to save" };
   if (tickets.length > MAX_PHOTO_BATCH) return { error: "Too many photos in one batch." };
@@ -108,7 +108,7 @@ export async function deletePhotosAction(
   boardingHouseId: string,
   imageIds: string[],
 ): Promise<PhotoFormState> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
   if (!Array.isArray(imageIds) || imageIds.length === 0) return { error: "Nothing selected" };
   if (!(await requireRecentAuth())) return { error: RECENT_AUTH_REQUIRED };

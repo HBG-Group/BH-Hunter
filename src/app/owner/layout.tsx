@@ -1,6 +1,7 @@
 import { requireOwner } from "@/lib/auth/profile";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { Logo } from "@/components/brand/Logo";
+import { OwnerFrozenNotice } from "@/components/owner/OwnerFrozenNotice";
 
 // Every /owner page shares this shell. requireOwner here means the whole area is
 // protected in one place (the middleware guards it too, as defence in depth).
@@ -25,7 +26,10 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+      {/* Frozen owners keep the shell (so they can sign out) but lose all management. */}
+      <main className="mx-auto max-w-5xl px-4 py-6">
+        {owner.frozen ? <OwnerFrozenNotice /> : children}
+      </main>
     </div>
   );
 }
