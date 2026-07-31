@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { OperationTimeoutError, withTimeout } from "../../src/lib/async/timeout";
 import { retryIdempotent } from "../../src/lib/async/retry";
 import { resilientRead } from "../../src/lib/async/resilient-read";
@@ -53,4 +55,38 @@ test("resilient reads bound each dependency attempt", async () => {
     /read deadline exceeded/,
   );
   assert.equal(attempts, 2);
+});
+
+for (const dependency of ["Supabase Auth", "Prisma database", "Supabase Storage"]) {
+  test(`${dependency} read failures remain bounded`, async () => {
+    let reads = 0;
+    await assert.rejects(
+      resilientRead(
+        async () => {
+          reads += 1;
+          throw new Error(`${dependency} unavailable`);
+        },
+        { attempts: 2, timeoutMs: 50 },
+      ),
+      new RegExp(`${dependency} unavailable`),
+    );
+    assert.equal(reads, 2);
+  });
+}
+
+test("mutation actions do not opt into the resilient-read retry helper", async () => {
+  const actionModules = [
+    "src/lib/admin/actions.ts",
+    "src/lib/admin/ad-actions.ts",
+    "src/lib/owner/actions.ts",
+    "src/lib/owner/photo-actions.ts",
+    "src/lib/student/actions.ts",
+    "src/lib/student/review-actions.ts",
+    "src/lib/student/viewing-actions.ts",
+  ];
+
+  for (const module of actionModules) {
+    const source = await readFile(resolve(module), "utf8");
+    assert.doesNotMatch(source, /resilientRead/);
+  }
 });

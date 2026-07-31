@@ -20,6 +20,7 @@ const users = new Map<string, TestUser>();
 let admin: SupabaseClient;
 let ownerBListingId = "";
 let ownerBListingSlug = "";
+let ownerAListingId = "";
 
 function requireStaging() {
   if (!enabled) {
@@ -59,6 +60,28 @@ async function signIn(page: Page, user: TestUser) {
   await page.getByRole("button", { name: /sign in/i }).click();
 }
 
+async function createListing(ownerId: string, suffix: string, status: "DRAFT" | "PUBLISHED") {
+  const { data, error } = await admin.from("boarding_houses").insert({
+    ownerId,
+    slug: `${runId}-${suffix}`,
+    name: `Security fixture ${suffix}`,
+    addressLine: "Staging only",
+    latitude: 11.78,
+    longitude: 124.88,
+    genderPolicy: "MIXED",
+    priceMonthly: 1000,
+    contactPhone: "09123456789",
+    status,
+  }).select("id, slug").single();
+  if (error || !data) throw error ?? new Error("Could not create listing fixture");
+  return data;
+}
+
+function actionReplayHeaders(headers: Record<string, string>) {
+  const allowed = new Set(["accept", "content-type", "next-action", "next-router-state-tree", "next-url", "origin", "rsc"]);
+  return Object.fromEntries(Object.entries(headers).filter(([name]) => allowed.has(name)));
+}
+
 test.describe("staging authorization boundaries", () => {
   test.skip(!enabled, "Set staging-only SECURITY_TEST_* variables to run this suite.");
 
@@ -66,29 +89,19 @@ test.describe("staging authorization boundaries", () => {
     requireStaging();
     admin = createClient(supabaseUrl!, serviceRoleKey!, { auth: { persistSession: false } });
     await createUser("student", "STUDENT");
-    await createUser("owner-a", "OWNER");
+    const ownerA = await createUser("owner-a", "OWNER");
     const ownerB = await createUser("owner-b", "OWNER");
     await createUser("admin", "ADMIN");
-    const { data, error } = await admin.from("boarding_houses").insert({
-      ownerId: ownerB.id,
-      slug: `${runId}-owner-b`,
-      name: "Security fixture listing",
-      addressLine: "Staging only",
-      latitude: 11.78,
-      longitude: 124.88,
-      genderPolicy: "MIXED",
-      priceMonthly: 1000,
-      contactPhone: "09123456789",
-      status: "PUBLISHED",
-    }).select("id, slug").single();
-    if (error || !data) throw error ?? new Error("Could not create listing fixture");
-    ownerBListingId = data.id;
-    ownerBListingSlug = data.slug;
+    const ownerAListing = await createListing(ownerA.id, "owner-a", "DRAFT");
+    ownerAListingId = ownerAListing.id;
+    const ownerBListing = await createListing(ownerB.id, "owner-b", "PUBLISHED");
+    ownerBListingId = ownerBListing.id;
+    ownerBListingSlug = ownerBListing.slug;
   });
 
   test.afterAll(async () => {
     if (!enabled) return;
-    await admin.from("boarding_houses").delete().eq("id", ownerBListingId);
+    await admin.from("boarding_houses").delete().in("id", [ownerAListingId, ownerBListingId]);
     await Promise.all([...users.values()].map((user) => admin.auth.admin.deleteUser(user.id)));
   });
 
@@ -123,6 +136,40 @@ test.describe("staging authorization boundaries", () => {
     const request = await actionRequest;
     expect(new URL(request.url()).origin).toBe(new URL(baseURL!).origin);
     expect(request.headers()["origin"]).toBe(new URL(baseURL!).origin);
+  });
+
+  test("replaying Owner A's Server Action as Owner B cannot mutate Owner A data", async ({ browser, page }) => {
+    await signIn(page, users.get("owner-a")!);
+    await page.goto("/owner");
+    const actionRequest = page.waitForRequest((request) =>
+      request.method() === "POST" && Boolean(request.headers()["next-action"]),
+    );
+    await page.getByRole("button", { name: "Confirm vacancies" }).click();
+    const request = await actionRequest;
+    const { data: before, error: beforeError } = await admin
+      .from("boarding_houses")
+      .select("lastConfirmedAt")
+      .eq("id", ownerAListingId)
+      .single();
+    if (beforeError || !before) throw beforeError ?? new Error("Could not read Owner A fixture");
+
+    const ownerBContext = await browser.newContext({ baseURL });
+    const ownerBPage = await ownerBContext.newPage();
+    await signIn(ownerBPage, users.get("owner-b")!);
+    const replay = await ownerBContext.request.post(request.url(), {
+      headers: actionReplayHeaders(request.headers()),
+      data: request.postDataBuffer(),
+    });
+    expect(replay.status()).toBeLessThan(500);
+
+    const { data: after, error: afterError } = await admin
+      .from("boarding_houses")
+      .select("lastConfirmedAt")
+      .eq("id", ownerAListingId)
+      .single();
+    await ownerBContext.close();
+    if (afterError || !after) throw afterError ?? new Error("Could not read Owner A fixture");
+    expect(after.lastConfirmedAt).toBe(before.lastConfirmedAt);
   });
 
   test("an administrator can reach the protected moderation area", async ({ page }) => {
