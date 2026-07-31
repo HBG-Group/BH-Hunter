@@ -85,8 +85,8 @@ test("mutation actions do not opt into the resilient-read retry helper", async (
     "src/lib/student/viewing-actions.ts",
   ];
 
-  for (const module of actionModules) {
-    const source = await readFile(resolve(module), "utf8");
+  for (const actionModule of actionModules) {
+    const source = await readFile(resolve(actionModule), "utf8");
     assert.doesNotMatch(source, /resilientRead/);
   }
 });
