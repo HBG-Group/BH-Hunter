@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { randomUUID } from "node:crypto";
 
 const baseURL = process.env.SECURITY_TEST_BASE_URL;
 const supabaseUrl = process.env.SECURITY_TEST_SUPABASE_URL;
@@ -15,7 +16,7 @@ interface TestUser {
   id: string;
 }
 
-const runId = `security-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const runId = `security-${Date.now()}-${randomUUID()}`;
 const users = new Map<string, TestUser>();
 let admin: SupabaseClient;
 let ownerBListingId = "";
