@@ -8,5 +8,6 @@ test("proxy recovers from a stale Supabase refresh cookie", async () => {
   assert.match(source, /try \{/);
   assert.match(source, /catch \{/);
   assert.match(source, /cookie\.name\.startsWith\("sb-"\)/);
+  assert.match(source, /request\.cookies\.delete\(cookie\.name\)/);
   assert.match(source, /maxAge: 0/);
 });

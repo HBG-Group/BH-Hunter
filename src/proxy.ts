@@ -61,9 +61,20 @@ export async function proxy(request: NextRequest) {
     user = currentUser;
   } catch {
     // An expired or revoked refresh token must not turn a public page into a failed
-    // request. Remove only Supabase session cookies and let the visitor sign in again.
-    for (const cookie of request.cookies.getAll()) {
-      if (cookie.name.startsWith("sb-")) {
+    // request. Remove them from this forwarded request too, otherwise a server
+    // component retries auth with the same bad token before the browser receives
+    // the expiry response.
+    const staleCookies = request.cookies
+      .getAll()
+      .filter((cookie) => cookie.name.startsWith("sb-"));
+
+    if (staleCookies.length > 0) {
+      for (const cookie of staleCookies) {
+        request.cookies.delete(cookie.name);
+      }
+
+      response = NextResponse.next({ request });
+      for (const cookie of staleCookies) {
         response.cookies.set(cookie.name, "", { maxAge: 0, path: "/" });
       }
     }
