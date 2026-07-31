@@ -1,6 +1,8 @@
 import { lookup } from "node:dns/promises";
 import { connect } from "node:net";
 import { prisma } from "@/lib/db/prisma";
+import { findPublishedBoardingHouses } from "@/lib/db/boarding-houses";
+import { getCurrentProfile } from "@/lib/auth/profile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,6 +73,31 @@ async function checkPrisma(): Promise<CheckResult> {
   }
 }
 
+async function checkOperation(operation: Promise<unknown>): Promise<CheckResult> {
+  const startedAt = Date.now();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    await Promise.race([
+      operation,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("DIAGNOSTIC_TIMEOUT")), 10_000);
+      }),
+    ]);
+    return { ok: true, durationMs: elapsed(startedAt) };
+  } catch (error) {
+    return {
+      ok: false,
+      durationMs: elapsed(startedAt),
+      code: error instanceof Error && error.message === "DIAGNOSTIC_TIMEOUT"
+        ? "OPERATION_TIMEOUT"
+        : classifyPrismaError(error),
+    };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export async function GET() {
   if (process.env.VERCEL_ENV !== "preview") {
     return new Response(null, { status: 404 });
@@ -122,6 +149,10 @@ export async function GET() {
     checkTcp(databaseUrl.hostname, port),
     checkPrisma(),
   ]);
+  const [listings, profile] = await Promise.all([
+    checkOperation(findPublishedBoardingHouses()),
+    checkOperation(getCurrentProfile()),
+  ]);
 
   return Response.json(
     {
@@ -141,6 +172,8 @@ export async function GET() {
       dns,
       tcp,
       database,
+      listings,
+      profile,
     },
     {
       status: database.ok ? 200 : 503,
