@@ -3,6 +3,7 @@
 // action layer via requireAdmin().
 
 import { prisma } from "@/lib/db/prisma";
+import type { ModerationAction } from "@prisma/client";
 
 export interface PlatformStats {
   listings: number;
@@ -157,4 +158,14 @@ export function findRecentReviews(limit = 50) {
 export async function deleteReviewById(id: string): Promise<boolean> {
   const result = await prisma.review.deleteMany({ where: { id } });
   return result.count > 0;
+}
+
+export function recordModerationEvent(input: {
+  actorId: string;
+  action: ModerationAction;
+  targetType: string;
+  targetId: string;
+  detail?: string;
+}) {
+  return prisma.moderationEvent.create({ data: input });
 }

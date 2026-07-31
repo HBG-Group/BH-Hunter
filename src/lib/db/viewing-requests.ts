@@ -2,15 +2,31 @@
 
 import { prisma } from "@/lib/db/prisma";
 
-export function createViewingRequest(
+export function isDuplicateViewingRequestError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "P2002"
+  );
+}
+
+export async function createViewingRequest(
   studentId: string,
   boardingHouseId: string,
   preferredAt: Date,
   message?: string,
-) {
-  return prisma.viewingRequest.create({
-    data: { studentId, boardingHouseId, preferredAt, message },
-  });
+): Promise<boolean> {
+  try {
+    await prisma.viewingRequest.create({
+      data: { studentId, boardingHouseId, preferredAt, message },
+    });
+    return true;
+  } catch (error) {
+    // The database unique constraint is the race-safe idempotency boundary.
+    if (isDuplicateViewingRequestError(error)) return false;
+    throw error;
+  }
 }
 
 // The requests across all of an owner's listings, newest first.

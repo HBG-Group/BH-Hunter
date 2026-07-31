@@ -7,6 +7,7 @@ import {
   deleteListingAsAdmin,
   deleteReviewById,
   isListingVerified,
+  recordModerationEvent,
   setListingFeatured,
   setListingStatusAsAdmin,
   setListingVerified,
@@ -68,6 +69,13 @@ export async function setVerifiedAction(id: string, verified: boolean): Promise<
         targetId: id,
         detail: verified ? "verified" : "verification_revoked",
       });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "LISTING_VERIFICATION",
+        targetType: "listing",
+        targetId: id,
+        detail: verified ? "verified" : "verification_revoked",
+      });
       revalidateAdmin();
       return {};
     },
@@ -112,6 +120,13 @@ export async function moderateStatusAction(
         targetId: id,
         detail: status,
       });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "LISTING_STATUS",
+        targetType: "listing",
+        targetId: id,
+        detail: status,
+      });
       revalidateAdmin();
       return {};
     },
@@ -141,6 +156,12 @@ export async function deleteListingAction(id: string): Promise<Result> {
         targetType: "listing",
         targetId: id,
       });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "LISTING_DELETION",
+        targetType: "listing",
+        targetId: id,
+      });
       revalidateAdmin();
       revalidatePath("/");
       return {};
@@ -166,6 +187,13 @@ export async function setFeaturedAction(id: string, featured: boolean): Promise<
         outcome: "allowed",
         actorId: admin.id,
         actorRole: admin.role,
+        targetType: "listing",
+        targetId: id,
+        detail: featured ? "featured" : "unfeatured",
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "LISTING_FEATURED",
         targetType: "listing",
         targetId: id,
         detail: featured ? "featured" : "unfeatured",
@@ -199,6 +227,13 @@ export async function setOwnerVerifiedAction(ownerId: string, verified: boolean)
         targetId: ownerId,
         detail: verified ? "verified" : "verification_revoked",
       });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "OWNER_VERIFICATION",
+        targetType: "owner",
+        targetId: ownerId,
+        detail: verified ? "verified" : "verification_revoked",
+      });
       revalidateAdmin();
       return {};
     },
@@ -215,12 +250,19 @@ export async function deleteReviewAction(id: string): Promise<Result> {
   return guarded<Result>(
     "adminDeleteReview",
     async () => {
-      await deleteReviewById(id);
+      const deleted = await deleteReviewById(id);
+      if (!deleted) return { error: "That review no longer exists." };
       await logSecurityEvent({
         action: "admin.deleteReview",
         outcome: "allowed",
         actorId: admin.id,
         actorRole: admin.role,
+        targetType: "review",
+        targetId: id,
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "REVIEW_DELETION",
         targetType: "review",
         targetId: id,
       });

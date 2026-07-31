@@ -67,6 +67,15 @@ enum AnalyticsEventType {
   VIEWING_REQUEST
 }
 
+enum ModerationAction {
+  LISTING_VERIFICATION
+  LISTING_STATUS
+  LISTING_FEATURED
+  LISTING_DELETION
+  OWNER_VERIFICATION
+  REVIEW_DELETION
+}
+
 // ---------------------------------------------------------------------------
 // People. Profile.id matches the Supabase Auth user id (auth.users.id).
 // ---------------------------------------------------------------------------
@@ -92,6 +101,7 @@ model Profile {
   recentlyViewed         RecentlyViewed[]
   notificationPreference NotificationPreference?
   subscription           Subscription?
+  moderationEvents       ModerationEvent[]      @relation("ModerationActor")
 
   @@map("profiles")
 }
@@ -332,7 +342,25 @@ model ViewingRequest {
 
   @@index([boardingHouseId])
   @@index([studentId])
+  @@unique([studentId, boardingHouseId, preferredAt])
   @@map("viewing_requests")
+}
+
+// Durable record of privileged moderation decisions. Target IDs are scalar fields
+// so history remains available even when a moderated record is deleted.
+model ModerationEvent {
+  id         String           @id @default(cuid())
+  actorId    String
+  actor      Profile          @relation("ModerationActor", fields: [actorId], references: [id], onDelete: Restrict)
+  action     ModerationAction
+  targetType String
+  targetId   String
+  detail     String?
+  createdAt  DateTime         @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@map("moderation_events")
 }
 
 // One row per meaningful action, so owner analytics can be aggregated later.
