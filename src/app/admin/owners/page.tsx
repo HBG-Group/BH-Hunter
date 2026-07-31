@@ -4,12 +4,6 @@ import { OwnerRow, type AdminOwnerView } from "@/components/admin/OwnerRow";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { isVerified } from "@/lib/owner/verification";
 
-function dateLabel(date: Date | null): string | null {
-  return date
-    ? date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
-    : null;
-}
-
 export default async function AdminOwnersPage() {
   if (!(await getAdminOrNull())) return null;
   const owners = await findAllOwners();
@@ -20,15 +14,16 @@ export default async function AdminOwnersPage() {
     email: owner.email,
     listingCount: owner._count.boardingHouses,
     isVerified: isVerified(owner),
-    verifiedUntilLabel: dateLabel(owner.verifiedUntil),
-    requested: !isVerified(owner) && owner.verificationRequestedAt !== null,
+    frozen: owner.frozen,
+    plan: owner.plan,
   }));
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Owners</h1>
       <p className="text-sm text-neutral-500">
-        Owners who requested verification appear first. Verifying grants the badge for one month.
+        Assign a plan to an owner — it automatically grants that plan&apos;s perks (Verified badge on
+        Advance/Premium, Featured listings on Premium).
       </p>
 
       {views.length === 0 ? (

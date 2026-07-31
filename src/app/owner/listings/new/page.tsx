@@ -4,10 +4,35 @@ import { getListingQuota } from "@/lib/owner/billing";
 import { ListingForm } from "@/components/owner/form/ListingForm";
 import { ListingQuotaBanner } from "@/components/owner/ListingQuota";
 import { ContactAdminNotice } from "@/components/owner/ContactAdminNotice";
+import { ListingFormTour } from "@/components/tutorial/ListingFormTour";
 import { createListingAction } from "@/lib/owner/actions";
 
-export default async function NewListingPage() {
+interface PageProps {
+  searchParams: Promise<{ tutorial?: string }>;
+}
+
+export default async function NewListingPage({ searchParams }: PageProps) {
   const owner = await requireOwner();
+  const { tutorial } = await searchParams;
+  const tutorialMode = tutorial === "first" || tutorial === "replay" ? tutorial : null;
+
+  // Tutorial sandbox: show the real form (so owners get familiar) but never submit, and
+  // bypass the quota gate — no real listing is created.
+  if (tutorialMode) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+          Practice: add a boarding house
+        </h1>
+        <p className="text-sm text-neutral-500">
+          This is a guided practice run — nothing you enter here is saved.
+        </p>
+        <ListingForm action={createListingAction} submitLabel="Create listing" tutorial />
+        <ListingFormTour mode={tutorialMode} />
+      </div>
+    );
+  }
+
   const quota = await getListingQuota(owner.id);
 
   return (

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getAdminOrNull } from "@/lib/auth/profile";
 import { findOwnerForAdmin } from "@/lib/db/admin";
 import { OwnerRow, type AdminOwnerView } from "@/components/admin/OwnerRow";
-import { isVerified, verificationStatus } from "@/lib/owner/verification";
+import { isVerified } from "@/lib/owner/verification";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -24,13 +24,6 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-const statusLabels: Record<string, string> = {
-  VERIFIED: "Verified",
-  PENDING: "Requested — awaiting verification",
-  EXPIRED: "Expired",
-  NONE: "Not verified",
-};
-
 export default async function AdminOwnerDetailPage({ params }: PageProps) {
   if (!(await getAdminOrNull())) return null;
   const { id } = await params;
@@ -43,8 +36,8 @@ export default async function AdminOwnerDetailPage({ params }: PageProps) {
     email: owner.email,
     listingCount: owner.boardingHouses.length,
     isVerified: isVerified(owner),
-    verifiedUntilLabel: owner.verifiedUntil ? dateLabel(owner.verifiedUntil) : null,
-    requested: !isVerified(owner) && owner.verificationRequestedAt !== null,
+    frozen: owner.frozen,
+    plan: owner.plan,
   };
 
   return (
@@ -54,7 +47,7 @@ export default async function AdminOwnerDetailPage({ params }: PageProps) {
       </Link>
       <h1 className="text-xl font-semibold tracking-tight text-neutral-900">{owner.fullName}</h1>
 
-      {/* Verify / unverify control */}
+      {/* Plan assignment + freeze/delete controls */}
       <div className="rounded-2xl border border-neutral-200 bg-white">
         <OwnerRow owner={rowView} />
       </div>
@@ -64,9 +57,9 @@ export default async function AdminOwnerDetailPage({ params }: PageProps) {
         <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Fact label="Email" value={owner.email} />
           <Fact label="Phone" value={owner.phone ?? "—"} />
-          <Fact label="Status" value={statusLabels[verificationStatus(owner)] ?? "—"} />
-          <Fact label="Verified until" value={dateLabel(owner.verifiedUntil)} />
-          <Fact label="Requested on" value={dateLabel(owner.verificationRequestedAt)} />
+          <Fact label="Plan" value={owner.plan ? owner.plan.toLowerCase() : "—"} />
+          <Fact label="Verified" value={isVerified(owner) ? "Yes" : "No"} />
+          <Fact label="Frozen" value={owner.frozen ? "Yes" : "No"} />
           <Fact label="Joined" value={dateLabel(owner.createdAt)} />
         </dl>
       </section>

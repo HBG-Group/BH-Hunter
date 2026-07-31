@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireOwner } from "@/lib/auth/profile";
+import { requireWritableOwner } from "@/lib/auth/profile";
 import {
   confirmVacancies,
   createOwnerListing,
@@ -54,7 +54,7 @@ export async function createListingAction(
   _prev: ListingFormState,
   formData: FormData,
 ): Promise<ListingFormState> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
 
   const result = parsePayload(formData);
@@ -86,7 +86,7 @@ export async function updateListingAction(
   _prev: ListingFormState,
   formData: FormData,
 ): Promise<ListingFormState> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
 
   const result = parsePayload(formData);
@@ -114,7 +114,7 @@ export async function updateListingAction(
 // The owner taps "Be verified". Records the request so an admin can act on it. The
 // ₱ payment is arranged out-of-band with the admin; this only flags the intent.
 export async function requestVerificationAction(): Promise<{ ok: boolean }> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return { ok: false };
 
   await requestOwnerVerification(owner.id);
@@ -124,7 +124,7 @@ export async function requestVerificationAction(): Promise<{ ok: boolean }> {
 
 // Small one-tap actions used by buttons on the dashboard.
 export async function confirmVacanciesAction(id: string) {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return;
 
   // Verify ownership — confirmVacancies is scoped by ownerId.
@@ -134,7 +134,7 @@ export async function confirmVacanciesAction(id: string) {
 
 // Confirm a viewing request. Scoped to the owner's own listings in the DB layer.
 export async function confirmViewingRequestAction(id: string): Promise<{ error?: string }> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
 
   const ok = await setViewingRequestStatus(owner.id, id, "CONFIRMED");
@@ -145,7 +145,7 @@ export async function confirmViewingRequestAction(id: string): Promise<{ error?:
 
 // Delete a viewing request the owner is done with. Scoped to their own listings.
 export async function deleteViewingRequestAction(id: string): Promise<{ error?: string }> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
 
   const ok = await deleteViewingRequest(owner.id, id);
@@ -160,7 +160,7 @@ export async function setStatusAction(
   id: string,
   status: "DRAFT" | "PENDING",
 ): Promise<{ error?: string }> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
 
   // Verify ownership before reading anything about the listing.

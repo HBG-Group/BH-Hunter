@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOwner } from "@/lib/auth/profile";
+import { requireWritableOwner } from "@/lib/auth/profile";
 import { addImageForOwner, deleteImagesForOwner, imageUrlExists } from "@/lib/db/images";
 import { findOwnerListing } from "@/lib/db/owner";
 import {
@@ -49,7 +49,7 @@ export async function prepareUploadsAction(
   boardingHouseId: string,
   files: PendingFile[],
 ): Promise<{ tickets?: UploadTicket[]; error?: string }> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("upload", LIMITS.upload, owner.id))) return { error: RATE_LIMITED };
 
   // Verify ownership before anything else.
@@ -94,7 +94,7 @@ export async function registerPhotosAction(
   boardingHouseId: string,
   tickets: { claims: TicketClaims; signature: string }[],
 ): Promise<PhotoFormState> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("upload", LIMITS.upload, owner.id))) return { error: RATE_LIMITED };
   if (!Array.isArray(tickets) || tickets.length === 0) return { error: "Nothing to save" };
   if (tickets.length > MAX_BATCH) return { error: "Too many photos in one batch." };
@@ -140,7 +140,7 @@ export async function deletePhotosAction(
   boardingHouseId: string,
   imageIds: string[],
 ): Promise<PhotoFormState> {
-  const owner = await requireOwner();
+  const owner = await requireWritableOwner();
   if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
   if (!Array.isArray(imageIds) || imageIds.length === 0) return { error: "Nothing selected" };
 

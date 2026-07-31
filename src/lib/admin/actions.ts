@@ -10,8 +10,12 @@ import {
   setListingFeatured,
   setListingStatusAsAdmin,
   setListingVerified,
+  setOwnerFrozen,
+  setOwnerPlan,
   setOwnerVerified,
+  type OwnerPlanId,
 } from "@/lib/db/admin";
+import { deleteAccountCompletely } from "@/lib/account/deletion";
 import { removeListingPhoto } from "@/lib/storage/photos";
 import { listingExists } from "@/lib/db/listing-guards";
 import { checkListingPhotos } from "@/services/photo-requirements";
@@ -130,6 +134,65 @@ export async function setOwnerVerifiedAction(ownerId: string, verified: boolean)
     async () => {
       const ok = await setOwnerVerified(ownerId, Boolean(verified));
       if (!ok) return { error: "That owner no longer exists." };
+      revalidateAdmin();
+      return {};
+    },
+    (message) => ({ error: message }),
+  );
+}
+
+// Assign a pricing plan to an owner. This automatically applies the plan's perks
+// (Verified badge for Advance/Premium, Featured listings for Premium). Admin-only.
+export async function setOwnerPlanAction(ownerId: string, plan: string): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+
+  if (plan !== "BASIC" && plan !== "ADVANCE" && plan !== "PREMIUM") {
+    return { error: "Unknown plan." };
+  }
+
+  return guarded<Result>(
+    "setOwnerPlan",
+    async () => {
+      const ok = await setOwnerPlan(ownerId, plan as OwnerPlanId);
+      if (!ok) return { error: "That owner no longer exists." };
+      revalidateAdmin();
+      return {};
+    },
+    (message) => ({ error: message }),
+  );
+}
+
+// Freeze or unfreeze an owner. Frozen owners keep their listings live but lose write
+// access to the dashboard until an admin unfreezes them.
+export async function setOwnerFrozenAction(ownerId: string, frozen: boolean): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+
+  return guarded<Result>(
+    "setOwnerFrozen",
+    async () => {
+      const ok = await setOwnerFrozen(ownerId, Boolean(frozen));
+      if (!ok) return { error: "That owner no longer exists." };
+      revalidateAdmin();
+      return {};
+    },
+    (message) => ({ error: message }),
+  );
+}
+
+// Permanently delete an owner and everything tied to them (listings, images, requests,
+// favorites, reviews, notifications, storage files, and the auth user).
+export async function deleteOwnerAction(ownerId: string): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  // An admin can't delete their own account from here.
+  if (ownerId === admin.id) return { error: "You can't delete your own account here." };
+
+  return guarded<Result>(
+    "deleteOwner",
+    async () => {
+      await deleteAccountCompletely(ownerId);
       revalidateAdmin();
       return {};
     },

@@ -53,6 +53,18 @@ export async function deleteViewingRequest(ownerId: string, id: string): Promise
   return result.count > 0;
 }
 
+// Confirmed viewing dates for a listing, used by the public calendar so students can see
+// which days are already taken. Only CONFIRMED requests count — pending/declined never
+// block a date. Returns just the dates, never who booked them.
+export async function findConfirmedViewingDates(boardingHouseId: string): Promise<Date[]> {
+  const rows = await prisma.viewingRequest.findMany({
+    where: { boardingHouseId, status: "CONFIRMED" },
+    select: { preferredAt: true },
+    orderBy: { preferredAt: "asc" },
+  });
+  return rows.map((row) => row.preferredAt);
+}
+
 // A student's own requests, for their account page.
 export function findViewingRequestsByStudent(studentId: string) {
   return prisma.viewingRequest.findMany({

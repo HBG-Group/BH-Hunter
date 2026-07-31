@@ -81,6 +81,9 @@ model Profile {
   verified  Boolean  @default(false) // admin-granted "Verified Owner" trust badge
   verifiedUntil           DateTime? // when the current verification lapses (auto-expires monthly)
   verificationRequestedAt DateTime? // set when an owner requests verification; cleared once granted
+  frozen    Boolean  @default(false) // admin-frozen owner: read-only, blocked from the dashboard
+  plan      String? // admin-assigned pricing plan: BASIC | ADVANCE | PREMIUM (null = none)
+  ownerTutorialCompleted Boolean @default(false) // has the owner finished/skipped onboarding once
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

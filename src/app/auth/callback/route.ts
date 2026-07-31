@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getCurrentProfile } from "@/lib/auth/profile";
+import { ensureProfileForCurrentUser } from "@/lib/auth/profile";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { resolveSiteOrigin } from "@/lib/auth/site-origin";
 
@@ -20,7 +20,16 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       // Make sure a Profile row exists (creates one on first Google sign-in).
-      await getCurrentProfile(searchParams.get("role") === "OWNER" ? "OWNER" : undefined);
+      const result = await ensureProfileForCurrentUser(
+        searchParams.get("role") === "OWNER" ? "OWNER" : undefined,
+      );
+      // First-time users set a display name before entering the app; existing users
+      // (created === false) skip onboarding entirely and go straight to `next`.
+      if (result?.created) {
+        const onboarding = new URL("/onboarding", origin);
+        onboarding.searchParams.set("next", next);
+        return NextResponse.redirect(onboarding);
+      }
       return NextResponse.redirect(new URL(next, origin));
     }
   }

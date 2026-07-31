@@ -14,6 +14,7 @@ import { Stars } from "@/components/ui/Stars";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NotificationSettings } from "@/components/student/NotificationSettings";
 import { NotificationList } from "@/components/student/NotificationList";
+import { DangerZone } from "@/components/account/DangerZone";
 
 export default async function AccountPage() {
   const profile = await requireProfile("/account");
@@ -144,6 +145,8 @@ export default async function AccountPage() {
             </div>
           </section>
         )}
+
+        <DangerZone />
       </main>
     </div>
   );

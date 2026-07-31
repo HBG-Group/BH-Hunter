@@ -2,17 +2,17 @@
 
 import { motion } from "framer-motion";
 
-// Where bug reports are collected now — a shared Google Sheet.
-const BUG_SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/1lTFUOqrChDgIhTGI-v3YniY35LeKyBDV5ndFLyCfBU4/edit?gid=1718338933#gid=1718338933";
+// Where bug reports are collected now — a shared Google Form.
+const BUG_FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLScjPuKnzQTaa-0KLVsCqFyYIQOKQIWwiTHvscudMrvF3Bzqkg/viewform";
 
 // A floating "report a bug" button in the bottom-left corner. It gently bobs to draw
-// the eye; clicking opens the bug-report spreadsheet in a new tab.
+// the eye; clicking opens the bug-report form in a new tab.
 export function BugReporter() {
   return (
     <div className="fixed bottom-4 left-4 z-[1500] print:hidden">
       <motion.a
-        href={BUG_SHEET_URL}
+        href={BUG_FORM_URL}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Report a bug"
