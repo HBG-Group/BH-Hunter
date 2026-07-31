@@ -9,7 +9,21 @@ if (origin.protocol !== "https:") {
   throw new Error("SECURITY_CHECK_URL must use HTTPS");
 }
 
-const response = await fetch(origin, { redirect: "error" });
+async function fetchSameOrigin(url: URL, redirects = 0): Promise<Response> {
+  if (redirects > 3) throw new Error("Deployment redirected too many times");
+  const response = await fetch(url, { redirect: "manual" });
+  if (response.status < 300 || response.status >= 400) return response;
+
+  const location = response.headers.get("location");
+  if (!location) throw new Error("Deployment redirect did not include a location");
+  const next = new URL(location, url);
+  if (next.origin !== origin.origin) {
+    throw new Error(`Deployment redirected to an unexpected origin: ${next.origin}`);
+  }
+  return fetchSameOrigin(next, redirects + 1);
+}
+
+const response = await fetchSameOrigin(origin);
 if (!response.ok) throw new Error(`Deployment returned HTTP ${response.status}`);
 
 const requiredHeaders = [
