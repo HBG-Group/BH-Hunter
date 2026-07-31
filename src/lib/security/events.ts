@@ -1,5 +1,6 @@
 import "server-only";
 import { headers } from "next/headers";
+import { redactSecurityDetail } from "@/lib/security/event-core";
 
 export interface SecurityEvent {
   action: string;
@@ -32,6 +33,7 @@ export async function logSecurityEvent(event: SecurityEvent): Promise<void> {
       at: new Date().toISOString(),
       ...meta,
       ...event,
+      detail: redactSecurityDetail(event.detail),
     }),
   );
 }
