@@ -15,13 +15,21 @@ const DEFAULT_CSP = [
   "upgrade-insecure-requests",
 ].join("; ");
 
-export function contentSecurityPolicy(): string {
-  return DEFAULT_CSP;
+export function contentSecurityPolicy(nonce?: string): string {
+  if (!nonce) return DEFAULT_CSP;
+
+  return DEFAULT_CSP.replace(
+    "script-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+  );
 }
 
-export function securityHeaders(isProduction: boolean): Array<{ key: string; value: string }> {
+export function securityHeaders(
+  isProduction: boolean,
+  nonce?: string,
+): Array<{ key: string; value: string }> {
   const headers = [
-    { key: "Content-Security-Policy", value: contentSecurityPolicy() },
+    { key: "Content-Security-Policy", value: contentSecurityPolicy(nonce) },
     { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(), browsing-topics=()" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
     { key: "X-Content-Type-Options", value: "nosniff" },

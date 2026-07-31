@@ -5,17 +5,34 @@ import { ADMIN_HOST, isAdminHost } from "@/config/admin";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { securityHeaders } from "@/lib/security/headers";
 
-function applySecurityHeaders(response: NextResponse): NextResponse {
-  for (const header of securityHeaders(process.env.NODE_ENV === "production")) {
+function applySecurityHeaders(response: NextResponse, nonce?: string): NextResponse {
+  for (const header of securityHeaders(process.env.NODE_ENV === "production", nonce)) {
     response.headers.set(header.key, header.value);
   }
   return response;
+}
+
+function requestHeadersWithNonce(request: NextRequest, nonce: string): Headers {
+  const requestHeaders = new Headers(request.headers);
+  const policy = securityHeaders(process.env.NODE_ENV === "production", nonce).find(
+    (header) => header.key === "Content-Security-Policy",
+  )?.value;
+
+  requestHeaders.set("x-nonce", nonce);
+  if (policy) requestHeaders.set("Content-Security-Policy", policy);
+
+  return requestHeaders;
+}
+
+function nextResponseWithNonce(request: NextRequest, nonce: string): NextResponse {
+  return NextResponse.next({ request: { headers: requestHeadersWithNonce(request, nonce) } });
 }
 
 // Next 16's replacement for middleware. Runs before a route renders: it refreshes the
 // Supabase session cookie and bounces signed-out visitors away from the owner area.
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 
   // ── Domain separation ──────────────────────────────────────────────────────
   // When an admin domain is configured, the admin panel lives there and nowhere
@@ -30,11 +47,14 @@ export async function proxy(request: NextRequest) {
 
     // Admin domain: its root shows the dashboard instead of the public homepage.
     if (onAdminHost && path === "/") {
-      return NextResponse.rewrite(new URL("/admin", request.url));
+      const response = NextResponse.rewrite(new URL("/admin", request.url), {
+        request: { headers: requestHeadersWithNonce(request, nonce) },
+      });
+      return applySecurityHeaders(response, nonce);
     }
   }
 
-  let response = NextResponse.next({ request });
+  let response = nextResponseWithNonce(request, nonce);
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
@@ -44,7 +64,7 @@ export async function proxy(request: NextRequest) {
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
           request.cookies.set(name, value);
-          response = NextResponse.next({ request });
+          response = nextResponseWithNonce(request, nonce);
           response.cookies.set(name, value, options);
         });
       },
@@ -73,7 +93,7 @@ export async function proxy(request: NextRequest) {
         request.cookies.delete(cookie.name);
       }
 
-      response = NextResponse.next({ request });
+      response = nextResponseWithNonce(request, nonce);
       for (const cookie of staleCookies) {
         response.cookies.set(cookie.name, "", { maxAge: 0, path: "/" });
       }
@@ -87,10 +107,10 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     // Only ever round-trip a validated in-app path.
     loginUrl.searchParams.set("next", safeRedirectPath(path, "/"));
-    return applySecurityHeaders(NextResponse.redirect(loginUrl));
+    return applySecurityHeaders(NextResponse.redirect(loginUrl), nonce);
   }
 
-  return applySecurityHeaders(response);
+  return applySecurityHeaders(response, nonce);
 }
 
 export const config = {
