@@ -13,15 +13,37 @@ import { toListingCards } from "@/services/listings";
 // during `next build`, where deployment database access is intentionally absent.
 export const dynamic = "force-dynamic";
 
+async function loadHomeData() {
+  try {
+    const rows = await findPublishedBoardingHouses();
+    const listings = toListingCards(rows);
+    const profile = await getCurrentProfile();
+    const favoritedIds = profile ? await getFavoriteIds(profile.id) : [];
+
+    return { listings, favoritedIds, isAuthenticated: profile !== null };
+  } catch (error) {
+    // Keep the incident detail in server logs while returning a safe public fallback.
+    console.error("Unable to load homepage data", error);
+    return null;
+  }
+}
+
 // The homepage loads listings on the server, then hands plain data to the client
 // discovery view. No database code ever reaches the browser.
 export default async function HomePage() {
-  const rows = await findPublishedBoardingHouses();
-  const listings = toListingCards(rows);
+  const data = await loadHomeData();
 
-  // If someone is signed in, pre-mark their saved listings.
-  const profile = await getCurrentProfile();
-  const favoritedIds = profile ? await getFavoriteIds(profile.id) : [];
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-canvas">
+        <SiteHeader />
+        <main className="mx-auto max-w-2xl px-4 py-16 text-center">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Listings are temporarily unavailable</h1>
+          <p className="mt-3 text-muted">Please try again in a moment.</p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -41,10 +63,10 @@ export default async function HomePage() {
           <AdStrip />
         </Suspense>
 
-        <DiscoveryView
-          listings={listings}
-          favoritedIds={favoritedIds}
-          isAuthenticated={profile !== null}
+          <DiscoveryView
+            listings={data.listings}
+            favoritedIds={data.favoritedIds}
+            isAuthenticated={data.isAuthenticated}
         />
 
         <AboutSection />
