@@ -25,3 +25,16 @@ test("retries only a bounded number of idempotent read attempts", async () => {
   assert.equal(value, "ready");
   assert.equal(calls, 2);
 });
+
+test("does not exceed the configured retry bound after a dependency failure", async () => {
+  let calls = 0;
+  await assert.rejects(
+    retryIdempotent(async () => {
+      calls += 1;
+      throw new Error("dependency unavailable");
+    }, 2),
+    /dependency unavailable/,
+  );
+  assert.equal(calls, 2);
+  await assert.rejects(retryIdempotent(async () => "never", 0), RangeError);
+});
