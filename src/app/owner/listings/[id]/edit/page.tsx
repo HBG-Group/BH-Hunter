@@ -5,6 +5,7 @@ import { findOwnerListing } from "@/lib/db/owner";
 import { toFormValues } from "@/services/owner-listings";
 import { ListingForm } from "@/components/owner/form/ListingForm";
 import { updateListingAction } from "@/lib/owner/actions";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -14,7 +15,7 @@ export default async function EditListingPage({ params }: PageProps) {
   const { id } = await params;
   const owner = await requireOwner();
 
-  const row = await findOwnerListing(owner.id, id);
+  const row = await resilientRead(() => findOwnerListing(owner.id, id));
   if (!row) notFound();
 
   const initialValues = toFormValues(row);

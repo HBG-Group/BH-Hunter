@@ -25,6 +25,7 @@ import { getCurrentProfile } from "@/lib/auth/profile";
 import { submitReviewAction } from "@/lib/student/review-actions";
 import { requestViewingAction } from "@/lib/student/viewing-actions";
 import { toListingDetail } from "@/services/listings";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -32,7 +33,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const row = await findBoardingHouseBySlug(slug);
+  const row = await resilientRead(() => findBoardingHouseBySlug(slug));
   if (!row) return { title: "Listing not found — Meino" };
 
   return {
@@ -74,19 +75,19 @@ function Section({ id, title, children }: { id: string; title: string; children:
 
 export default async function ListingDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const row = await findBoardingHouseBySlug(slug);
+  const row = await resilientRead(() => findBoardingHouseBySlug(slug));
   if (!row) notFound();
 
   const listing = toListingDetail(row);
   const target = { boardingHouseId: row.id, slug: row.slug };
 
   const profile = await getCurrentProfile();
-  const [reviewRows, summary, favoriteIds, myReview] = await Promise.all([
+  const [reviewRows, summary, favoriteIds, myReview] = await resilientRead(() => Promise.all([
     findReviews(row.id),
     getRatingSummary(row.id),
     profile ? getFavoriteIds(profile.id) : Promise.resolve<string[]>([]),
     profile ? findStudentReview(row.id, profile.id) : Promise.resolve(null),
-  ]);
+  ]));
 
   const reviews = reviewRows.map((review) => ({
     id: review.id,

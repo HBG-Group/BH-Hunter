@@ -19,6 +19,7 @@ const runId = `security-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 const users = new Map<string, TestUser>();
 let admin: SupabaseClient;
 let ownerBListingId = "";
+let ownerBListingSlug = "";
 
 function requireStaging() {
   if (!enabled) {
@@ -78,9 +79,11 @@ test.describe("staging authorization boundaries", () => {
       genderPolicy: "MIXED",
       priceMonthly: 1000,
       contactPhone: "09123456789",
-    }).select("id").single();
+      status: "PUBLISHED",
+    }).select("id, slug").single();
     if (error || !data) throw error ?? new Error("Could not create listing fixture");
     ownerBListingId = data.id;
+    ownerBListingSlug = data.slug;
   });
 
   test.afterAll(async () => {
@@ -108,6 +111,18 @@ test.describe("staging authorization boundaries", () => {
     await signIn(page, users.get("owner-a")!);
     await page.goto(`/owner/listings/${ownerBListingId}/edit`);
     await expect(page.getByRole("heading", { name: /not found|couldn't load/i })).toBeVisible();
+  });
+
+  test("a student mutation reaches the deployed Server Action transport", async ({ page }) => {
+    await signIn(page, users.get("student")!);
+    await page.goto(`/listings/${ownerBListingSlug}`);
+    const actionRequest = page.waitForRequest((request) =>
+      request.method() === "POST" && Boolean(request.headers()["next-action"]),
+    );
+    await page.getByLabel("Save to favorites").click();
+    const request = await actionRequest;
+    expect(new URL(request.url()).origin).toBe(new URL(baseURL!).origin);
+    expect(request.headers()["origin"]).toBe(new URL(baseURL!).origin);
   });
 
   test("an administrator can reach the protected moderation area", async ({ page }) => {

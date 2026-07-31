@@ -4,10 +4,11 @@ import { getListingQuota } from "@/lib/owner/billing";
 import { ListingForm } from "@/components/owner/form/ListingForm";
 import { ListingQuotaBanner } from "@/components/owner/ListingQuota";
 import { createListingAction } from "@/lib/owner/actions";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 export default async function NewListingPage() {
   const owner = await requireOwner();
-  const quota = await getListingQuota(owner.id);
+  const quota = await resilientRead(() => getListingQuota(owner.id));
 
   return (
     <div className="space-y-4">
