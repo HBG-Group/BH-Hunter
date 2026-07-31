@@ -7,13 +7,14 @@ import { StatCards } from "@/components/owner/StatCards";
 import { OwnerListingCard } from "@/components/owner/OwnerListingCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { VerifiedOwnerBadge } from "@/components/ui/VerifiedOwnerBadge";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 export default async function OwnerDashboardPage() {
   const owner = await requireOwner();
-  const [rows, analytics] = await Promise.all([
+  const [rows, analytics] = await resilientRead(() => Promise.all([
     findListingsByOwner(owner.id),
     getOwnerAnalytics(owner.id),
-  ]);
+  ]));
   const listings = toOwnerListingViews(rows);
 
   return (

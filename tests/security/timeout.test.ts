@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { OperationTimeoutError, withTimeout } from "../../src/lib/async/timeout";
 import { retryIdempotent } from "../../src/lib/async/retry";
+import { resilientRead } from "../../src/lib/async/resilient-read";
 
 test("returns an operation result before the deadline", async () => {
   assert.equal(await withTimeout(Promise.resolve("ready"), 50), "ready");
@@ -37,4 +38,19 @@ test("does not exceed the configured retry bound after a dependency failure", as
   );
   assert.equal(calls, 2);
   await assert.rejects(retryIdempotent(async () => "never", 0), RangeError);
+});
+
+test("resilient reads bound each dependency attempt", async () => {
+  let attempts = 0;
+  await assert.rejects(
+    resilientRead(
+      async () => {
+        attempts += 1;
+        return new Promise<never>(() => undefined);
+      },
+      { attempts: 2, timeoutMs: 10, timeoutMessage: "read deadline exceeded" },
+    ),
+    /read deadline exceeded/,
+  );
+  assert.equal(attempts, 2);
 });

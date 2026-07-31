@@ -8,8 +8,7 @@ import { findPublishedBoardingHouses } from "@/lib/db/boarding-houses";
 import { getFavoriteIds } from "@/lib/db/favorites";
 import { getCurrentProfile } from "@/lib/auth/profile";
 import { toListingCards } from "@/services/listings";
-import { withTimeout } from "@/lib/async/timeout";
-import { retryIdempotent } from "@/lib/async/retry";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 // Listings and the current session come from runtime services; never query them
 // during `next build`, where deployment database access is intentionally absent.
@@ -17,17 +16,16 @@ export const dynamic = "force-dynamic";
 
 async function loadHomeData() {
   try {
-    return await withTimeout(
-      (async () => {
-    const rows = await retryIdempotent(findPublishedBoardingHouses);
+    return await resilientRead(
+      async () => {
+        const rows = await findPublishedBoardingHouses();
         const listings = toListingCards(rows);
         const profile = await getCurrentProfile();
         const favoritedIds = profile ? await getFavoriteIds(profile.id) : [];
 
         return { listings, favoritedIds, isAuthenticated: profile !== null };
-      })(),
-      5_000,
-      "Homepage data load exceeded five seconds",
+      },
+      { timeoutMessage: "Homepage data load exceeded five seconds" },
     );
   } catch (error) {
     // Keep the incident detail in server logs while returning a safe public fallback.

@@ -3,10 +3,11 @@ import { requireOwner } from "@/lib/auth/profile";
 import { findViewingRequestsForOwner } from "@/lib/db/viewing-requests";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDateTime } from "@/lib/utils/format";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 export default async function OwnerRequestsPage() {
   const owner = await requireOwner();
-  const requests = await findViewingRequestsForOwner(owner.id);
+  const requests = await resilientRead(() => findViewingRequestsForOwner(owner.id));
 
   return (
     <div className="space-y-4">
