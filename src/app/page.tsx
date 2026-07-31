@@ -9,6 +9,7 @@ import { getFavoriteIds } from "@/lib/db/favorites";
 import { getCurrentProfile } from "@/lib/auth/profile";
 import { toListingCards } from "@/services/listings";
 import { withTimeout } from "@/lib/async/timeout";
+import { retryIdempotent } from "@/lib/async/retry";
 
 // Listings and the current session come from runtime services; never query them
 // during `next build`, where deployment database access is intentionally absent.
@@ -18,7 +19,7 @@ async function loadHomeData() {
   try {
     return await withTimeout(
       (async () => {
-        const rows = await findPublishedBoardingHouses();
+    const rows = await retryIdempotent(findPublishedBoardingHouses);
         const listings = toListingCards(rows);
         const profile = await getCurrentProfile();
         const favoritedIds = profile ? await getFavoriteIds(profile.id) : [];
