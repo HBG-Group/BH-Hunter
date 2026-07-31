@@ -8,6 +8,7 @@ import {
   deleteAdvertisement,
   setAdvertisementActive,
 } from "@/lib/db/advertisements";
+import { recordModerationEvent } from "@/lib/db/admin";
 import { guarded } from "@/lib/security/errors";
 import { logSecurityEvent } from "@/lib/security/events";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
@@ -98,13 +99,20 @@ export async function createAdAction(_prev: AdFormState, formData: FormData): Pr
   return guarded<AdFormState>(
     "createAd",
     async () => {
-      await createAdvertisement(parsed.data, images.urls!);
+      const advertisement = await createAdvertisement(parsed.data, images.urls!);
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "ADVERTISEMENT_CREATION",
+        targetType: "advertisement",
+        targetId: advertisement.id,
+      });
       await logSecurityEvent({
         action: "admin.createAd",
         outcome: "allowed",
         actorId: admin.id,
         actorRole: admin.role,
         targetType: "advertisement",
+        targetId: advertisement.id,
       });
       revalidateAds();
       return { success: true };
@@ -125,6 +133,13 @@ export async function toggleAdAction(id: string, active: boolean): Promise<AdFor
       const ok = await setAdvertisementActive(id, Boolean(active));
       if (!ok) return { error: "That advertisement no longer exists." };
 
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "ADVERTISEMENT_STATUS",
+        targetType: "advertisement",
+        targetId: id,
+        detail: active ? "activated" : "deactivated",
+      });
       await logSecurityEvent({
         action: "admin.toggleAd",
         outcome: "allowed",
@@ -153,6 +168,12 @@ export async function deleteAdAction(id: string): Promise<AdFormState> {
       const urls = await deleteAdvertisement(id);
       if (urls === null) return { error: "That advertisement no longer exists." };
 
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "ADVERTISEMENT_DELETION",
+        targetType: "advertisement",
+        targetId: id,
+      });
       for (const url of urls) await removeListingPhoto(url);
 
       await logSecurityEvent({

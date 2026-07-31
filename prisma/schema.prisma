@@ -74,6 +74,9 @@ enum ModerationAction {
   LISTING_DELETION
   OWNER_VERIFICATION
   REVIEW_DELETION
+  ADVERTISEMENT_CREATION
+  ADVERTISEMENT_STATUS
+  ADVERTISEMENT_DELETION
 }
 
 // ---------------------------------------------------------------------------
