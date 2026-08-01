@@ -15,6 +15,8 @@ export interface AdminOwnerView {
   isVerified: boolean; // effective (not expired)
   frozen: boolean;
   plan: string | null; // BASIC | ADVANCE | PREMIUM | null
+  subscriptionExpiresAt: string | null; // ISO date, when the active subscription lapses
+  subscriptionExpired: boolean;
 }
 
 // The plan chips, sourced from the pricing config so labels stay in sync.
@@ -46,6 +48,10 @@ export function OwnerRow({ owner }: { owner: AdminOwnerView }) {
         <p className="truncate text-xs text-neutral-500">
           {owner.email} · {owner.listingCount} listing(s)
           {owner.plan ? ` · ${owner.plan.toLowerCase()} plan` : " · no plan"}
+          {owner.subscriptionExpiresAt &&
+            ` · ${owner.subscriptionExpired ? "expired" : "renews"} ${new Date(
+              owner.subscriptionExpiresAt,
+            ).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`}
         </p>
       </div>
 

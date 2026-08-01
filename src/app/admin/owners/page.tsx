@@ -3,6 +3,7 @@ import { findAllOwners } from "@/lib/db/admin";
 import { OwnerRow, type AdminOwnerView } from "@/components/admin/OwnerRow";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { isVerified } from "@/lib/owner/verification";
+import { isSubscriptionExpired } from "@/lib/owner/subscription";
 
 export default async function AdminOwnersPage() {
   if (!(await getAdminOrNull())) return null;
@@ -16,6 +17,8 @@ export default async function AdminOwnersPage() {
     isVerified: isVerified(owner),
     frozen: owner.frozen,
     plan: owner.plan,
+    subscriptionExpiresAt: owner.subscription?.expiresAt?.toISOString() ?? null,
+    subscriptionExpired: isSubscriptionExpired(owner.subscription),
   }));
 
   return (

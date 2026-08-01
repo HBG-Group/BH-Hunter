@@ -4,6 +4,7 @@ import { getAdminOrNull } from "@/lib/auth/profile";
 import { findOwnerForAdmin } from "@/lib/db/admin";
 import { OwnerRow, type AdminOwnerView } from "@/components/admin/OwnerRow";
 import { isVerified } from "@/lib/owner/verification";
+import { isSubscriptionExpired } from "@/lib/owner/subscription";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -38,6 +39,8 @@ export default async function AdminOwnerDetailPage({ params }: PageProps) {
     isVerified: isVerified(owner),
     frozen: owner.frozen,
     plan: owner.plan,
+    subscriptionExpiresAt: owner.subscription?.expiresAt?.toISOString() ?? null,
+    subscriptionExpired: isSubscriptionExpired(owner.subscription),
   };
 
   return (

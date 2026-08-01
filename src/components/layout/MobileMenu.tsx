@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { NAV_LINKS } from "@/components/layout/navLinks";
+import { NAV_LINKS, type NavLink } from "@/components/layout/navLinks";
 
 // Hamburger menu that mirrors the desktop nav links on small screens.
-export function MobileMenu() {
+export function MobileMenu({ links = NAV_LINKS }: { links?: NavLink[] }) {
   const [open, setOpen] = useState(false);
 
   // Close on Escape and lock background scroll while open.
@@ -62,7 +62,7 @@ export function MobileMenu() {
               className="absolute left-0 right-0 top-full z-[1101] border-b border-line bg-white shadow-sm"
             >
               <div className="mx-auto flex max-w-7xl flex-col px-4 py-2">
-                {NAV_LINKS.map((link) => (
+                {links.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
