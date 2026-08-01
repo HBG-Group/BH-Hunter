@@ -1,6 +1,7 @@
 # Meino — Security Model
 
-How the app defends itself, and the two things that must be done outside the codebase.
+How the app defends itself, what is enforced in-repo, and which launch blockers still
+require external evidence.
 
 ## Auth redirect configuration (fixes the localhost redirect)
 
@@ -15,11 +16,10 @@ localhost. Set both, in **Supabase → Authentication → URL Configuration**:
    - `https://*.vercel.app/auth/callback` (preview deployments)
    - `http://localhost:3000/auth/callback` (local dev)
 
-Then set **`NEXT_PUBLIC_SITE_URL`** in the Vercel project env to the production origin.
-The app uses it to build the OAuth `redirectTo` and the confirmation-email link, so both
-always point at the canonical site regardless of which host served the request. Without
-it the code falls back to Vercel's forwarded headers (server) and the live origin
-(browser), which is correct in most cases but not for preview builds.
+Then set **`NEXT_PUBLIC_SITE_URL`** in the Vercel project env to the canonical
+production origin. In production builds this is now **mandatory** and must be HTTPS.
+The app uses it to build the OAuth `redirectTo` and the confirmation-email link, so
+both always point at the canonical site regardless of which host served the request.
 
 Also confirm the Google OAuth client's **Authorized redirect URI** (Google Cloud
 Console) is the Supabase callback: `https://<ref>.supabase.co/auth/v1/callback`.
@@ -35,6 +35,11 @@ Console) is the Supabase callback: `https://<ref>.supabase.co/auth/v1/callback`.
 2. **Apply the schema changes**: `npm run db:push`. This adds four indexes and a unique
    constraint on `Image.url`. If the push fails on the unique constraint, duplicate image
    rows already exist and must be de-duplicated first.
+3. **Set `UPLOAD_TICKET_SECRET` in production.** The app now refuses to sign upload
+   tickets in production without a dedicated secret, so the service-role key no longer
+   doubles as ticket-signing material.
+4. **If using a development tunnel locally, set `DEV_TUNNEL_HOST`.** Server Actions no
+   longer trust `*.devtunnels.ms` by wildcard.
 
 The photo bucket's MIME and size limits are applied automatically on the next upload
 (`ensureBucket` calls `updateBucket` when it finds the constraints missing).
@@ -119,6 +124,21 @@ generic writes 20/min.
 **Known limitation:** this is per-instance memory. On Vercel it dampens abuse per warm
 instance rather than globally. Move the store to Upstash Redis if the platform grows.
 
+### Browser protections â€” `next.config.ts`
+
+Every route now emits a baseline set of browser hardening headers:
+
+- `Content-Security-Policy`
+- `frame-ancestors 'none'` via CSP, plus `X-Frame-Options: DENY`
+- `X-Content-Type-Options: nosniff`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy`
+- `Strict-Transport-Security` in production only
+
+Server Actions now trust only `localhost:3000` plus an explicit `DEV_TUNNEL_HOST` in
+non-production development. The previous unconditional `*.devtunnels.ms` wildcard was
+removed.
+
 ### Errors and logging — `lib/security/errors.ts`
 
 Actions return a generic message plus a short reference; the real error, including the
@@ -128,6 +148,16 @@ password" for every failure so it can't be used to enumerate accounts. There are
 `console.log` calls in `src/`; nothing logs passwords, tokens or cookies.
 
 ### Secrets
+
+If a service credential, deployment token, database URL, or upload-ticket secret is
+suspected to be exposed:
+
+1. Disable or rotate the affected credential in its provider before changing code.
+2. Replace its value in each applicable Vercel environment without disclosing the value.
+3. Redeploy and verify the affected integration with the new credential.
+4. Invalidate affected Supabase sessions when an authentication or service credential is involved.
+5. Record the incident, scope, rotation time, validation result, and follow-up work in
+   the security register; review logs for misuse before closing it.
 
 Only `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are public — both
 intended to be. `SUPABASE_SERVICE_ROLE_KEY` and `UPLOAD_TICKET_SECRET` are guarded by

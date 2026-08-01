@@ -6,6 +6,7 @@ import { ListingQuotaBanner } from "@/components/owner/ListingQuota";
 import { ContactAdminNotice } from "@/components/owner/ContactAdminNotice";
 import { ListingFormTour } from "@/components/tutorial/ListingFormTour";
 import { createListingAction } from "@/lib/owner/actions";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 interface PageProps {
   searchParams: Promise<{ tutorial?: string }>;
@@ -33,7 +34,7 @@ export default async function NewListingPage({ searchParams }: PageProps) {
     );
   }
 
-  const quota = await getListingQuota(owner.id);
+  const quota = await resilientRead(() => getListingQuota(owner.id));
 
   return (
     <div className="space-y-4">

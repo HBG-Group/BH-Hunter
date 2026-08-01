@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth/profile";
 import { MIN_LISTING_PHOTOS } from "@/config/listing";
+import { requireAdmin } from "@/lib/auth/profile";
 import {
   deleteListingAsAdmin,
   deleteReviewById,
   isListingVerified,
+  recordModerationEvent,
   setListingFeatured,
   setListingStatusAsAdmin,
   setListingVerified,
@@ -16,11 +17,13 @@ import {
   type OwnerPlanId,
 } from "@/lib/db/admin";
 import { deleteAccountCompletely } from "@/lib/account/deletion";
-import { removeListingPhoto } from "@/lib/storage/photos";
 import { listingExists } from "@/lib/db/listing-guards";
-import { checkListingPhotos } from "@/services/photo-requirements";
-import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
 import { guarded } from "@/lib/security/errors";
+import { logSecurityEvent } from "@/lib/security/events";
+import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
+import { RECENT_AUTH_REQUIRED, requireRecentAuth } from "@/lib/security/recent-auth";
+import { removeListingPhoto } from "@/lib/storage/photos";
+import { checkListingPhotos } from "@/services/photo-requirements";
 
 type Result = { error?: string };
 
@@ -30,16 +33,54 @@ function revalidateAdmin() {
   revalidatePath("/admin/owners");
 }
 
-// Approve or revoke verification for a listing.
+async function ensureRecentAdminAuth(
+  adminId: string,
+  targetType: string,
+  targetId: string,
+  action: string,
+): Promise<Result | null> {
+  if (await requireRecentAuth()) return null;
+
+  await logSecurityEvent({
+    action,
+    outcome: "denied",
+    actorId: adminId,
+    actorRole: "ADMIN",
+    targetType,
+    targetId,
+    detail: "recent_auth_required",
+  });
+  return { error: RECENT_AUTH_REQUIRED };
+}
+
 export async function setVerifiedAction(id: string, verified: boolean): Promise<Result> {
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, "listing", id, "admin.setVerified");
+  if (recent) return recent;
 
   return guarded<Result>(
     "setVerified",
     async () => {
       const ok = await setListingVerified(id, Boolean(verified));
       if (!ok) return { error: "That listing no longer exists." };
+
+      await logSecurityEvent({
+        action: "admin.setVerified",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "listing",
+        targetId: id,
+        detail: verified ? "verified" : "verification_revoked",
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "LISTING_VERIFICATION",
+        targetType: "listing",
+        targetId: id,
+        detail: verified ? "verified" : "verification_revoked",
+      });
       revalidateAdmin();
       return {};
     },
@@ -47,8 +88,6 @@ export async function setVerifiedAction(id: string, verified: boolean): Promise<
   );
 }
 
-// Moderation: force a listing's status. Publishing is gated on verification and on
-// photos that actually exist in Storage, so the requirement cannot be faked.
 export async function moderateStatusAction(
   id: string,
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
@@ -56,16 +95,16 @@ export async function moderateStatusAction(
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
   if (!(await listingExists(id))) return { error: "That listing no longer exists." };
+  const recent = await ensureRecentAdminAuth(admin.id, "listing", id, "admin.moderateStatus");
+  if (recent) return recent;
 
   return guarded<Result>(
     "moderateStatus",
     async () => {
       if (status === "PUBLISHED") {
-        // Trust and credibility: verify before it can go live.
         if (!(await isListingVerified(id))) {
           return { error: "Verify this listing before publishing it." };
         }
-        // Storage-backed count, so fabricated image rows can't satisfy the minimum.
         const photos = await checkListingPhotos(id);
         if (!photos.met) {
           return {
@@ -77,6 +116,22 @@ export async function moderateStatusAction(
       const ok = await setListingStatusAsAdmin(id, status);
       if (!ok) return { error: "That listing no longer exists." };
 
+      await logSecurityEvent({
+        action: "admin.moderateStatus",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "listing",
+        targetId: id,
+        detail: status,
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "LISTING_STATUS",
+        targetType: "listing",
+        targetId: id,
+        detail: status,
+      });
       revalidateAdmin();
       return {};
     },
@@ -84,10 +139,11 @@ export async function moderateStatusAction(
   );
 }
 
-// Permanently delete a listing and its photos. Admin-only, irreversible.
 export async function deleteListingAction(id: string): Promise<Result> {
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, "listing", id, "admin.deleteListing");
+  if (recent) return recent;
 
   return guarded<Result>(
     "deleteListing",
@@ -95,45 +151,94 @@ export async function deleteListingAction(id: string): Promise<Result> {
       const urls = await deleteListingAsAdmin(id);
       if (urls === null) return { error: "That listing no longer exists." };
 
-      // Remove the stored files after the rows are gone (best-effort).
       for (const url of urls) await removeListingPhoto(url);
 
+      await logSecurityEvent({
+        action: "admin.deleteListing",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "listing",
+        targetId: id,
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "LISTING_DELETION",
+        targetType: "listing",
+        targetId: id,
+      });
       revalidateAdmin();
-      revalidatePath("/"); // it may have been on the homepage
+      revalidatePath("/");
       return {};
     },
     (message) => ({ error: message }),
   );
 }
 
-// Promote or demote a listing on the homepage. Admin-only.
 export async function setFeaturedAction(id: string, featured: boolean): Promise<Result> {
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, "listing", id, "admin.setFeatured");
+  if (recent) return recent;
 
   return guarded<Result>(
     "setFeatured",
     async () => {
       const ok = await setListingFeatured(id, Boolean(featured));
       if (!ok) return { error: "That listing no longer exists." };
+
+      await logSecurityEvent({
+        action: "admin.setFeatured",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "listing",
+        targetId: id,
+        detail: featured ? "featured" : "unfeatured",
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "LISTING_FEATURED",
+        targetType: "listing",
+        targetId: id,
+        detail: featured ? "featured" : "unfeatured",
+      });
       revalidateAdmin();
-      revalidatePath("/"); // featured order is visible on the homepage
+      revalidatePath("/");
       return {};
     },
     (message) => ({ error: message }),
   );
 }
 
-// Grant or revoke an owner's Verified Owner badge. Admin-only.
 export async function setOwnerVerifiedAction(ownerId: string, verified: boolean): Promise<Result> {
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.setOwnerVerified");
+  if (recent) return recent;
 
   return guarded<Result>(
     "setOwnerVerified",
     async () => {
       const ok = await setOwnerVerified(ownerId, Boolean(verified));
       if (!ok) return { error: "That owner no longer exists." };
+
+      await logSecurityEvent({
+        action: "admin.setOwnerVerified",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "owner",
+        targetId: ownerId,
+        detail: verified ? "verified" : "verification_revoked",
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "OWNER_VERIFICATION",
+        targetType: "owner",
+        targetId: ownerId,
+        detail: verified ? "verified" : "verification_revoked",
+      });
       revalidateAdmin();
       return {};
     },
@@ -146,6 +251,8 @@ export async function setOwnerVerifiedAction(ownerId: string, verified: boolean)
 export async function setOwnerPlanAction(ownerId: string, plan: string): Promise<Result> {
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.setOwnerPlan");
+  if (recent) return recent;
 
   if (plan !== "BASIC" && plan !== "ADVANCE" && plan !== "PREMIUM") {
     return { error: "Unknown plan." };
@@ -156,6 +263,15 @@ export async function setOwnerPlanAction(ownerId: string, plan: string): Promise
     async () => {
       const ok = await setOwnerPlan(ownerId, plan as OwnerPlanId);
       if (!ok) return { error: "That owner no longer exists." };
+      await logSecurityEvent({
+        action: "admin.setOwnerPlan",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "owner",
+        targetId: ownerId,
+        detail: plan,
+      });
       revalidateAdmin();
       return {};
     },
@@ -168,12 +284,23 @@ export async function setOwnerPlanAction(ownerId: string, plan: string): Promise
 export async function setOwnerFrozenAction(ownerId: string, frozen: boolean): Promise<Result> {
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.setOwnerFrozen");
+  if (recent) return recent;
 
   return guarded<Result>(
     "setOwnerFrozen",
     async () => {
       const ok = await setOwnerFrozen(ownerId, Boolean(frozen));
       if (!ok) return { error: "That owner no longer exists." };
+      await logSecurityEvent({
+        action: "admin.setOwnerFrozen",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "owner",
+        targetId: ownerId,
+        detail: frozen ? "frozen" : "unfrozen",
+      });
       revalidateAdmin();
       return {};
     },
@@ -188,11 +315,21 @@ export async function deleteOwnerAction(ownerId: string): Promise<Result> {
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
   // An admin can't delete their own account from here.
   if (ownerId === admin.id) return { error: "You can't delete your own account here." };
+  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.deleteOwner");
+  if (recent) return recent;
 
   return guarded<Result>(
     "deleteOwner",
     async () => {
       await deleteAccountCompletely(ownerId);
+      await logSecurityEvent({
+        action: "admin.deleteOwner",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "owner",
+        targetId: ownerId,
+      });
       revalidateAdmin();
       return {};
     },
@@ -204,11 +341,28 @@ export async function deleteOwnerAction(ownerId: string): Promise<Result> {
 export async function deleteReviewAction(id: string): Promise<Result> {
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, "review", id, "admin.deleteReview");
+  if (recent) return recent;
 
   return guarded<Result>(
     "adminDeleteReview",
     async () => {
-      await deleteReviewById(id);
+      const deleted = await deleteReviewById(id);
+      if (!deleted) return { error: "That review no longer exists." };
+      await logSecurityEvent({
+        action: "admin.deleteReview",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "review",
+        targetId: id,
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "REVIEW_DELETION",
+        targetType: "review",
+        targetId: id,
+      });
       revalidatePath("/admin/reviews");
       return {};
     },

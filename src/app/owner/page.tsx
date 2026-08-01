@@ -7,6 +7,7 @@ import { StatCards } from "@/components/owner/StatCards";
 import { OwnerListingCard } from "@/components/owner/OwnerListingCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { VerifiedOwnerBadge } from "@/components/ui/VerifiedOwnerBadge";
+import { resilientRead } from "@/lib/async/resilient-read";
 import { OwnerOnboarding } from "@/components/owner/OwnerOnboarding";
 import { TutorialChecklist } from "@/components/tutorial/TutorialChecklist";
 import { DangerZone } from "@/components/account/DangerZone";
@@ -14,10 +15,10 @@ import { isVerified } from "@/lib/owner/verification";
 
 export default async function OwnerDashboardPage() {
   const owner = await requireOwner();
-  const [rows, analytics] = await Promise.all([
+  const [rows, analytics] = await resilientRead(() => Promise.all([
     findListingsByOwner(owner.id),
     getOwnerAnalytics(owner.id),
-  ]);
+  ]));
   const listings = toOwnerListingViews(rows);
 
   const ownerVerified = isVerified(owner);
@@ -55,6 +56,11 @@ export default async function OwnerDashboardPage() {
           >
             Viewing requests
           </Link>
+          <p className="text-sm text-neutral-600">
+            <Link href="/account/privacy" className="hover:text-neutral-900">
+              Privacy controls
+            </Link>
+          </p>
         </div>
         <Link
           href="/owner/listings/new"

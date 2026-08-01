@@ -14,6 +14,7 @@ import { Stars } from "@/components/ui/Stars";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NotificationSettings } from "@/components/student/NotificationSettings";
 import { NotificationList } from "@/components/student/NotificationList";
+import { resilientRead } from "@/lib/async/resilient-read";
 import { DangerZone } from "@/components/account/DangerZone";
 
 export default async function AccountPage() {
@@ -22,7 +23,7 @@ export default async function AccountPage() {
   if (profile.role === "OWNER") redirect("/owner");
 
   const [favoriteRows, recentRows, favoriteIds, reviews, viewings, preference, notifications] =
-    await Promise.all([
+    await resilientRead(() => Promise.all([
       findFavoriteListings(profile.id),
       findRecentlyViewed(profile.id),
       getFavoriteIds(profile.id),
@@ -30,7 +31,7 @@ export default async function AccountPage() {
       findViewingRequestsByStudent(profile.id),
       getNotificationPreference(profile.id),
       findNotifications(profile.id),
-    ]);
+    ]));
 
   const favorites = toListingCards(favoriteRows);
   const recent = toListingCards(recentRows);
@@ -126,6 +127,11 @@ export default async function AccountPage() {
         <section id="settings" className="scroll-mt-20 space-y-3">
           <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Settings</h2>
           <NotificationSettings roomAlerts={preference.roomAvailableAlerts} />
+          <p className="text-sm text-neutral-600">
+            <Link href="/account/privacy" className="underline hover:text-neutral-900">
+              Privacy controls
+            </Link>
+          </p>
         </section>
 
         {viewings.length > 0 && (

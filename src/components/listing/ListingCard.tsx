@@ -30,7 +30,8 @@ function ListingCardBase({ listing, isActive, isFavorited, isAuthenticated, onHo
       // `layout` slides remaining cards into place when the list is filtered;
       // exit fades removed ones. Entrance runs once on mount (not on scroll).
       layout
-      initial={{ opacity: 0, y: 12 }}
+      // Do not hide listings while hydration or a client-side dependency is unavailable.
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
       whileHover={{ y: -4 }}

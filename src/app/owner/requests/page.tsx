@@ -7,6 +7,7 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OwnerRequestRow } from "@/components/owner/OwnerRequestRow";
 import { formatDateTime } from "@/lib/utils/format";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 interface PageProps {
   searchParams: Promise<{ status?: string }>;
@@ -24,7 +25,7 @@ export default async function OwnerRequestsPage({ searchParams }: PageProps) {
   const active: OwnerRequestFilter =
     status === "pending" || status === "confirmed" ? status : "all";
 
-  const requests = await findViewingRequestsForOwner(owner.id, active);
+  const requests = await resilientRead(() => findViewingRequestsForOwner(owner.id, active));
 
   return (
     <div className="space-y-4">

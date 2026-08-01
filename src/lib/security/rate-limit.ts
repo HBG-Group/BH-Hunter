@@ -1,26 +1,10 @@
 import "server-only";
 import { headers } from "next/headers";
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db/prisma";
 
-// Fixed-window rate limiter. This is a per-instance in-memory counter: on serverless
-// it limits per warm instance, not globally, so treat it as abuse dampening rather
-// than a hard guarantee. Swap the store for Redis if traffic ever justifies it.
-
-interface Window {
-  count: number;
-  resetAt: number;
-}
-
-const windows = new Map<string, Window>();
-let lastSweep = Date.now();
-
-// Drop expired windows occasionally so the map can't grow without bound.
-function sweep(now: number) {
-  if (now - lastSweep < 60_000) return;
-  lastSweep = now;
-  for (const [key, window] of windows) {
-    if (window.resetAt <= now) windows.delete(key);
-  }
-}
+// Fixed-window limiter stored in Postgres so every Vercel instance shares the same
+// counter. The SQL upsert increments atomically and resets an expired window.
 
 export interface Limit {
   /** Requests allowed per window. */
@@ -39,19 +23,25 @@ export const LIMITS = {
   upload: { max: 30, windowMs: 300_000 },
 } as const satisfies Record<string, Limit>;
 
-export function checkLimit(key: string, limit: Limit): boolean {
+export async function checkLimit(key: string, limit: Limit): Promise<boolean> {
   const now = Date.now();
-  sweep(now);
-
-  const existing = windows.get(key);
-  if (!existing || existing.resetAt <= now) {
-    windows.set(key, { count: 1, resetAt: now + limit.windowMs });
-    return true;
-  }
-  if (existing.count >= limit.max) return false;
-
-  existing.count += 1;
-  return true;
+  const resetAt = new Date(now + limit.windowMs);
+  const result = await prisma.$queryRaw<{ allowed: boolean }[]>(Prisma.sql`
+    INSERT INTO rate_limit_windows ("key", "count", reset_at)
+    VALUES (${key}, 1, ${resetAt})
+    ON CONFLICT ("key") DO UPDATE
+    SET
+      "count" = CASE
+        WHEN rate_limit_windows.reset_at <= NOW() THEN 1
+        ELSE rate_limit_windows."count" + 1
+      END,
+      reset_at = CASE
+        WHEN rate_limit_windows.reset_at <= NOW() THEN EXCLUDED.reset_at
+        ELSE rate_limit_windows.reset_at
+      END
+    RETURNING "count" <= ${limit.max} AS allowed
+  `);
+  return result[0]?.allowed === true;
 }
 
 // Best-effort client identity for anonymous actions.

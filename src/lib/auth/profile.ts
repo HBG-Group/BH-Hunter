@@ -3,14 +3,18 @@ import type { Profile } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { safeRedirectPath } from "@/lib/security/redirect";
+import { hasRole } from "@/lib/auth/authorization-core";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 // The Supabase auth user for this request, or null if signed out.
 export async function getCurrentUser() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+  return resilientRead(async () => {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return user;
+  }, { timeoutMessage: "Authentication lookup exceeded five seconds" });
 }
 
 // Our own Profile row for the signed-in user. Created on first access so a Supabase
@@ -29,13 +33,13 @@ export async function ensureProfileForCurrentUser(
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const existing = await prisma.profile.findUnique({ where: { id: user.id } });
+  const existing = await resilientRead(() => prisma.profile.findUnique({ where: { id: user.id } }));
   if (existing) return { profile: existing, created: false };
 
   // The same email may already have a profile from a different sign-in method
   // (e.g. email/password first, then Google). Reuse it — it's the same person.
   if (user.email) {
-    const byEmail = await prisma.profile.findUnique({ where: { email: user.email } });
+    const byEmail = await resilientRead(() => prisma.profile.findUnique({ where: { email: user.email } }));
     if (byEmail) return { profile: byEmail, created: false };
   }
 
@@ -69,7 +73,7 @@ export const FROZEN_OWNER_MESSAGE =
 export async function requireOwner(): Promise<Profile> {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (profile.role !== "OWNER") redirect("/");
+  if (!hasRole(profile.role, "OWNER")) redirect("/");
   return profile;
 }
 
@@ -96,7 +100,7 @@ export async function requireProfile(next?: string): Promise<Profile> {
 export async function requireAdmin(): Promise<Profile> {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (profile.role !== "ADMIN") redirect("/");
+  if (!hasRole(profile.role, "ADMIN")) redirect("/");
   return profile;
 }
 
@@ -104,5 +108,5 @@ export async function requireAdmin(): Promise<Profile> {
 // in place of the dashboard instead of redirecting away.
 export async function getAdminOrNull(): Promise<Profile | null> {
   const profile = await getCurrentProfile();
-  return profile?.role === "ADMIN" ? profile : null;
+  return profile && hasRole(profile.role, "ADMIN") ? profile : null;
 }

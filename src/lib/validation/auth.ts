@@ -22,7 +22,7 @@ export const credentialsSchema = z.object({
   email,
   // Sign-in must not reveal the password policy, so length isn't enforced here.
   password: z.string().min(1, "Enter your password").max(72),
-});
+}).strict();
 
 export const signUpSchema = z.object({
   fullName: z
@@ -38,4 +38,4 @@ export const signUpSchema = z.object({
   terms: z.literal("on", {
     message: "Please accept the Terms & Conditions to continue",
   }),
-});
+}).strict();

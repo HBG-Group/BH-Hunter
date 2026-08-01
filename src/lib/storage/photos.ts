@@ -1,6 +1,7 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PHOTO_BUCKET, ALLOWED_PHOTO_MIME, MAX_PHOTO_BYTES } from "@/config/storage";
+import { normalizeStorageUrl } from "@/lib/security/storage-url";
 
 export { PHOTO_BUCKET };
 
@@ -67,7 +68,8 @@ export async function describeStoredPhoto(path: string): Promise<StoredObject | 
 
 export function publicPhotoUrl(path: string): string {
   const client = createSupabaseAdminClient();
-  return client.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+  const url = client.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+  return normalizeStorageUrl(url);
 }
 
 // Best-effort removal of the stored file behind a public URL.
@@ -76,7 +78,14 @@ export async function removeListingPhoto(publicUrl: string): Promise<void> {
   const index = publicUrl.indexOf(marker);
   if (index === -1) return;
 
-  const path = publicUrl.slice(index + marker.length);
+  let path = publicUrl.slice(index + marker.length);
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    return;
+  }
+  path = path.replace(/[\\]+$/, "");
+  if (!path || path.includes("..")) return;
   const client = createSupabaseAdminClient();
   await client.storage.from(PHOTO_BUCKET).remove([path]);
 }
