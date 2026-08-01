@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PricingBadge } from "./PricingBadge";
 import type { Plan, PlanTheme } from "@/config/pricing";
 
@@ -23,8 +24,8 @@ const THEMES: Record<PlanTheme, { ring: string; accent: string; button: string; 
   },
 };
 
-// A single SaaS-style plan card with a gentle lift on hover. Display only — the button
-// is inert during the beta.
+// A single SaaS-style plan card with a gentle lift on hover. The button starts the
+// GCash subscription flow (owner-only — the pricing page is gated to owners).
 export function PricingCard({ plan }: { plan: Plan }) {
   const theme = THEMES[plan.theme];
 
@@ -59,14 +60,12 @@ export function PricingCard({ plan }: { plan: Plan }) {
         Additional listings: <span className="font-medium text-ink">₱{plan.extraListingPrice} each</span>
       </p>
 
-      <button
-        type="button"
-        disabled
-        aria-disabled
-        className={`mt-4 w-full cursor-not-allowed rounded-xl py-2.5 text-sm font-medium text-white opacity-80 ${theme.button}`}
+      <Link
+        href={`/subscribe/${plan.id}`}
+        className={`mt-4 block w-full rounded-xl py-2.5 text-center text-sm font-medium text-white transition-colors ${theme.button}`}
       >
-        Coming After Beta
-      </button>
+        Subscribe
+      </Link>
     </div>
   );
 }

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireOwner } from "@/lib/auth/profile";
 import { findListingsByOwner } from "@/lib/db/owner";
 import { getOwnerAnalytics } from "@/lib/db/analytics";
+import { getOwnerSubscription } from "@/lib/db/subscription";
+import { SubscriptionBanner } from "@/components/owner/SubscriptionBanner";
 import { toOwnerListingViews } from "@/services/owner-dashboard";
 import { StatCards } from "@/components/owner/StatCards";
 import { OwnerListingCard } from "@/components/owner/OwnerListingCard";
@@ -14,9 +16,10 @@ import { isVerified } from "@/lib/owner/verification";
 
 export default async function OwnerDashboardPage() {
   const owner = await requireOwner();
-  const [rows, analytics] = await Promise.all([
+  const [rows, analytics, subscription] = await Promise.all([
     findListingsByOwner(owner.id),
     getOwnerAnalytics(owner.id),
+    getOwnerSubscription(owner.id),
   ]);
   const listings = toOwnerListingViews(rows);
 
@@ -67,6 +70,10 @@ export default async function OwnerDashboardPage() {
           Add
         </Link>
       </div>
+
+      {subscription && (
+        <SubscriptionBanner status={subscription.status} expiresAt={subscription.expiresAt} />
+      )}
 
       <TutorialChecklist done={checklist} />
 
