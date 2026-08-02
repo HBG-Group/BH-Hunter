@@ -5,6 +5,7 @@
 import { prisma } from "@/lib/db/prisma";
 import type { ModerationAction } from "@prisma/client";
 import { verificationExpiry } from "@/lib/owner/verification";
+import { subscriptionExpiry } from "@/lib/owner/subscription";
 import { PLANS } from "@/config/pricing";
 
 export type OwnerPlanId = "BASIC" | "ADVANCE" | "PREMIUM";
@@ -173,6 +174,7 @@ export function findAllOwners() {
       frozen: true,
       plan: true,
       createdAt: true,
+      subscription: { select: { status: true, expiresAt: true } },
       _count: { select: { boardingHouses: true } },
     },
     orderBy: [{ verificationRequestedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
@@ -195,6 +197,7 @@ export function findOwnerForAdmin(ownerId: string) {
       frozen: true,
       plan: true,
       createdAt: true,
+      subscription: { select: { status: true, expiresAt: true } },
       boardingHouses: {
         select: { id: true, name: true, slug: true, status: true, createdAt: true },
         orderBy: { createdAt: "desc" },
@@ -205,9 +208,13 @@ export function findOwnerForAdmin(ownerId: string) {
 
 // Assign a pricing plan to an owner. The plan drives their perks: the Verified Owner
 // badge (Advance/Premium) and Featured listings (Premium) are applied automatically, in
-// one transaction, so there's no separate manual verify/feature step.
+// one transaction, so there's no separate manual verify/feature step. Activating a plan
+// also (re)starts a 5-month subscription — after that it expires and the owner is
+// prompted to re-subscribe.
 export async function setOwnerPlan(ownerId: string, plan: OwnerPlanId): Promise<boolean> {
   const { verified, featured } = planPerks(plan);
+  const now = new Date();
+  const expiresAt = subscriptionExpiry(now);
 
   const [profileResult] = await prisma.$transaction([
     prisma.profile.updateMany({
@@ -216,6 +223,11 @@ export async function setOwnerPlan(ownerId: string, plan: OwnerPlanId): Promise<
       data: { plan, verified, verifiedUntil: null, verificationRequestedAt: null },
     }),
     prisma.boardingHouse.updateMany({ where: { ownerId }, data: { featured } }),
+    prisma.subscription.upsert({
+      where: { ownerId },
+      create: { ownerId, plan, status: "ACTIVE", startedAt: now, expiresAt, renewalDate: expiresAt },
+      update: { plan, status: "ACTIVE", startedAt: now, expiresAt, renewalDate: expiresAt },
+    }),
   ]);
   return profileResult.count > 0;
 }

@@ -15,13 +15,15 @@ const DEFAULT_CSP = [
   "upgrade-insecure-requests",
 ].join("; ");
 
-export function contentSecurityPolicy(nonce?: string): string {
-  if (!nonce) return DEFAULT_CSP;
+export function contentSecurityPolicy(nonce?: string, isProduction = true): string {
+  // Next dev (Turbopack) uses eval() to reconstruct stack traces for debugging;
+  // React never uses it in production, so this relaxation never ships.
+  const scriptSrc = nonce
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`
+    : "script-src 'self'";
 
-  return DEFAULT_CSP.replace(
-    "script-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-  );
+  const csp = DEFAULT_CSP.replace("script-src 'self'", scriptSrc);
+  return isProduction ? csp : csp.replace(scriptSrc, `${scriptSrc} 'unsafe-eval'`);
 }
 
 export function securityHeaders(
@@ -29,7 +31,7 @@ export function securityHeaders(
   nonce?: string,
 ): Array<{ key: string; value: string }> {
   const headers = [
-    { key: "Content-Security-Policy", value: contentSecurityPolicy(nonce) },
+    { key: "Content-Security-Policy", value: contentSecurityPolicy(nonce, isProduction) },
     { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(), browsing-topics=()" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
     { key: "X-Content-Type-Options", value: "nosniff" },
