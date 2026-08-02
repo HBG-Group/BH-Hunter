@@ -82,6 +82,17 @@ internals out of user-facing errors. `lib/supabase/admin.ts` and the security mo
 the real error and stack are logged server-side only. Only `NEXT_PUBLIC_*` values reach
 the browser.
 
+### ✓ Consent-gated preference cookies — `lib/cookies/`
+**Why:** cookies remember search filters, recently viewed listings, dismissed notices, and
+UI prefs — never anything sensitive. Auth cookies are managed entirely by Supabase
+`@supabase/ssr` and this module never touches them. Every optional cookie write checks
+`hasOptionalConsent()` first (rejecting clears them immediately); on **read**, values are
+re-validated (Zod for filters, allowlisted tokens for theme/language/map style, filtered
+typed arrays for lists) so a tampered cookie can never inject an unexpected shape into app
+state — same "never trust client input" rule as server actions, just applied client-side.
+Values are size-capped before writing (well under the ~4KB browser limit) and set with
+`SameSite=Lax` plus `Secure` on HTTPS.
+
 ## Authorization model
 
 Prisma bypasses RLS, so authorization is enforced in the app layer and is uniform:
