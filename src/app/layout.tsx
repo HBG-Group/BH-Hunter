@@ -8,6 +8,7 @@ import { RouteProgress } from "@/components/system/RouteProgress";
 import { TermsGate } from "@/components/system/TermsGate";
 import { Watermark } from "@/components/system/Watermark";
 import { BugReporter } from "@/components/system/BugReporter";
+import { CookieConsentBanner } from "@/components/cookies/CookieConsentBanner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -37,6 +38,7 @@ export default async function RootLayout({
         <AuthModalProvider>{children}</AuthModalProvider>
         <Watermark />
         <BugReporter />
+        <CookieConsentBanner />
       </body>
     </html>
   );

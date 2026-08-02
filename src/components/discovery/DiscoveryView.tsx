@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence } from "framer-motion";
 import { SearchHero } from "@/components/discovery/SearchHero";
@@ -10,6 +10,7 @@ import { MapSkeleton } from "@/components/map/MapSkeleton";
 import { filterListings } from "@/services/filter-listings";
 import { sortListings } from "@/services/sort-listings";
 import { DEFAULT_SORT, type SortOption } from "@/config/sorting";
+import { clearRememberedFilters, getRememberedFilters, rememberFilters } from "@/lib/cookies/searchFilters";
 import type { ListingFilters } from "@/lib/validation/filters";
 import type { ListingCard } from "@/types/listing";
 
@@ -36,6 +37,23 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
   const [mapExpanded, setMapExpanded] = useState(false);
   const [sort, setSort] = useState<SortOption>(DEFAULT_SORT);
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
+  const loadedRemembered = useRef(false);
+
+  // Load remembered filters once on mount (after consent, if any was given).
+  useEffect(() => {
+    if (loadedRemembered.current) return;
+    loadedRemembered.current = true;
+    const remembered = getRememberedFilters();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (remembered) setFilters((current) => ({ ...current, ...remembered }));
+  }, []);
+
+  // Persist filter changes (skips the initial mount so we don't immediately
+  // overwrite what was just loaded).
+  useEffect(() => {
+    if (!loadedRemembered.current) return;
+    rememberFilters(filters);
+  }, [filters]);
 
   const favoritedSet = useMemo(() => new Set(favoritedIds), [favoritedIds]);
 
@@ -54,6 +72,7 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
   // Reset filters (keeps the search text)
   const clearFilters = () => {
     resetPaging();
+    clearRememberedFilters();
     setFilters((current) => ({
       query: current.query,
       availableOnly: undefined,
