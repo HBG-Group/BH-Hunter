@@ -14,10 +14,13 @@ import {
   setOwnerFrozen,
   setOwnerPlan,
   setOwnerVerified,
+  setOwnerVerificationRejected,
   type OwnerPlanId,
 } from "@/lib/db/admin";
 import { deleteAccountCompletely } from "@/lib/account/deletion";
 import { listingExists } from "@/lib/db/listing-guards";
+import { resolveReport } from "@/lib/db/report";
+import { resolveReportSchema } from "@/lib/validation/report";
 import { guarded } from "@/lib/security/errors";
 import { logSecurityEvent } from "@/lib/security/events";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
@@ -246,6 +249,42 @@ export async function setOwnerVerifiedAction(ownerId: string, verified: boolean)
   );
 }
 
+// Decline a pending verification request without granting the badge.
+export async function rejectOwnerVerificationAction(ownerId: string): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.rejectOwnerVerification");
+  if (recent) return recent;
+
+  return guarded<Result>(
+    "rejectOwnerVerification",
+    async () => {
+      const ok = await setOwnerVerificationRejected(ownerId);
+      if (!ok) return { error: "That owner no longer exists." };
+
+      await logSecurityEvent({
+        action: "admin.rejectOwnerVerification",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "owner",
+        targetId: ownerId,
+        detail: "rejected",
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "OWNER_VERIFICATION",
+        targetType: "owner",
+        targetId: ownerId,
+        detail: "rejected",
+      });
+      revalidateAdmin();
+      return {};
+    },
+    (message) => ({ error: message }),
+  );
+}
+
 // Assign a pricing plan to an owner. This automatically applies the plan's perks
 // (Verified badge for Advance/Premium, Featured listings for Premium). Admin-only.
 export async function setOwnerPlanAction(ownerId: string, plan: string): Promise<Result> {
@@ -301,6 +340,13 @@ export async function setOwnerFrozenAction(ownerId: string, frozen: boolean): Pr
         targetId: ownerId,
         detail: frozen ? "frozen" : "unfrozen",
       });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "OWNER_FREEZE",
+        targetType: "owner",
+        targetId: ownerId,
+        detail: frozen ? "frozen" : "unfrozen",
+      });
       revalidateAdmin();
       return {};
     },
@@ -327,6 +373,12 @@ export async function deleteOwnerAction(ownerId: string): Promise<Result> {
         outcome: "allowed",
         actorId: admin.id,
         actorRole: admin.role,
+        targetType: "owner",
+        targetId: ownerId,
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "OWNER_DELETION",
         targetType: "owner",
         targetId: ownerId,
       });
@@ -364,6 +416,48 @@ export async function deleteReviewAction(id: string): Promise<Result> {
         targetId: id,
       });
       revalidatePath("/admin/reviews");
+      return {};
+    },
+    (message) => ({ error: message }),
+  );
+}
+
+// Resolve or dismiss a user-filed report.
+export async function resolveReportAction(
+  id: string,
+  status: "RESOLVED" | "DISMISSED",
+  resolution?: string,
+): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const parsed = resolveReportSchema.safeParse({ status, resolution });
+  if (!parsed.success) return { error: "Please check the resolution details." };
+  const recent = await ensureRecentAdminAuth(admin.id, "report", id, "admin.resolveReport");
+  if (recent) return recent;
+
+  return guarded<Result>(
+    "resolveReport",
+    async () => {
+      const ok = await resolveReport(id, admin.id, parsed.data.status, parsed.data.resolution);
+      if (!ok) return { error: "That report no longer exists or was already resolved." };
+
+      await logSecurityEvent({
+        action: "admin.resolveReport",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "report",
+        targetId: id,
+        detail: parsed.data.status,
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "REPORT_RESOLUTION",
+        targetType: "report",
+        targetId: id,
+        detail: parsed.data.status,
+      });
+      revalidatePath("/admin/reports");
       return {};
     },
     (message) => ({ error: message }),

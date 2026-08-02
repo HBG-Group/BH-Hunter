@@ -1,4 +1,5 @@
 import { Stars } from "@/components/ui/Stars";
+import { ReportButton } from "@/components/reports/ReportButton";
 import type { RatingSummary } from "@/lib/db/reviews";
 
 export interface ReviewItem {
@@ -12,9 +13,10 @@ export interface ReviewItem {
 interface Props {
   summary: RatingSummary;
   reviews: ReviewItem[];
+  isAuthenticated: boolean;
 }
 
-export function ReviewList({ summary, reviews }: Props) {
+export function ReviewList({ summary, reviews, isAuthenticated }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -33,6 +35,11 @@ export function ReviewList({ summary, reviews }: Props) {
             <Stars value={review.overall} size={14} />
           </div>
           {review.body && <p className="mt-1.5 text-sm text-neutral-600">{review.body}</p>}
+          {isAuthenticated && (
+            <div className="mt-2 text-right">
+              <ReportButton targetType="REVIEW" targetId={review.id} />
+            </div>
+          )}
         </div>
       ))}
     </div>

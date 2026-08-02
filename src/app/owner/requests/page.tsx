@@ -66,6 +66,7 @@ export default async function OwnerRequestsPage({ searchParams }: PageProps) {
               request={{
                 id: request.id,
                 listingName: request.boardingHouse.name,
+                studentId: request.student.id,
                 studentName: request.student.fullName,
                 studentEmail: request.student.email,
                 studentPhone: request.student.phone,

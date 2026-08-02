@@ -14,6 +14,8 @@ const navLinks = [
   { href: "/admin/owners", label: "Owners" },
   { href: "/admin/reviews", label: "Reviews" },
   { href: "/admin/ads", label: "Ads" },
+  { href: "/admin/reports", label: "Reports" },
+  { href: "/admin/audit-log", label: "Audit log" },
 ];
 
 // The whole /admin area is admin-only. A non-admin (signed out or wrong role) is shown

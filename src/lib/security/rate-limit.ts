@@ -21,6 +21,7 @@ export const LIMITS = {
   favorite: { max: 60, windowMs: 60_000 },
   analytics: { max: 40, windowMs: 60_000 },
   upload: { max: 30, windowMs: 300_000 },
+  report: { max: 10, windowMs: 300_000 },
 } as const satisfies Record<string, Limit>;
 
 export async function checkLimit(key: string, limit: Limit): Promise<boolean> {

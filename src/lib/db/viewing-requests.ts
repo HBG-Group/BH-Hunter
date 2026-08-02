@@ -40,7 +40,7 @@ export function findViewingRequestsForOwner(ownerId: string, filter: OwnerReques
   return prisma.viewingRequest.findMany({
     where: { boardingHouse: { ownerId }, ...(status ? { status } : {}) },
     include: {
-      student: { select: { fullName: true, phone: true, email: true } },
+      student: { select: { id: true, fullName: true, phone: true, email: true } },
       boardingHouse: { select: { name: true } },
     },
     orderBy: { createdAt: "desc" },

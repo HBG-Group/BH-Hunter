@@ -85,13 +85,15 @@ the browser.
 ### ✓ Consent-gated preference cookies — `lib/cookies/`
 **Why:** cookies remember search filters, recently viewed listings, dismissed notices, and
 UI prefs — never anything sensitive. Auth cookies are managed entirely by Supabase
-`@supabase/ssr` and this module never touches them. Every optional cookie write checks
-`hasOptionalConsent()` first (rejecting clears them immediately); on **read**, values are
-re-validated (Zod for filters, allowlisted tokens for theme/language/map style, filtered
-typed arrays for lists) so a tampered cookie can never inject an unexpected shape into app
-state — same "never trust client input" rule as server actions, just applied client-side.
-Values are size-capped before writing (well under the ~4KB browser limit) and set with
-`SameSite=Lax` plus `Secure` on HTTPS.
+`@supabase/ssr` and this module never touches them. The consent banner offers Accept All,
+Reject Non-Essential, and Customize (per-category: Preferences vs Activity); every optional
+cookie write checks `hasCategoryConsent()` for its category first (rejecting or unchecking a
+category clears its cookies immediately). On **read**, values are re-validated (Zod for
+filters, allowlisted tokens for theme/language/map style, filtered typed arrays for lists) so
+a tampered cookie can never inject an unexpected shape into app state — same "never trust
+client input" rule as server actions, just applied client-side. Values are size-capped before
+writing (well under the ~4KB browser limit) and set with `SameSite=Lax` plus `Secure` on
+HTTPS.
 
 ## Authorization model
 

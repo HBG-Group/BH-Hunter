@@ -4,7 +4,7 @@
 // All gated on optional-cookie consent — if the visitor rejected non-essential
 // cookies, these silently no-op (app falls back to in-memory defaults).
 
-import { hasOptionalConsent } from "@/lib/cookies/consent";
+import { hasCategoryConsent } from "@/lib/cookies/consent";
 import { readCookie, removeCookie, writeCookie } from "@/lib/cookies/cookie";
 
 const YEAR = 60 * 60 * 24 * 365;
@@ -18,7 +18,7 @@ export function getTheme(): Theme {
 }
 
 export function setTheme(theme: Theme): void {
-  if (!hasOptionalConsent()) return;
+  if (!hasCategoryConsent("preferences")) return;
   writeCookie(THEME_COOKIE, theme, { maxAgeSeconds: YEAR });
 }
 
@@ -29,7 +29,7 @@ export function getSidebarCollapsed(): boolean {
 }
 
 export function setSidebarCollapsed(collapsed: boolean): void {
-  if (!hasOptionalConsent()) return;
+  if (!hasCategoryConsent("preferences")) return;
   writeCookie(SIDEBAR_COOKIE, collapsed ? "1" : "0", { maxAgeSeconds: YEAR });
 }
 
@@ -47,7 +47,7 @@ export function getLanguage(): string | null {
 }
 
 export function setLanguage(language: string): void {
-  if (!hasOptionalConsent() || !TOKEN_PATTERN.test(language)) return;
+  if (!hasCategoryConsent("preferences") || !TOKEN_PATTERN.test(language)) return;
   writeCookie(LANGUAGE_COOKIE, language, { maxAgeSeconds: YEAR });
 }
 
@@ -59,7 +59,7 @@ export function getMapStyle(): string | null {
 }
 
 export function setMapStyle(style: string): void {
-  if (!hasOptionalConsent() || !TOKEN_PATTERN.test(style)) return;
+  if (!hasCategoryConsent("preferences") || !TOKEN_PATTERN.test(style)) return;
   writeCookie(MAP_STYLE_COOKIE, style, { maxAgeSeconds: YEAR });
 }
 

@@ -3,7 +3,7 @@
 // Tracks which dismissible notices (beta banner, pricing announcement, update
 // notices) a visitor has already closed, so they don't reappear every visit.
 
-import { hasOptionalConsent } from "@/lib/cookies/consent";
+import { hasCategoryConsent } from "@/lib/cookies/consent";
 import { readJsonCookie, writeJsonCookie } from "@/lib/cookies/cookie";
 
 export const DISMISSED_NOTICES_COOKIE = "meino_dismissed_notices";
@@ -23,7 +23,7 @@ export function isNoticeDismissed(noticeId: string): boolean {
 }
 
 export function dismissNotice(noticeId: string): void {
-  if (!hasOptionalConsent()) return;
+  if (!hasCategoryConsent("activity")) return;
   const dismissed = readDismissed();
   if (dismissed.includes(noticeId)) return;
   writeJsonCookie(DISMISSED_NOTICES_COOKIE, [...dismissed, noticeId].slice(-MAX_ENTRIES), {

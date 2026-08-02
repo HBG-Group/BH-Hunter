@@ -4,10 +4,10 @@
 //  or to arrange payment for the Verified Owner badge. Put your real details here.
 // ─────────────────────────────────────────────────────────────────────────────
 export const ADMIN_CONTACT = {
-  email: "meino.support@example.com",
+  email: "hbggroup.26@gmail.com",
   // A Messenger/Facebook page or phone number — whatever you want owners to use.
-  messenger: "https://m.me/yourpage",
-  phone: "0900 000 0000",
+  messenger: "https://www.facebook.com/HBGproductions2026",
+  phone: "09926345881",
 };
 
 // A short one-line version for inline messages.

@@ -13,8 +13,6 @@ Living development tracker. Update this when you finish or add work. Grouped by 
 - [ ] **Manual QA of new owner/admin flows** (auth-gated, tooling can't drive): plan
       assignment → badge/featured; freeze/delete owner; Danger Zone self-delete; onboarding
       tutorial (first-run + replay); viewing calendar (confirm a request → red date).
-- [ ] **Remove dead verification-request code** if desired (`requestOwnerVerification`,
-      `requestVerificationAction`) — replaced by plans.
 - [ ] **Ship the current work.** Recent features were merged to `main` (`ef2a8b2`); confirm
       the production deploy succeeded after env vars are set.
 - [ ] **Manual end-to-end verification** by an admin (needs a logged-in session, which

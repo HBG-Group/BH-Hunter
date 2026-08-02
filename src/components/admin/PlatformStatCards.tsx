@@ -8,6 +8,7 @@ const tiles: { key: keyof PlatformStats; label: string }[] = [
   { key: "students", label: "Students" },
   { key: "reviews", label: "Reviews" },
   { key: "viewingRequests", label: "Viewing requests" },
+  { key: "openReports", label: "Open reports" },
 ];
 
 export function PlatformStatCards({ stats }: { stats: PlatformStats }) {
