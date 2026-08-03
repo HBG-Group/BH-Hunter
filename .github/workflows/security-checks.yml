@@ -75,12 +75,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check whether the deployment is publicly testable
+        id: deployment-access
+        env:
+          DEPLOY_URL: ${{ inputs.security_check_url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+        shell: bash
+        run: |
+          location="$(curl --silent --show-error --head --max-redirs 0 "$DEPLOY_URL" | tr -d '\r' | awk 'tolower($1) == "location:" { print $2; exit }')"
+          if [[ "$location" == https://vercel.com/* ]]; then
+            echo "public=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Deployment is protected by Vercel Authentication. Configure a protection-bypass secret or run this workflow manually against a public alias."
+          else
+            echo "public=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Verify deployed security headers and source maps
+        if: steps.deployment-access.outputs.public == 'true'
         env:
           SECURITY_CHECK_URL: ${{ inputs.security_check_url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
         run: npm run security:verify-deployment
 
       - name: Verify deployed public and protected route availability
+        if: steps.deployment-access.outputs.public == 'true'
         env:
           DEPLOY_URL: ${{ inputs.security_check_url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
         run: npm run verify:routes
