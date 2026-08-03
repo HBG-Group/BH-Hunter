@@ -24,6 +24,7 @@ export interface Plan {
   extraListingPrice: number; // PHP per listing beyond the free amount
   verifiedBadge: boolean;
   featuredListing: boolean;
+  maxPhotosPerListing: number;
   features: PlanFeature[];
   popular?: boolean;
 }
@@ -50,9 +51,11 @@ export const PLANS: Plan[] = [
     extraListingPrice: 29,
     verifiedBadge: false,
     featuredListing: false,
+    maxPhotosPerListing: 7,
     features: [
       { label: "3 free listings", available: true },
       { label: "Up to 2 rooms per listing", available: true },
+      { label: "Up to 7 photos per listing", available: true },
       { label: "Standard visibility", available: true },
       { label: "Student inquiries", available: true },
       { label: "Dashboard access", available: true },
@@ -66,14 +69,16 @@ export const PLANS: Plan[] = [
     price: 179,
     period: "Semester",
     freeListings: 6,
-    roomsPerListing: 2,
+    roomsPerListing: 5,
     extraListingPrice: 21,
     verifiedBadge: true,
     featuredListing: false,
+    maxPhotosPerListing: 12,
     popular: true,
     features: [
       { label: "6 free listings", available: true },
-      { label: "Up to 2 rooms per listing", available: true },
+      { label: "Up to 5 rooms per listing", available: true },
+      { label: "Up to 12 photos per listing", available: true },
       { label: "Verified Owner Badge", available: true },
       { label: "Increased credibility", available: true },
       { label: "Dashboard access", available: true },
@@ -88,13 +93,15 @@ export const PLANS: Plan[] = [
     price: 239,
     period: "Semester",
     freeListings: 10,
-    roomsPerListing: 2,
+    roomsPerListing: 10,
     extraListingPrice: 15,
     verifiedBadge: true,
     featuredListing: true,
+    maxPhotosPerListing: 20,
     features: [
       { label: "10 free listings", available: true },
-      { label: "Up to 2 rooms per listing", available: true },
+      { label: "Up to 10 rooms per listing", available: true },
+      { label: "Up to 20 photos per listing", available: true },
       { label: "Verified Owner Badge", available: true },
       { label: "Featured Listing", available: true },
       { label: "Increased visibility", available: true },

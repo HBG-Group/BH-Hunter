@@ -6,7 +6,11 @@ import { OwnerBetaNotice } from "@/components/owner/OwnerBetaNotice";
 
 // Every /owner page shares this shell. requireOwner here means the whole area is
 // protected in one place (the middleware guards it too, as defence in depth).
-export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
+export default async function OwnerLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const owner = await requireOwner();
 
   return (
@@ -22,6 +26,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
               { href: "/", label: "Back to site" },
               { href: "/owner", label: "My listings" },
               { href: "/owner/requests", label: "Viewing requests" },
+              { href: "/settings", label: "Account settings" },
             ]}
           />
         </div>

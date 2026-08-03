@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { AnimatePresence } from "framer-motion";
 import { SearchHero } from "@/components/discovery/SearchHero";
 import { ListingGrid } from "@/components/listing/ListingGrid";
@@ -10,7 +11,11 @@ import { MapSkeleton } from "@/components/map/MapSkeleton";
 import { filterListings } from "@/services/filter-listings";
 import { sortListings } from "@/services/sort-listings";
 import { DEFAULT_SORT, type SortOption } from "@/config/sorting";
-import { clearRememberedFilters, getRememberedFilters, rememberFilters } from "@/lib/cookies/searchFilters";
+import {
+  clearRememberedFilters,
+  getRememberedFilters,
+  rememberFilters,
+} from "@/lib/cookies/searchFilters";
 import type { ListingFilters } from "@/lib/validation/filters";
 import type { ListingCard } from "@/types/listing";
 
@@ -19,10 +24,13 @@ import type { ListingCard } from "@/types/listing";
 const PAGE_SIZE = 20;
 
 // Leaflet touches `window`, so the map is loaded client-only, never server-rendered.
-const MapView = dynamic(() => import("@/components/map/MapView").then((m) => m.MapView), {
-  ssr: false,
-  loading: () => <MapSkeleton />,
-});
+const MapView = dynamic(
+  () => import("@/components/map/MapView").then((m) => m.MapView),
+  {
+    ssr: false,
+    loading: () => <MapSkeleton />,
+  },
+);
 
 interface Props {
   listings: ListingCard[];
@@ -30,7 +38,11 @@ interface Props {
   isAuthenticated: boolean;
 }
 
-export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props) {
+export function DiscoveryView({
+  listings,
+  favoritedIds,
+  isAuthenticated,
+}: Props) {
   const [filters, setFilters] = useState<ListingFilters>({});
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -82,7 +94,8 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
     }));
   };
 
-  const selected = visibleListings.find((listing) => listing.id === selectedId) ?? null;
+  const selected =
+    visibleListings.find((listing) => listing.id === selectedId) ?? null;
 
   const patchFilters = (patch: Partial<ListingFilters>) => {
     resetPaging();
@@ -112,7 +125,9 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
           className="flex items-center justify-between rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-ink sm:hidden"
         >
           <span>
-            {visibleListings.length} {visibleListings.length === 1 ? "place" : "places"} · see them on the map
+            {visibleListings.length}{" "}
+            {visibleListings.length === 1 ? "place" : "places"} · see them on
+            the map
           </span>
           <span aria-hidden>→</span>
         </a>
@@ -141,16 +156,28 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
       <div id="map" className="scroll-mt-20 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-ink">All boarding houses on the map</h2>
-            <p className="mt-1 text-muted">Green means available, amber almost full, red fully occupied.</p>
+            <h2 className="text-2xl font-semibold tracking-tight text-ink">
+              All boarding houses on the map
+            </h2>
+            <p className="mt-1 text-muted">
+              Green means available, amber almost full, red fully occupied.
+            </p>
           </div>
           {/* Mobile-only: full map is one tap away */}
-          <button
-            onClick={() => setMapExpanded((v) => !v)}
-            className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-primary ring-1 ring-inset ring-line hover:ring-neutral-300 lg:hidden"
-          >
-            {mapExpanded ? "Collapse" : "Expand map"}
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              onClick={() => setMapExpanded((v) => !v)}
+              className="min-h-11 rounded-lg px-3 text-sm font-medium text-primary ring-1 ring-inset ring-line hover:ring-neutral-300 lg:hidden"
+            >
+              {mapExpanded ? "Collapse" : "Expand map"}
+            </button>
+            <Link
+              href="/map"
+              className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-primary ring-1 ring-inset ring-line hover:ring-neutral-300"
+            >
+              Open full map
+            </Link>
+          </div>
         </div>
         <div
           className={`relative overflow-hidden rounded-2xl ring-1 ring-neutral-200 transition-[height] duration-300 lg:h-[70vh] ${

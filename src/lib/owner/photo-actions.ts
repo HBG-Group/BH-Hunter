@@ -1,16 +1,39 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ALLOWED_PHOTO_EXTENSIONS, MAX_PHOTO_BYTES, PHOTO_SIZE_HINT, isAllowedPhotoMime } from "@/config/storage";
+import {
+  ALLOWED_PHOTO_EXTENSIONS,
+  MAX_PHOTO_BYTES,
+  PHOTO_SIZE_HINT,
+  isAllowedPhotoMime,
+} from "@/config/storage";
 import { requireWritableOwner } from "@/lib/auth/profile";
-import { addImageForOwner, deleteImagesForOwner, imageUrlExists } from "@/lib/db/images";
+import {
+  addImageForOwner,
+  countImages,
+  deleteImagesForOwner,
+  imageUrlExists,
+} from "@/lib/db/images";
 import { findOwnerListing } from "@/lib/db/owner";
 import { guarded } from "@/lib/security/errors";
 import { logSecurityEvent } from "@/lib/security/events";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
-import { RECENT_AUTH_REQUIRED, requireRecentAuth } from "@/lib/security/recent-auth";
-import { MAX_PHOTO_BATCH, validatePendingPhotos, type PendingPhoto } from "@/lib/security/photo-validation";
-import { buildStoragePath, issueTicket, verifyTicket, type TicketClaims } from "@/lib/security/upload-ticket";
+import {
+  RECENT_AUTH_REQUIRED,
+  requireRecentAuth,
+} from "@/lib/security/recent-auth";
+import {
+  MAX_PHOTO_BATCH,
+  validatePendingPhotos,
+  type PendingPhoto,
+} from "@/lib/security/photo-validation";
+import { getOwnerRoomEntitlement } from "@/lib/owner/entitlements";
+import {
+  buildStoragePath,
+  issueTicket,
+  verifyTicket,
+  type TicketClaims,
+} from "@/lib/security/upload-ticket";
 import {
   createSignedPhotoUpload,
   describeStoredPhoto,
@@ -37,7 +60,8 @@ export async function prepareUploadsAction(
   files: PendingPhoto[],
 ): Promise<{ tickets?: UploadTicket[]; error?: string }> {
   const owner = await requireWritableOwner();
-  if (!(await allow("upload", LIMITS.upload, owner.id))) return { error: RATE_LIMITED };
+  if (!(await allow("upload", LIMITS.upload, owner.id)))
+    return { error: RATE_LIMITED };
 
   if (!(await findOwnerListing(owner.id, boardingHouseId))) {
     return { error: "You don't own this listing" };
@@ -45,15 +69,31 @@ export async function prepareUploadsAction(
 
   const validationError = validatePendingPhotos(files);
   if (validationError) return { error: validationError };
+  const [entitlement, existingCount] = await Promise.all([
+    getOwnerRoomEntitlement(owner.id),
+    countImages(boardingHouseId),
+  ]);
+  if (existingCount + files.length > entitlement.photoLimit) {
+    return {
+      error: `${entitlement.planName} allows up to ${entitlement.photoLimit} photos per listing.`,
+    };
+  }
 
   return guarded<{ tickets?: UploadTicket[]; error?: string }>(
     "prepareUploads",
     async () => {
       const tickets: UploadTicket[] = [];
       for (const file of files) {
-        const path = buildStoragePath(boardingHouseId, ALLOWED_PHOTO_EXTENSIONS[file.type]);
+        const path = buildStoragePath(
+          boardingHouseId,
+          ALLOWED_PHOTO_EXTENSIONS[file.type],
+        );
         const token = await createSignedPhotoUpload(path);
-        const { claims, signature } = issueTicket(path, owner.id, boardingHouseId);
+        const { claims, signature } = issueTicket(
+          path,
+          owner.id,
+          boardingHouseId,
+        );
         tickets.push({ fileName: file.name, path, token, claims, signature });
       }
       return { tickets };
@@ -67,9 +107,12 @@ export async function registerPhotosAction(
   tickets: { claims: TicketClaims; signature: string }[],
 ): Promise<PhotoFormState> {
   const owner = await requireWritableOwner();
-  if (!(await allow("upload", LIMITS.upload, owner.id))) return { error: RATE_LIMITED };
-  if (!Array.isArray(tickets) || tickets.length === 0) return { error: "Nothing to save" };
-  if (tickets.length > MAX_PHOTO_BATCH) return { error: "Too many photos in one batch." };
+  if (!(await allow("upload", LIMITS.upload, owner.id)))
+    return { error: RATE_LIMITED };
+  if (!Array.isArray(tickets) || tickets.length === 0)
+    return { error: "Nothing to save" };
+  if (tickets.length > MAX_PHOTO_BATCH)
+    return { error: "Too many photos in one batch." };
 
   return guarded<PhotoFormState>(
     "registerPhotos",
@@ -77,13 +120,25 @@ export async function registerPhotosAction(
       let saved = 0;
 
       for (const ticket of tickets) {
-        const path = verifyTicket(ticket?.claims, ticket?.signature, owner.id, boardingHouseId);
-        if (!path) return { error: "That upload could not be verified. Please try again." };
+        const path = verifyTicket(
+          ticket?.claims,
+          ticket?.signature,
+          owner.id,
+          boardingHouseId,
+        );
+        if (!path)
+          return {
+            error: "That upload could not be verified. Please try again.",
+          };
 
         const stored = await describeStoredPhoto(path);
-        if (!stored) return { error: "The upload did not complete. Please try again." };
+        if (!stored)
+          return { error: "The upload did not complete. Please try again." };
 
-        if (!isAllowedPhotoMime(stored.mimeType) || stored.size > MAX_PHOTO_BYTES) {
+        if (
+          !isAllowedPhotoMime(stored.mimeType) ||
+          stored.size > MAX_PHOTO_BYTES
+        ) {
           await discardStoredPhoto(path);
           return { error: PHOTO_SIZE_HINT };
         }
@@ -98,7 +153,9 @@ export async function registerPhotosAction(
 
       revalidatePath(`/owner/listings/${boardingHouseId}/photos`);
       revalidatePath("/owner");
-      return saved > 0 ? { success: true } : { error: "Those photos were already saved." };
+      return saved > 0
+        ? { success: true }
+        : { error: "Those photos were already saved." };
     },
     (message) => ({ error: message }),
   );
@@ -109,14 +166,20 @@ export async function deletePhotosAction(
   imageIds: string[],
 ): Promise<PhotoFormState> {
   const owner = await requireWritableOwner();
-  if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
-  if (!Array.isArray(imageIds) || imageIds.length === 0) return { error: "Nothing selected" };
+  if (!(await allow("write", LIMITS.write, owner.id)))
+    return { error: RATE_LIMITED };
+  if (!Array.isArray(imageIds) || imageIds.length === 0)
+    return { error: "Nothing selected" };
   if (!(await requireRecentAuth())) return { error: RECENT_AUTH_REQUIRED };
 
   return guarded<PhotoFormState>(
     "deletePhotos",
     async () => {
-      const urls = await deleteImagesForOwner(owner.id, boardingHouseId, imageIds);
+      const urls = await deleteImagesForOwner(
+        owner.id,
+        boardingHouseId,
+        imageIds,
+      );
       for (const url of urls) await removeListingPhoto(url);
 
       await logSecurityEvent({

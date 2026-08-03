@@ -15,6 +15,7 @@ const navLinks: NavLink[] = [
   { href: "/admin/reviews", label: "Reviews" },
   { href: "/admin/ads", label: "Ads" },
   { href: "/admin/audit-log", label: "Audit log" },
+  { href: "/admin/notifications", label: "Notifications" },
 ];
 
 // Inline links on desktop; a hamburger dropdown on mobile, matching the

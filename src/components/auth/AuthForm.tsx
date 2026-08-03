@@ -53,6 +53,8 @@ export function AuthForm({
           name="fullName"
           placeholder="Full name"
           autoComplete="name"
+          minLength={2}
+          maxLength={80}
           required
           className={fieldClass}
         />
@@ -62,6 +64,7 @@ export function AuthForm({
         type="email"
         placeholder="Email"
         autoComplete="email"
+        maxLength={254}
         required
         className={fieldClass}
       />
@@ -69,18 +72,28 @@ export function AuthForm({
         autoComplete={isSignUp ? "new-password" : "current-password"}
       />
 
-      {!isSignUp && (
+      {isSignUp ? (
         <p className="text-xs text-neutral-500">
-          Password reset is coming soon — please double-check your email and
-          password before signing in. After 5 incorrect attempts you&apos;ll be
-          locked out for 30 seconds.
+          Use 8–72 characters. A longer passphrase is recommended.
+        </p>
+      ) : (
+        <p className="text-xs text-neutral-500">
+          After 5 incorrect attempts you&apos;ll be locked out briefly.{" "}
+          <Link
+            href="/forgot-password"
+            className="underline hover:text-neutral-800"
+          >
+            Forgot password?
+          </Link>
         </p>
       )}
 
-      {state.error && <p className="text-sm text-rose-600">{state.error}</p>}
-      {state.notice && (
-        <p className="text-sm text-emerald-600">{state.notice}</p>
-      )}
+      <div aria-live="polite">
+        {state.error && <p className="text-sm text-rose-600">{state.error}</p>}
+        {state.notice && (
+          <p className="text-sm text-emerald-600">{state.notice}</p>
+        )}
+      </div>
 
       <button
         type="submit"

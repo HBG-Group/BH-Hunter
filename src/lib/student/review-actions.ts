@@ -13,6 +13,7 @@ import { publishedListingExists } from "@/lib/db/listing-guards";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
 import { guarded } from "@/lib/security/errors";
 import { invalidate } from "@/lib/cache/redis";
+import { notifyAdmins } from "@/lib/db/admin-notifications";
 
 export interface ReviewFormState {
   error?: string;
@@ -77,6 +78,13 @@ export async function submitReviewAction(
     "submitReview",
     async () => {
       await upsertReview(profile.id, target.boardingHouseId, parsed.data);
+      if (!existingReview) {
+        await notifyAdmins({
+          type: "REVIEW_SUBMITTED",
+          title: "Verified review submitted",
+          body: `A student submitted a review for listing ${target.boardingHouseId}.`,
+        });
+      }
       await invalidate(
         `reviews:${target.boardingHouseId}`,
         `listing:${target.slug}`,

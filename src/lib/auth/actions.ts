@@ -6,14 +6,69 @@ import { getCurrentProfile } from "@/lib/auth/profile";
 import { resolveSiteOrigin } from "@/lib/auth/site-origin";
 import { logSecurityEvent } from "@/lib/security/events";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
-import { checkLockout, clearFailedLogins, recordFailedLogin } from "@/lib/security/login-lockout";
+import {
+  checkLockout,
+  clearFailedLogins,
+  recordFailedLogin,
+} from "@/lib/security/login-lockout";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { credentialsSchema, signUpSchema } from "@/lib/validation/auth";
+import {
+  credentialsSchema,
+  signUpSchema,
+  MIN_PASSWORD_LENGTH,
+} from "@/lib/validation/auth";
 
 export interface AuthFormState {
   error?: string;
   notice?: string;
+}
+
+export async function requestPasswordResetAction(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  if (!(await allow("password-reset", LIMITS.auth)))
+    return { error: RATE_LIMITED };
+  const parsed = credentialsSchema.shape.email.safeParse(formData.get("email"));
+  if (!parsed.success)
+    return { error: parsed.error.issues[0]?.message ?? "Enter a valid email." };
+  const origin = await resolveSiteOrigin();
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
+    redirectTo: `${origin}${OAUTH_CALLBACK_PATH}?next=/account/password`,
+  });
+  if (error)
+    return { error: "Could not send the reset email. Please try again." };
+  return {
+    notice: "If that account exists, a password-reset link has been sent.",
+  };
+}
+
+export async function updatePasswordAction(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const profile = await getCurrentProfile();
+  if (!profile)
+    return { error: "Open the secure link from your reset email first." };
+  const password = String(formData.get("password") ?? "");
+  const confirmation = String(formData.get("confirmation") ?? "");
+  if (password.length < MIN_PASSWORD_LENGTH || password.length > 72) {
+    return { error: `Use ${MIN_PASSWORD_LENGTH}–72 characters.` };
+  }
+  if (password !== confirmation) return { error: "Passwords do not match." };
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error)
+    return { error: "Could not update the password. Please try again." };
+  await logSecurityEvent({
+    action: "auth.password_changed",
+    outcome: "allowed",
+    actorId: profile.id,
+    actorRole: profile.role,
+  });
+  return { notice: "Password updated." };
 }
 
 export async function signInAction(
@@ -21,7 +76,11 @@ export async function signInAction(
   formData: FormData,
 ): Promise<AuthFormState> {
   if (!(await allow("signin", LIMITS.auth))) {
-    await logSecurityEvent({ action: "auth.signin", outcome: "denied", detail: "rate_limited" });
+    await logSecurityEvent({
+      action: "auth.signin",
+      outcome: "denied",
+      detail: "rate_limited",
+    });
     return { error: RATE_LIMITED };
   }
 
@@ -30,7 +89,11 @@ export async function signInAction(
     password: formData.get("password"),
   });
   if (!parsed.success) {
-    await logSecurityEvent({ action: "auth.signin", outcome: "denied", detail: "invalid_payload" });
+    await logSecurityEvent({
+      action: "auth.signin",
+      outcome: "denied",
+      detail: "invalid_payload",
+    });
     return { error: parsed.error.issues[0]?.message ?? "Check your details" };
   }
 
@@ -41,15 +104,25 @@ export async function signInAction(
   // locked-out account never even reaches the password check while waiting out the timer.
   const lockout = await checkLockout(parsed.data.email);
   if (lockout.locked) {
-    await logSecurityEvent({ action: "auth.signin", outcome: "denied", detail: "locked_out" });
-    return { error: `Too many failed attempts. Please wait ${lockout.retryAfterSeconds}s and try again.` };
+    await logSecurityEvent({
+      action: "auth.signin",
+      outcome: "denied",
+      detail: "locked_out",
+    });
+    return {
+      error: `Too many failed attempts. Please wait ${lockout.retryAfterSeconds}s and try again.`,
+    };
   }
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
     const state = await recordFailedLogin(parsed.data.email);
-    await logSecurityEvent({ action: "auth.signin", outcome: "denied", detail: "invalid_credentials" });
+    await logSecurityEvent({
+      action: "auth.signin",
+      outcome: "denied",
+      detail: "invalid_credentials",
+    });
     if (state.locked) {
       return {
         error: `Too many failed attempts. Please wait ${state.retryAfterSeconds}s and try again.`,
@@ -77,7 +150,11 @@ export async function signUpAction(
   formData: FormData,
 ): Promise<AuthFormState> {
   if (!(await allow("signup", LIMITS.auth))) {
-    await logSecurityEvent({ action: "auth.signup", outcome: "denied", detail: "rate_limited" });
+    await logSecurityEvent({
+      action: "auth.signup",
+      outcome: "denied",
+      detail: "rate_limited",
+    });
     return { error: RATE_LIMITED };
   }
 
@@ -89,7 +166,11 @@ export async function signUpAction(
     terms: formData.get("terms"),
   });
   if (!parsed.success) {
-    await logSecurityEvent({ action: "auth.signup", outcome: "denied", detail: "invalid_payload" });
+    await logSecurityEvent({
+      action: "auth.signup",
+      outcome: "denied",
+      detail: "invalid_payload",
+    });
     return { error: parsed.error.issues[0]?.message ?? "Check your details" };
   }
   const { fullName, email, password, role } = parsed.data;
@@ -104,7 +185,11 @@ export async function signUpAction(
     options: { data: { full_name: fullName, role }, emailRedirectTo },
   });
   if (error) {
-    await logSecurityEvent({ action: "auth.signup", outcome: "error", detail: "supabase_signup_failed" });
+    await logSecurityEvent({
+      action: "auth.signup",
+      outcome: "error",
+      detail: "supabase_signup_failed",
+    });
     return { error: error.message };
   }
 
@@ -113,8 +198,15 @@ export async function signUpAction(
   // which otherwise looks identical to "check your email" for a brand-new signup. That
   // silence is exactly the kind of unexplained dead end we don't want here.
   if (data.user && data.user.identities?.length === 0) {
-    await logSecurityEvent({ action: "auth.signup", outcome: "denied", detail: "email_already_registered" });
-    return { error: "An account with this email already exists. Please sign in instead." };
+    await logSecurityEvent({
+      action: "auth.signup",
+      outcome: "denied",
+      detail: "email_already_registered",
+    });
+    return {
+      error:
+        "An account with this email already exists. Please sign in instead.",
+    };
   }
 
   if (!data.session) {
@@ -123,7 +215,9 @@ export async function signUpAction(
       outcome: "allowed",
       detail: "awaiting_email_confirmation",
     });
-    return { notice: "Check your email to confirm your account, then sign in." };
+    return {
+      notice: "Check your email to confirm your account, then sign in.",
+    };
   }
 
   const profile = await getCurrentProfile();

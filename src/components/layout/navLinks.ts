@@ -7,7 +7,7 @@ export interface NavLink {
 const BASE_LINKS: NavLink[] = [
   { href: "/", label: "Home" },
   { href: "/#explore", label: "Explore" },
-  { href: "/#map", label: "Map" },
+  { href: "/map", label: "Map" },
   { href: "/#about", label: "About" },
 ];
 

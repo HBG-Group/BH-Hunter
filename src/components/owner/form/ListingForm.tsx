@@ -1,16 +1,22 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { AMENITIES } from "@/config/amenities";
 import { AmenityToggle } from "@/components/filters/AmenityToggle";
 import { ListingFields } from "@/components/owner/form/ListingFields";
 import { LocationPicker } from "@/components/owner/form/LocationPicker";
 import { RoomsEditor } from "@/components/owner/form/RoomsEditor";
 import { Spinner } from "@/components/ui/Spinner";
-import { emptyListingForm, type ListingFormValues } from "@/components/owner/form/types";
+import {
+  emptyListingForm,
+  type ListingFormValues,
+} from "@/components/owner/form/types";
 import type { ListingFormState } from "@/lib/owner/actions";
 
-type FormAction = (state: ListingFormState, formData: FormData) => Promise<ListingFormState>;
+type FormAction = (
+  state: ListingFormState,
+  formData: FormData,
+) => Promise<ListingFormState>;
 
 interface Props {
   action: FormAction;
@@ -34,9 +40,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section data-tour={tour} className="rounded-2xl border border-neutral-200 bg-white p-5">
+    <section
+      data-tour={tour}
+      className="rounded-2xl border border-neutral-200 bg-white p-5"
+    >
       <h2 className="text-base font-semibold text-neutral-900">{title}</h2>
-      {description && <p className="mt-1 text-sm text-neutral-500">{description}</p>}
+      {description && (
+        <p className="mt-1 text-sm text-neutral-500">{description}</p>
+      )}
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -44,9 +55,35 @@ function Section({
 
 // The create/edit form. It keeps the whole listing in React state and submits it as
 // one JSON payload, so the server validates a single well-formed object.
-export function ListingForm({ action, initialValues, submitLabel, tutorial = false, roomLimit = 2, planName = "Default" }: Props) {
-  const [values, setValues] = useState<ListingFormValues>(initialValues ?? emptyListingForm());
+export function ListingForm({
+  action,
+  initialValues,
+  submitLabel,
+  tutorial = false,
+  roomLimit = 2,
+  planName = "Default",
+}: Props) {
+  const [values, setValues] = useState<ListingFormValues>(
+    initialValues ?? emptyListingForm(),
+  );
+  const [submitted, setSubmitted] = useState(false);
   const [state, formAction, pending] = useActionState(action, {});
+  const initialSnapshot = useMemo(
+    () => JSON.stringify(initialValues ?? emptyListingForm()),
+    [initialValues],
+  );
+  const isDirty =
+    !tutorial &&
+    !(submitted && pending) &&
+    JSON.stringify(values) !== initialSnapshot;
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) =>
+      event.preventDefault();
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [isDirty]);
 
   const update = (patch: Partial<ListingFormValues>) =>
     setValues((current) => ({ ...current, ...patch }));
@@ -61,16 +98,25 @@ export function ListingForm({ action, initialValues, submitLabel, tutorial = fal
   return (
     <form
       action={tutorial ? undefined : formAction}
-      onSubmit={tutorial ? (e) => e.preventDefault() : undefined}
+      onSubmit={
+        tutorial ? (event) => event.preventDefault() : () => setSubmitted(true)
+      }
       className="space-y-4"
     >
       <input type="hidden" name="payload" value={JSON.stringify(values)} />
 
-      <Section title="Details" description="The basics students see first — name, address, price, and contact.">
+      <Section
+        title="Details"
+        description="The basics students see first — name, address, price, and contact."
+      >
         <ListingFields values={values} update={update} />
       </Section>
 
-      <Section title="Location" description="Tap the map or drag the pin to your exact address." tour="lf-location">
+      <Section
+        title="Location"
+        description="Tap the map or drag the pin to your exact address."
+        tour="lf-location"
+      >
         <LocationPicker
           latitude={values.latitude}
           longitude={values.longitude}
@@ -78,7 +124,11 @@ export function ListingForm({ action, initialValues, submitLabel, tutorial = fal
         />
       </Section>
 
-      <Section title="Amenities" description="Select everything your boarding house offers." tour="lf-amenities">
+      <Section
+        title="Amenities"
+        description="Select everything your boarding house offers."
+        tour="lf-amenities"
+      >
         <div className="flex flex-wrap gap-1.5">
           {AMENITIES.map((amenity) => (
             <AmenityToggle
@@ -96,7 +146,11 @@ export function ListingForm({ action, initialValues, submitLabel, tutorial = fal
         description={`${planName} allows up to ${roomLimit} rooms per listing. Vacancy is calculated from these rooms, so keep them accurate.`}
         tour="lf-rooms"
       >
-        <RoomsEditor rooms={values.rooms} roomLimit={roomLimit} onChange={(rooms) => update({ rooms })} />
+        <RoomsEditor
+          rooms={values.rooms}
+          roomLimit={roomLimit}
+          onChange={(rooms) => update({ rooms })}
+        />
       </Section>
 
       {/* Sticky submit so it stays reachable on long forms. Hidden during the tutorial —
@@ -104,7 +158,10 @@ export function ListingForm({ action, initialValues, submitLabel, tutorial = fal
       {!tutorial && (
         <div className="sticky bottom-0 z-10 -mx-4 border-t border-neutral-200 bg-neutral-50/95 px-4 py-3 backdrop-blur">
           {state.error && (
-            <p role="alert" className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            <p
+              role="alert"
+              className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700"
+            >
               {state.error}
             </p>
           )}

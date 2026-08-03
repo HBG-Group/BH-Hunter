@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { markAdminNotificationReadAction } from "@/lib/admin/actions";
 
@@ -29,7 +30,7 @@ export function AdminNotifications({
         onClick={() => setOpen((value) => !value)}
         aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}
         aria-expanded={open}
-        className="relative flex h-10 w-10 items-center justify-center rounded-lg text-neutral-700 hover:bg-neutral-100"
+        className="relative flex h-11 w-11 items-center justify-center rounded-lg text-neutral-700 hover:bg-neutral-100"
       >
         <svg
           aria-hidden
@@ -59,7 +60,16 @@ export function AdminNotifications({
           aria-label="Notifications panel"
         >
           <div className="border-b border-neutral-100 px-4 py-3 text-sm font-semibold text-neutral-900">
-            Notifications
+            <div className="flex items-center justify-between">
+              <span>Notifications</span>
+              <Link
+                href="/admin/notifications"
+                onClick={() => setOpen(false)}
+                className="text-xs font-normal text-primary underline"
+              >
+                View all
+              </Link>
+            </div>
           </div>
           {notifications.length === 0 ? (
             <p className="px-4 py-6 text-sm text-neutral-500">

@@ -26,6 +26,7 @@ export function PasswordField({
         placeholder={placeholder}
         required
         minLength={minLength}
+        maxLength={72}
         autoComplete={autoComplete}
         className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 pr-16 text-sm outline-none focus:border-neutral-400"
       />

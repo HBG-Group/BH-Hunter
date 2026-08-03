@@ -24,7 +24,7 @@ interface Props {
 const studentLinks: MenuLink[] = [
   { href: "/account", label: "My profile" },
   { href: "/account#favorites", label: "Favorites" },
-  { href: "/account#settings", label: "Settings" },
+  { href: "/settings", label: "Settings" },
   { href: "/cookies#manage", label: "Cookie settings" },
 ];
 
