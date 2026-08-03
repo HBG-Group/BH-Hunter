@@ -22,6 +22,8 @@ import { maybeNotifyRoomAvailable } from "@/services/notifications";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
 import { guarded, reportError } from "@/lib/security/errors";
 import { getListingQuota } from "@/lib/owner/billing";
+import { getOwnerRoomEntitlement } from "@/lib/owner/entitlements";
+import { notifyAdmins } from "@/lib/db/admin-notifications";
 
 export interface ListingFormState {
   error?: string;
@@ -61,6 +63,11 @@ export async function createListingAction(
   const result = parsePayload(formData);
   if (!result.ok) return { error: result.error };
 
+  const entitlement = await getOwnerRoomEntitlement(owner.id);
+  if (result.data.rooms.length > entitlement.roomLimit) {
+    return { error: `${entitlement.planName} allows up to ${entitlement.roomLimit} rooms per listing.` };
+  }
+
   // Hard gate at the free limit: extra listings must be arranged with the admin, so we
   // never let the 6th+ listing through the server action regardless of the client UI.
   const quota = await getListingQuota(owner.id);
@@ -95,6 +102,11 @@ export async function updateListingAction(
 
   const result = parsePayload(formData);
   if (!result.ok) return { error: result.error };
+
+  const entitlement = await getOwnerRoomEntitlement(owner.id);
+  if (result.data.rooms.length > entitlement.roomLimit) {
+    return { error: `${entitlement.planName} allows up to ${entitlement.roomLimit} rooms per listing.` };
+  }
 
   // Compare availability before/after so we can alert students when a room opens up.
   const before = await findOwnerListing(owner.id, id);
@@ -186,6 +198,13 @@ export async function setStatusAction(
   // Pulling a listing back to DRAFT drops it out of the public set; either direction
   // can leave the published/listing caches stale otherwise.
   await invalidate("listings:published", `listing:${existing.slug}`, `metrics:owner:${owner.id}`);
+  if (status === "PENDING") {
+    await notifyAdmins({
+      type: "LISTING_REVIEW",
+      title: "Listing submitted for review",
+      body: `${existing.name} was submitted by ${owner.fullName}.`,
+    });
+  }
 
   revalidatePath("/owner");
   return {};

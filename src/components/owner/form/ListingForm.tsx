@@ -16,6 +16,8 @@ interface Props {
   action: FormAction;
   initialValues?: ListingFormValues;
   submitLabel: string;
+  roomLimit?: number;
+  planName?: string;
   // Tutorial sandbox: render the real form but never submit to the server.
   tutorial?: boolean;
 }
@@ -42,7 +44,7 @@ function Section({
 
 // The create/edit form. It keeps the whole listing in React state and submits it as
 // one JSON payload, so the server validates a single well-formed object.
-export function ListingForm({ action, initialValues, submitLabel, tutorial = false }: Props) {
+export function ListingForm({ action, initialValues, submitLabel, tutorial = false, roomLimit = 2, planName = "Default" }: Props) {
   const [values, setValues] = useState<ListingFormValues>(initialValues ?? emptyListingForm());
   const [state, formAction, pending] = useActionState(action, {});
 
@@ -91,10 +93,10 @@ export function ListingForm({ action, initialValues, submitLabel, tutorial = fal
 
       <Section
         title="Rooms"
-        description="The vacancy students see is calculated from these rooms, so keep them accurate."
+        description={`${planName} allows up to ${roomLimit} rooms per listing. Vacancy is calculated from these rooms, so keep them accurate.`}
         tour="lf-rooms"
       >
-        <RoomsEditor rooms={values.rooms} onChange={(rooms) => update({ rooms })} />
+        <RoomsEditor rooms={values.rooms} roomLimit={roomLimit} onChange={(rooms) => update({ rooms })} />
       </Section>
 
       {/* Sticky submit so it stays reachable on long forms. Hidden during the tutorial —

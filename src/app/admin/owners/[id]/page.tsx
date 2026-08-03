@@ -92,6 +92,24 @@ export default async function AdminOwnerDetailPage({ params }: PageProps) {
           </ul>
         )}
       </section>
+
+      <section className="rounded-2xl border border-neutral-200 bg-white p-5">
+        <h2 className="text-sm font-semibold text-neutral-900">Subscription history</h2>
+        {owner.subscriptionEvents.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-500">No subscription or payment activity yet.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-neutral-100">
+            {owner.subscriptionEvents.map((event) => (
+              <li key={event.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                <span className="font-medium text-neutral-900">
+                  {event.eventType.replaceAll("_", " ")} · {event.plan}
+                </span>
+                <span className="text-neutral-500">{event.status} · {dateLabel(event.createdAt)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { Logo } from "@/components/brand/Logo";
 import { AdminLogin } from "@/components/admin/AdminLogin";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { AdminNotifications } from "@/components/admin/AdminNotifications";
+import { findAdminNotifications } from "@/lib/db/admin-notifications";
 
 // Keep the admin area out of search engines.
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -19,6 +21,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     return <AdminLogin denied={profile !== null} />;
   }
 
+  const notifications = await findAdminNotifications(profile.id);
+
   return (
     <div className="min-h-screen bg-canvas">
       <header className="border-b border-line bg-white">
@@ -27,14 +31,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Logo href="/admin" label="Admin" />
             <AdminNav />
           </div>
-          <ProfileMenu
-            name={profile.fullName}
-            avatarUrl={profile.avatarUrl}
-            links={[
-              { href: "/", label: "Back to site" },
-              { href: "/admin", label: "Overview" },
-            ]}
-          />
+          <div className="flex items-center gap-1">
+            <AdminNotifications notifications={notifications.map((notification) => ({
+              ...notification,
+              createdAt: notification.createdAt.toISOString(),
+              readAt: notification.readAt?.toISOString() ?? null,
+            }))} />
+            <ProfileMenu
+              name={profile.fullName}
+              avatarUrl={profile.avatarUrl}
+              links={[
+                { href: "/", label: "Back to site" },
+                { href: "/admin", label: "Overview" },
+              ]}
+            />
+          </div>
         </div>
       </header>
 

@@ -27,6 +27,7 @@ import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
 import { RECENT_AUTH_REQUIRED, requireRecentAuth } from "@/lib/security/recent-auth";
 import { removeListingPhoto } from "@/lib/storage/photos";
 import { checkListingPhotos } from "@/services/photo-requirements";
+import { markAdminNotificationRead } from "@/lib/db/admin-notifications";
 
 type Result = { error?: string };
 
@@ -34,6 +35,14 @@ function revalidateAdmin() {
   revalidatePath("/admin");
   revalidatePath("/admin/listings");
   revalidatePath("/admin/owners");
+}
+
+export async function markAdminNotificationReadAction(notificationId: string): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  await markAdminNotificationRead(admin.id, notificationId);
+  revalidatePath("/admin", "layout");
+  return {};
 }
 
 // Admin verify/publish/feature/delete all change what the public sees for a listing —
@@ -316,7 +325,7 @@ export async function setOwnerPlanAction(ownerId: string, plan: string): Promise
   return guarded<Result>(
     "setOwnerPlan",
     async () => {
-      const ok = await setOwnerPlan(ownerId, plan as OwnerPlanId);
+      const ok = await setOwnerPlan(ownerId, plan as OwnerPlanId, admin.id);
       if (!ok) return { error: "That owner no longer exists." };
       await logSecurityEvent({
         action: "admin.setOwnerPlan",
