@@ -44,7 +44,7 @@ const FAQ: { question: string; answer: string }[] = [
   {
     question: "How do I report a fake listing or a scam?",
     answer:
-      "Open the listing and use the Report action, or email us with the listing link and what happened.",
+      "Email us with the listing link and what happened, and we'll take a look.",
   },
   {
     question: "How do I delete my account?",
@@ -94,18 +94,6 @@ export default function ContactPage() {
               Messenger:{" "}
               <a href={ADMIN_CONTACT.messenger} target="_blank" rel="noopener noreferrer" className="text-primary underline">
                 Message us
-              </a>
-            </li>
-            <li>
-              Security issue?{" "}
-              <Link href="/security" className="text-primary underline">
-                See our Security page
-              </Link>
-            </li>
-            <li>
-              Found a bug?{" "}
-              <a href={`mailto:${ADMIN_CONTACT.email}?subject=Bug report`} className="text-primary underline">
-                Report it
               </a>
             </li>
           </ul>

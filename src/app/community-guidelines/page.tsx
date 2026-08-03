@@ -67,12 +67,12 @@ export default function CommunityGuidelinesPage() {
           <h2 className="text-lg font-semibold text-ink">Consequences</h2>
           <p className="mt-2 leading-relaxed text-muted">
             Violating these guidelines can result in content removal, a review-message warning, a
-            temporary account freeze, or permanent removal from Meino, depending on severity. You
-            can report a listing, review, owner, or student that breaks these rules — see our{" "}
+            temporary account freeze, or permanent removal from Meino, depending on severity. If a
+            listing, review, owner, or student is breaking these rules, let us know through our{" "}
             <Link href="/contact" className="text-primary underline hover:text-primary-hover">
               Contact page
-            </Link>{" "}
-            or use the Report action where it appears in the product.
+            </Link>
+            .
           </p>
         </section>
 

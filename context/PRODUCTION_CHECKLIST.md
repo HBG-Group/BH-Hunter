@@ -122,8 +122,7 @@ missing var fails the build, per `CLAUDE.md`.
    RLS + revoke run manually for any new table.
 4. Confirm `config/billing.ts` → `BILLING_ENABLED` matches the intended launch phase
    (Phase 1 = free, stays `false`).
-5. Smoke test: sign up, browse, favorite, request a viewing, leave a review, file a
-   report, sign in as admin and resolve it.
+5. Smoke test: sign up, browse, favorite, request a viewing, leave a review.
 6. Confirm the cookie banner appears once, Accept/Reject/Customize all work, and
    `/cookies`, `/privacy`, `/terms`, `/community-guidelines`, `/copyright`, `/contact`
    all render.
@@ -136,15 +135,11 @@ missing var fails the build, per `CLAUDE.md`.
       verified/published by an admin, confirm vacancy, view analytics, request
       verification badge.
 - [ ] Admin: verify + publish a listing, feature a listing, assign a plan, freeze/
-      unfreeze an owner, delete a review, resolve a report, approve/reject a
-      verification request, read the audit log.
-- [ ] Reporting: file a report as a student against a listing/review/owner and as an
-      owner against a student; confirm it appears in `/admin/reports` and resolving
-      it updates the audit log.
-- [ ] Accessibility: keyboard-only pass through the cookie banner, report modal, and
-      sign-in modal; screen-reader spot check on the legal pages.
-- [ ] Mobile: header nav, cookie banner, footer, and report modal all usable on a
-      small viewport.
+      unfreeze an owner, delete a review, approve/reject a verification request, read
+      the audit log.
+- [ ] Accessibility: keyboard-only pass through the cookie banner and sign-in modal;
+      screen-reader spot check on the legal pages.
+- [ ] Mobile: header nav, cookie banner, and footer all usable on a small viewport.
 
 ## Rollback plan
 

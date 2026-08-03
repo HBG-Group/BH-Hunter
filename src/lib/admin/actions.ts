@@ -19,8 +19,6 @@ import {
 } from "@/lib/db/admin";
 import { deleteAccountCompletely } from "@/lib/account/deletion";
 import { listingExists } from "@/lib/db/listing-guards";
-import { resolveReport } from "@/lib/db/report";
-import { resolveReportSchema } from "@/lib/validation/report";
 import { guarded } from "@/lib/security/errors";
 import { logSecurityEvent } from "@/lib/security/events";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
@@ -416,48 +414,6 @@ export async function deleteReviewAction(id: string): Promise<Result> {
         targetId: id,
       });
       revalidatePath("/admin/reviews");
-      return {};
-    },
-    (message) => ({ error: message }),
-  );
-}
-
-// Resolve or dismiss a user-filed report.
-export async function resolveReportAction(
-  id: string,
-  status: "RESOLVED" | "DISMISSED",
-  resolution?: string,
-): Promise<Result> {
-  const admin = await requireAdmin();
-  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
-  const parsed = resolveReportSchema.safeParse({ status, resolution });
-  if (!parsed.success) return { error: "Please check the resolution details." };
-  const recent = await ensureRecentAdminAuth(admin.id, "report", id, "admin.resolveReport");
-  if (recent) return recent;
-
-  return guarded<Result>(
-    "resolveReport",
-    async () => {
-      const ok = await resolveReport(id, admin.id, parsed.data.status, parsed.data.resolution);
-      if (!ok) return { error: "That report no longer exists or was already resolved." };
-
-      await logSecurityEvent({
-        action: "admin.resolveReport",
-        outcome: "allowed",
-        actorId: admin.id,
-        actorRole: admin.role,
-        targetType: "report",
-        targetId: id,
-        detail: parsed.data.status,
-      });
-      await recordModerationEvent({
-        actorId: admin.id,
-        action: "REPORT_RESOLUTION",
-        targetType: "report",
-        targetId: id,
-        detail: parsed.data.status,
-      });
-      revalidatePath("/admin/reports");
       return {};
     },
     (message) => ({ error: message }),

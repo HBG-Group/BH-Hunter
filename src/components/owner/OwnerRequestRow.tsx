@@ -2,12 +2,10 @@
 
 import { useTransition } from "react";
 import { confirmViewingRequestAction, deleteViewingRequestAction } from "@/lib/owner/actions";
-import { ReportButton } from "@/components/reports/ReportButton";
 
 export interface OwnerRequestView {
   id: string;
   listingName: string;
-  studentId: string;
   studentName: string;
   studentEmail: string;
   studentPhone: string | null;
@@ -82,12 +80,6 @@ export function OwnerRequestRow({ request }: { request: OwnerRequestView }) {
         >
           {pending ? "…" : "Delete"}
         </button>
-        <ReportButton
-          targetType="STUDENT"
-          targetId={request.studentId}
-          label="Report student"
-          className="ml-auto rounded-lg px-3 py-1.5 text-xs font-medium text-muted ring-1 ring-inset ring-line hover:ring-neutral-300"
-        />
       </div>
     </div>
   );

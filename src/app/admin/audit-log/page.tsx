@@ -16,7 +16,6 @@ const ACTION_LABELS: Record<string, string> = {
   ADVERTISEMENT_CREATION: "Ad created",
   ADVERTISEMENT_STATUS: "Ad status changed",
   ADVERTISEMENT_DELETION: "Ad deleted",
-  REPORT_RESOLUTION: "Report resolved",
 };
 
 // Read-only — every admin action already writes here via recordModerationEvent().

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
-import { ADMIN_CONTACT } from "@/config/support";
 
 const LEGAL_LINKS = [
   { href: "/privacy", label: "Privacy Policy" },
@@ -14,11 +13,6 @@ const COMPANY_LINKS = [
   { href: "/about", label: "About" },
   { href: "/pricing", label: "Pricing" },
   { href: "/contact", label: "Contact" },
-];
-
-const REPORT_LINKS = [
-  { href: `mailto:${ADMIN_CONTACT.email}?subject=Bug report`, label: "Report a bug" },
-  { href: "/security", label: "Report a security issue" },
 ];
 
 // Global footer with every legal/policy link the roadmap calls for. Rendered once in
@@ -48,31 +42,17 @@ export function SiteFooter() {
             </ul>
           </div>
 
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <p className="text-sm font-semibold text-ink">Company</p>
-              <ul className="mt-3 space-y-2">
-                {COMPANY_LINKS.map((link) => (
-                  <li key={link.href}>
-                    <Link href={link.href} className="text-sm text-muted hover:text-ink">
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-ink">Report</p>
-              <ul className="mt-3 space-y-2">
-                {REPORT_LINKS.map((link) => (
-                  <li key={link.href}>
-                    <a href={link.href} className="text-sm text-muted hover:text-ink">
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div>
+            <p className="text-sm font-semibold text-ink">Company</p>
+            <ul className="mt-3 space-y-2">
+              {COMPANY_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-sm text-muted hover:text-ink">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 

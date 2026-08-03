@@ -19,7 +19,6 @@ import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { VerifiedOwnerBadge } from "@/components/ui/VerifiedOwnerBadge";
 import { Stars } from "@/components/ui/Stars";
 import { FavoriteButton } from "@/components/student/FavoriteButton";
-import { ReportButton } from "@/components/reports/ReportButton";
 import { findBoardingHouseBySlug } from "@/lib/db/boarding-houses";
 import { findReviews, findStudentReview, getRatingSummary } from "@/lib/db/reviews";
 import { findConfirmedViewingDates } from "@/lib/db/viewing-requests";
@@ -173,7 +172,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
             </Section>
 
             <Section id="reviews" title="Reviews">
-              <ReviewList summary={summary} reviews={reviews} isAuthenticated={profile !== null} />
+              <ReviewList summary={summary} reviews={reviews} />
               {profile ? (
                 <ReviewForm action={submitReviewAction.bind(null, target)} slug={slug} existing={myReview} />
               ) : (
@@ -202,17 +201,9 @@ export default async function ListingDetailPage({ params }: PageProps) {
               <span className="text-sm text-muted">
                 Listed by <span className="font-medium text-ink">{listing.ownerName}</span>
               </span>
-              <div className="flex items-center gap-2">
-                {listing.ownerVerified && <VerifiedOwnerBadge compact />}
-                {profile && <ReportButton targetType="OWNER" targetId={row.ownerId} label="Report owner" />}
-              </div>
+              {listing.ownerVerified && <VerifiedOwnerBadge compact />}
             </div>
             <ContactPanel listing={listing} />
-            {profile && (
-              <div className="text-right">
-                <ReportButton targetType="LISTING" targetId={row.id} label="Report this listing" />
-              </div>
-            )}
             {profile ? (
               <ViewingRequestForm action={requestViewingAction.bind(null, target)} />
             ) : (

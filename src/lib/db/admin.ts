@@ -24,11 +24,10 @@ export interface PlatformStats {
   students: number;
   reviews: number;
   viewingRequests: number;
-  openReports: number;
 }
 
 export async function getPlatformStats(): Promise<PlatformStats> {
-  const [listings, published, unverified, owners, students, reviews, viewingRequests, openReports] =
+  const [listings, published, unverified, owners, students, reviews, viewingRequests] =
     await Promise.all([
       prisma.boardingHouse.count(),
       prisma.boardingHouse.count({ where: { status: "PUBLISHED" } }),
@@ -37,10 +36,9 @@ export async function getPlatformStats(): Promise<PlatformStats> {
       prisma.profile.count({ where: { role: "STUDENT" } }),
       prisma.review.count(),
       prisma.viewingRequest.count(),
-      prisma.report.count({ where: { status: "OPEN" } }),
     ]);
 
-  return { listings, published, unverified, owners, students, reviews, viewingRequests, openReports };
+  return { listings, published, unverified, owners, students, reviews, viewingRequests };
 }
 
 const adminListingSelect = {
