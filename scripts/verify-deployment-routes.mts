@@ -9,10 +9,16 @@
 const deploymentUrl = process.env.DEPLOY_URL ?? process.env.SECURITY_CHECK_URL;
 
 if (!deploymentUrl) {
-  throw new Error("Set DEPLOY_URL (or SECURITY_CHECK_URL) to the deployment origin to check");
+  throw new Error(
+    "Set DEPLOY_URL (or SECURITY_CHECK_URL) to the deployment origin to check",
+  );
 }
 
 const origin = new URL(deploymentUrl);
+const isAdminSurface =
+  origin.hostname === "meinocontrol.vercel.app" ||
+  (origin.hostname.startsWith("meinocontrol-") &&
+    origin.hostname.endsWith(".vercel.app"));
 
 // Public routes that must always resolve for a guest.
 const PUBLIC_ROUTES = [
@@ -32,6 +38,8 @@ const PUBLIC_ROUTES = [
   "/sitemap.xml",
   "/robots.txt",
   "/manifest.webmanifest",
+  "/map",
+  "/forgot-password",
   // These must be protected routes, not missing routes. A redirect to sign-in is
   // accepted by the checker; a 404/5xx blocks release promotion.
   "/onboarding",
@@ -39,18 +47,53 @@ const PUBLIC_ROUTES = [
   "/subscribe/basic",
 ];
 
-async function check(path: string): Promise<{ path: string; status: number; ok: boolean }> {
+const ADMIN_ROUTES = ["/", "/admin", "/admin/owners", "/admin/notifications"];
+const ADMIN_FORBIDDEN_PUBLIC_ROUTES = [
+  "/signup",
+  "/login",
+  "/list-your-property",
+  "/map",
+];
+
+async function check(
+  path: string,
+): Promise<{ path: string; status: number; ok: boolean }> {
   const url = new URL(path, origin);
   const response = await fetch(url, { redirect: "manual" });
   // A redirect (e.g. to /login) is a legitimate outcome for gated routes; only 404/5xx fail.
-  const ok = response.status < 400 || (response.status >= 300 && response.status < 400);
+  const ok =
+    response.status < 400 || (response.status >= 300 && response.status < 400);
   return { path, status: response.status, ok };
 }
 
-const results = await Promise.all(PUBLIC_ROUTES.map(check));
+async function checkNotFound(
+  path: string,
+): Promise<{ path: string; status: number; ok: boolean }> {
+  const url = new URL(path, origin);
+  const response = await fetch(url, { redirect: "manual" });
+  return { path, status: response.status, ok: response.status === 404 };
+}
+
+const results = isAdminSurface
+  ? await Promise.all([
+      ...ADMIN_ROUTES.map(check),
+      ...ADMIN_FORBIDDEN_PUBLIC_ROUTES.map(checkNotFound),
+    ])
+  : await Promise.all([...PUBLIC_ROUTES.map(check), checkNotFound("/admin")]);
 const failures = results.filter((r) => !r.ok);
 
-console.log(JSON.stringify({ url: origin.href, checked: results.length, failures }, null, 2));
+console.log(
+  JSON.stringify(
+    {
+      url: origin.href,
+      surface: isAdminSurface ? "admin" : "public",
+      checked: results.length,
+      failures,
+    },
+    null,
+    2,
+  ),
+);
 
 if (failures.length > 0) {
   throw new Error(

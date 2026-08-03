@@ -13,6 +13,8 @@ import {
   countImages,
   deleteImagesForOwner,
   imageUrlExists,
+  reorderImagesForOwner,
+  updateImageAltForOwner,
 } from "@/lib/db/images";
 import { findOwnerListing } from "@/lib/db/owner";
 import { guarded } from "@/lib/security/errors";
@@ -41,11 +43,14 @@ import {
   publicPhotoUrl,
   removeListingPhoto,
 } from "@/lib/storage/photos";
+import { normalizeUserText } from "@/lib/validation/text";
 
 export interface PhotoFormState {
   error?: string;
   success?: boolean;
 }
+
+const MAX_ALT_LENGTH = 160;
 
 export interface UploadTicket {
   fileName: string;
@@ -197,4 +202,42 @@ export async function deletePhotosAction(
     },
     (message) => ({ error: message }),
   );
+}
+
+export async function updatePhotoAltAction(
+  boardingHouseId: string,
+  imageId: string,
+  formData: FormData,
+): Promise<void> {
+  const owner = await requireWritableOwner();
+  if (!(await allow("write", LIMITS.write, owner.id))) return;
+  const raw = normalizeUserText(String(formData.get("alt") ?? "")).trim();
+  const alt = raw.length === 0 ? null : raw;
+  if (alt && alt.length > MAX_ALT_LENGTH) return;
+
+  await updateImageAltForOwner(owner.id, boardingHouseId, imageId, alt);
+  revalidatePath(`/owner/listings/${boardingHouseId}/photos`);
+}
+
+export async function reorderPhotosAction(
+  boardingHouseId: string,
+  imageIds: string[],
+): Promise<PhotoFormState> {
+  const owner = await requireWritableOwner();
+  if (!(await allow("write", LIMITS.write, owner.id)))
+    return { error: RATE_LIMITED };
+  if (
+    !Array.isArray(imageIds) ||
+    imageIds.length === 0 ||
+    imageIds.length > 50 ||
+    imageIds.some((id) => typeof id !== "string" || id.length > 64)
+  ) {
+    return { error: "That photo order could not be saved." };
+  }
+
+  const ok = await reorderImagesForOwner(owner.id, boardingHouseId, imageIds);
+  if (!ok) return { error: "That photo order could not be saved." };
+  revalidatePath(`/owner/listings/${boardingHouseId}/photos`);
+  revalidatePath("/owner");
+  return { success: true };
 }

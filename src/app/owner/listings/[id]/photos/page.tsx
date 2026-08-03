@@ -28,7 +28,11 @@ export default async function ListingPhotosPage({ params }: PageProps) {
 
       <PhotoManager
         boardingHouseId={id}
-        images={images.map((image) => ({ id: image.id, url: image.url }))}
+        images={images.map((image) => ({
+          id: image.id,
+          url: image.url,
+          alt: image.alt,
+        }))}
       />
     </div>
   );

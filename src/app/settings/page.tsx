@@ -57,6 +57,17 @@ export default async function SettingsPage() {
           </div>
         </section>
         <section className="grid gap-3 sm:grid-cols-2">
+          {profile.role === "STUDENT" && (
+            <Link
+              href="/account#favorites"
+              className="rounded-2xl border border-line bg-white p-5 hover:border-neutral-300"
+            >
+              <span className="font-semibold text-ink">Saved listings</span>
+              <span className="mt-1 block text-sm text-muted">
+                Review and compare the places you saved.
+              </span>
+            </Link>
+          )}
           <Link
             href="/account/privacy"
             className="rounded-2xl border border-line bg-white p-5 hover:border-neutral-300"

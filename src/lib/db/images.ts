@@ -14,7 +14,10 @@ export function countImages(boardingHouseId: string) {
   return prisma.image.count({ where: { boardingHouseId } });
 }
 
-async function ownsListing(ownerId: string, boardingHouseId: string): Promise<boolean> {
+async function ownsListing(
+  ownerId: string,
+  boardingHouseId: string,
+): Promise<boolean> {
   const listing = await prisma.boardingHouse.findFirst({
     where: { id: boardingHouseId, ownerId },
     select: { id: true },
@@ -45,7 +48,10 @@ export async function addImageForOwner(
 
 // True when this exact object has already been registered — blocks ticket replay.
 export async function imageUrlExists(url: string): Promise<boolean> {
-  const existing = await prisma.image.findFirst({ where: { url }, select: { id: true } });
+  const existing = await prisma.image.findFirst({
+    where: { url },
+    select: { id: true },
+  });
   return existing !== null;
 }
 
@@ -57,11 +63,55 @@ export async function deleteImagesForOwner(
   imageIds: string[],
 ): Promise<string[]> {
   const images = await prisma.image.findMany({
-    where: { id: { in: imageIds }, boardingHouseId, boardingHouse: { ownerId } },
+    where: {
+      id: { in: imageIds },
+      boardingHouseId,
+      boardingHouse: { ownerId },
+    },
     select: { id: true, url: true },
   });
   if (images.length === 0) return [];
 
-  await prisma.image.deleteMany({ where: { id: { in: images.map((image) => image.id) } } });
+  await prisma.image.deleteMany({
+    where: { id: { in: images.map((image) => image.id) } },
+  });
   return images.map((image) => image.url);
+}
+
+export async function updateImageAltForOwner(
+  ownerId: string,
+  boardingHouseId: string,
+  imageId: string,
+  alt: string | null,
+): Promise<boolean> {
+  const result = await prisma.image.updateMany({
+    where: { id: imageId, boardingHouseId, boardingHouse: { ownerId } },
+    data: { alt },
+  });
+  return result.count === 1;
+}
+
+export async function reorderImagesForOwner(
+  ownerId: string,
+  boardingHouseId: string,
+  imageIds: string[],
+): Promise<boolean> {
+  const uniqueIds = [...new Set(imageIds)];
+  if (uniqueIds.length !== imageIds.length) return false;
+
+  const owned = await prisma.image.count({
+    where: {
+      id: { in: uniqueIds },
+      boardingHouseId,
+      boardingHouse: { ownerId },
+    },
+  });
+  if (owned !== uniqueIds.length) return false;
+
+  await prisma.$transaction(
+    uniqueIds.map((id, sortOrder) =>
+      prisma.image.update({ where: { id }, data: { sortOrder } }),
+    ),
+  );
+  return true;
 }
