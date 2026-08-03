@@ -28,8 +28,8 @@ const contactNumberSchema = z.object({
     .string()
     .trim()
     .transform((value) => value.replace(/\D/g, ""))
-    .refine((digits) => digits.length >= 7 && digits.length <= PHONE_MAX_DIGITS, {
-      message: `Enter 7–${PHONE_MAX_DIGITS} digits, e.g. 09171234567`,
+    .refine((digits) => /^09\d{9}$/.test(digits), {
+      message: "Enter a valid PH mobile number, e.g. 09171234567",
     }),
   carrier: z.string().trim().max(CARRIER_MAX_LENGTH, "Carrier name is too long").default(""),
 }).strict();

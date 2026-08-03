@@ -18,9 +18,10 @@ async function loadHomeData() {
   try {
     return await resilientRead(
       async () => {
-        const rows = await findPublishedBoardingHouses();
+        // Independent reads — the listings query doesn't depend on who's signed in, so
+        // run them together instead of one after the other.
+        const [rows, profile] = await Promise.all([findPublishedBoardingHouses(), getCurrentProfile()]);
         const listings = toListingCards(rows);
-        const profile = await getCurrentProfile();
         const favoritedIds = profile ? await getFavoriteIds(profile.id) : [];
 
         return { listings, favoritedIds, isAuthenticated: profile !== null };

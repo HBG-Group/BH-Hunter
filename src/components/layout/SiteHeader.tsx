@@ -16,7 +16,7 @@ export async function SiteHeader() {
     <header className="sticky top-0 z-[1100] border-b border-neutral-200/70 bg-white/80 backdrop-blur-md">
       <div className="relative mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-6">
-          <MobileMenu links={navLinks} />
+          <MobileMenu links={navLinks} role={profile?.role} />
           <Logo />
           <nav className="hidden items-center gap-5 text-sm text-neutral-600 sm:flex">
             {navLinks.map((link) => (

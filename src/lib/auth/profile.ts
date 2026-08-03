@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { Profile } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
@@ -6,8 +7,10 @@ import { safeRedirectPath } from "@/lib/security/redirect";
 import { hasRole } from "@/lib/auth/authorization-core";
 import { resilientRead } from "@/lib/async/resilient-read";
 
-// The Supabase auth user for this request, or null if signed out.
-export async function getCurrentUser() {
+// The Supabase auth user for this request, or null if signed out. `cache()` dedupes
+// this within a single request — SiteHeader and the page it wraps both call the auth
+// chain, and without this every page paid for the Supabase round trip twice.
+export const getCurrentUser = cache(async () => {
   return resilientRead(async () => {
     const supabase = await createSupabaseServerClient();
     const {
@@ -15,7 +18,7 @@ export async function getCurrentUser() {
     } = await supabase.auth.getUser();
     return user;
   }, { timeoutMessage: "Authentication lookup exceeded five seconds" });
-}
+});
 
 // Our own Profile row for the signed-in user. Created on first access so a Supabase
 // account always has a matching profile without needing a database trigger.
@@ -27,9 +30,11 @@ export async function getCurrentProfile(roleHint?: "OWNER" | "STUDENT"): Promise
 // Like getCurrentProfile, but reports whether the row was created just now — the signal
 // the OAuth callback uses to send genuinely first-time users through onboarding. Dedupes
 // by id then email, so the same person signing in a second way never gets a duplicate.
-export async function ensureProfileForCurrentUser(
+// Cached per request+roleHint so repeated calls (page + header + nested components)
+// share one lookup instead of re-querying Supabase Auth and Prisma each time.
+export const ensureProfileForCurrentUser = cache(async (
   roleHint?: "OWNER" | "STUDENT",
-): Promise<{ profile: Profile; created: boolean } | null> {
+): Promise<{ profile: Profile; created: boolean } | null> => {
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -63,7 +68,7 @@ export async function ensureProfileForCurrentUser(
     },
   });
   return { profile, created: true };
-}
+});
 
 // Shown to a frozen owner across the dashboard and returned from blocked write actions.
 export const FROZEN_OWNER_MESSAGE =

@@ -31,18 +31,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen bg-canvas">
       <header className="border-b border-line bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-6">
-            <Logo href="/admin" label="Admin" />
-            <nav className="flex items-center gap-4 text-sm text-neutral-600">
-              {navLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="hover:text-neutral-900">
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+          <Logo href="/admin" label="Admin" />
           <ProfileMenu
             name={profile.fullName}
             avatarUrl={profile.avatarUrl}
@@ -52,6 +42,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             ]}
           />
         </div>
+        <nav className="mx-auto flex max-w-5xl items-center gap-4 overflow-x-auto px-4 pb-3 text-sm text-neutral-600">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="shrink-0 hover:text-neutral-900"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>

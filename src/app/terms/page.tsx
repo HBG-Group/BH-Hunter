@@ -57,7 +57,12 @@ export default function TermsPage() {
     <div className="min-h-screen bg-canvas">
       <SiteHeader />
       <main className="mx-auto max-w-3xl px-4 py-12">
-        <h1 className="text-3xl font-semibold tracking-tight text-ink">Terms &amp; Conditions</h1>
+        <p className="text-sm">
+          <Link href="/" className="text-primary underline hover:text-primary-hover">
+            ← Back
+          </Link>
+        </p>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink">Terms &amp; Conditions</h1>
         <p className="mt-2 text-sm text-muted">Last updated: {LAST_UPDATED}</p>
 
         <div className="mt-8 space-y-8">

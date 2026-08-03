@@ -44,6 +44,14 @@ export function AuthForm({ mode, action, next, role, showFooter = true, agreed }
       <input name="email" type="email" placeholder="Email" required className={fieldClass} />
       <PasswordField />
 
+      {!isSignUp && (
+        <p className="text-xs text-neutral-500">
+          Password reset is coming soon — please double-check your email and password
+          before signing in. After 5 incorrect attempts you&apos;ll be locked out for 30
+          seconds.
+        </p>
+      )}
+
       {state.error && <p className="text-sm text-rose-600">{state.error}</p>}
       {state.notice && <p className="text-sm text-emerald-600">{state.notice}</p>}
 

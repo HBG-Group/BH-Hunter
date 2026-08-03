@@ -13,7 +13,7 @@ export function Pill({ label, active, onClick }: Props) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors duration-150 ${
+      className={`flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-sm font-medium transition-colors duration-150 ${
         active
           ? "bg-primary text-white"
           : "bg-white text-muted ring-1 ring-inset ring-line hover:ring-neutral-300"

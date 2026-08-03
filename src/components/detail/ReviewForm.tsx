@@ -45,9 +45,15 @@ export function ReviewForm({ action, slug, existing }: Props) {
             <span className="text-neutral-600">{aspect.label}</span>
             <select
               name={aspect.key}
-              defaultValue={String(existing?.[aspect.key] ?? 5)}
+              required
+              defaultValue={existing ? String(existing[aspect.key]) : ""}
               className="rounded-lg border border-neutral-200 px-2 py-1 text-sm outline-none focus:border-neutral-400"
             >
+              {!existing && (
+                <option value="" disabled>
+                  Rate
+                </option>
+              )}
               {[5, 4, 3, 2, 1].map((value) => (
                 <option key={value} value={value}>
                   {value}

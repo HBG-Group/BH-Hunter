@@ -98,11 +98,12 @@ extended expiries, traversal and malformed claims are all rejected.
 
 ### Publishing gate
 
-`MIN_LISTING_PHOTOS = 5`, enforced at four levels: the owner's submit-for-review action,
+`MIN_LISTING_PHOTOS = 3`, enforced at four levels: the owner's submit-for-review action,
 the admin publish action, image registration, and **Storage verification** —
 `checkListingPhotos()` counts only photos that genuinely exist in the bucket and hold
 allowed image bytes. Fabricated `Image` rows cannot satisfy the minimum. Progress is
-shown as `N / 5 uploaded`.
+shown as `N / 3 uploaded`. Beyond that, `RECOMMENDED_MAX_LISTING_PHOTOS = 7` is shown
+as soft guidance only — it is not enforced.
 
 ### Authorization
 

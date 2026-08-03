@@ -77,13 +77,17 @@ function Section({ id, title, children }: { id: string; title: string; children:
 
 export default async function ListingDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const row = await resilientRead(() => findBoardingHouseBySlug(slug));
+  // The listing lookup and the current session are independent — run them together
+  // instead of waiting on one before starting the other.
+  const [row, profile] = await Promise.all([
+    resilientRead(() => findBoardingHouseBySlug(slug)),
+    getCurrentProfile(),
+  ]);
   if (!row) notFound();
 
   const listing = toListingDetail(row);
   const target = { boardingHouseId: row.id, slug: row.slug };
 
-  const profile = await getCurrentProfile();
   const [reviewRows, summary, favoriteIds, myReview, viewingDates] = await resilientRead(() => Promise.all([
     findReviews(row.id),
     getRatingSummary(row.id),

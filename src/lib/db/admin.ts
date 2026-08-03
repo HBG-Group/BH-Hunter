@@ -7,6 +7,7 @@ import type { ModerationAction } from "@prisma/client";
 import { verificationExpiry } from "@/lib/owner/verification";
 import { subscriptionExpiry } from "@/lib/owner/subscription";
 import { PLANS } from "@/config/pricing";
+import { cached } from "@/lib/cache/redis";
 
 export type OwnerPlanId = "BASIC" | "ADVANCE" | "PREMIUM";
 
@@ -27,18 +28,20 @@ export interface PlatformStats {
 }
 
 export async function getPlatformStats(): Promise<PlatformStats> {
-  const [listings, published, unverified, owners, students, reviews, viewingRequests] =
-    await Promise.all([
-      prisma.boardingHouse.count(),
-      prisma.boardingHouse.count({ where: { status: "PUBLISHED" } }),
-      prisma.boardingHouse.count({ where: { verifiedAt: null } }),
-      prisma.profile.count({ where: { role: "OWNER" } }),
-      prisma.profile.count({ where: { role: "STUDENT" } }),
-      prisma.review.count(),
-      prisma.viewingRequest.count(),
-    ]);
+  return cached("stats:platform", 900, async () => {
+    const [listings, published, unverified, owners, students, reviews, viewingRequests] =
+      await Promise.all([
+        prisma.boardingHouse.count(),
+        prisma.boardingHouse.count({ where: { status: "PUBLISHED" } }),
+        prisma.boardingHouse.count({ where: { verifiedAt: null } }),
+        prisma.profile.count({ where: { role: "OWNER" } }),
+        prisma.profile.count({ where: { role: "STUDENT" } }),
+        prisma.review.count(),
+        prisma.viewingRequest.count(),
+      ]);
 
-  return { listings, published, unverified, owners, students, reviews, viewingRequests };
+    return { listings, published, unverified, owners, students, reviews, viewingRequests };
+  });
 }
 
 const adminListingSelect = {
@@ -81,6 +84,15 @@ export function findAllListingsForAdmin(filter: AdminListingFilter = "all") {
     where,
     select: adminListingSelect,
     orderBy: { createdAt: "desc" },
+  });
+}
+
+// Cheap lookup used only to build cache-invalidation keys before a moderation write
+// (slug for `listing:{slug}`, ownerId for `metrics:owner:{ownerId}`).
+export function findListingSlugAndOwner(id: string) {
+  return prisma.boardingHouse.findUnique({
+    where: { id },
+    select: { slug: true, ownerId: true },
   });
 }
 
