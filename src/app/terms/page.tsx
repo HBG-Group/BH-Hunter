@@ -44,7 +44,7 @@ const SECTIONS: { heading: string; body: string }[] = [
   },
   {
     heading: "Limitation of liability",
-    body: "Meino is provided on an \"as is\" basis. To the extent permitted by law, we are not liable for any loss or damage arising from your use of the service or from any dealing between students and owners.",
+    body: 'Meino is provided on an "as is" basis. To the extent permitted by law, we are not liable for any loss or damage arising from your use of the service or from any dealing between students and owners.',
   },
   {
     heading: "Changes to these terms",
@@ -52,17 +52,35 @@ const SECTIONS: { heading: string; body: string }[] = [
   },
 ];
 
-export default function TermsPage() {
+function safeReturnPath(value: string | string[] | undefined): string {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return candidate?.startsWith("/") && !candidate.startsWith("//")
+    ? candidate
+    : "/";
+}
+
+export default async function TermsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ returnTo?: string | string[] }>;
+}) {
+  const returnTo = safeReturnPath((await searchParams).returnTo);
+
   return (
     <div className="min-h-screen bg-canvas">
       <SiteHeader />
       <main className="mx-auto max-w-3xl px-4 py-12">
         <p className="text-sm">
-          <Link href="/" className="text-primary underline hover:text-primary-hover">
+          <Link
+            href={returnTo}
+            className="text-primary underline hover:text-primary-hover"
+          >
             ← Back
           </Link>
         </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink">Terms &amp; Conditions</h1>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
+          Terms &amp; Conditions
+        </h1>
         <p className="mt-2 text-sm text-muted">Last updated: {LAST_UPDATED}</p>
 
         <div className="mt-8 space-y-8">
@@ -78,22 +96,31 @@ export default function TermsPage() {
 
         <p className="mt-8 text-sm leading-relaxed text-muted">
           For how we collect, store, and protect your information, see our{" "}
-          <Link href="/privacy" className="text-primary underline hover:text-primary-hover">
+          <Link
+            href="/privacy"
+            className="text-primary underline hover:text-primary-hover"
+          >
             Privacy Policy
           </Link>
           . Questions about these terms can be sent to{" "}
-          <a href={`mailto:${ADMIN_CONTACT.email}`} className="text-primary underline hover:text-primary-hover">
+          <a
+            href={`mailto:${ADMIN_CONTACT.email}`}
+            className="text-primary underline hover:text-primary-hover"
+          >
             {ADMIN_CONTACT.email}
           </a>{" "}
           or through our{" "}
-          <Link href="/contact" className="text-primary underline hover:text-primary-hover">
+          <Link
+            href="/contact"
+            className="text-primary underline hover:text-primary-hover"
+          >
             Contact page
           </Link>
           .
         </p>
 
         <p className="mt-12 text-sm text-muted">
-          <Link href="/" className="underline hover:text-ink">
+          <Link href={returnTo} className="underline hover:text-ink">
             Back to Meino
           </Link>
         </p>

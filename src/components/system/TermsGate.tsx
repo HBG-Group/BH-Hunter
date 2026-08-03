@@ -22,7 +22,10 @@ export function TermsGate() {
   useEffect(() => {
     // One-time read of the persisted choice; localStorage is only available on the client.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setGate({ ready: true, accepted: window.localStorage.getItem(STORAGE_KEY) === "true" });
+    setGate({
+      ready: true,
+      accepted: window.localStorage.getItem(STORAGE_KEY) === "true",
+    });
   }, []);
 
   const accept = () => {
@@ -63,18 +66,21 @@ export function TermsGate() {
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
             className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
           >
-            <h2 id="terms-gate-title" className="text-lg font-semibold text-neutral-900">
+            <h2
+              id="terms-gate-title"
+              className="text-lg font-semibold text-neutral-900"
+            >
               Welcome to Meino
             </h2>
             <p className="mt-2 text-sm text-neutral-500">
-              Before you continue, please read and agree to how Meino works. We help students
-              near VSU find boarding houses — we&apos;re not the landlord, and rental agreements
-              are made directly between you and the owner.
+              Before you continue, please read and agree to how Meino works. We
+              help students near VSU find boarding houses — we&apos;re not the
+              landlord, and rental agreements are made directly between you and
+              the owner.
             </p>
 
             <Link
-              href="/terms"
-              target="_blank"
+              href={`/terms?returnTo=${encodeURIComponent(pathname)}`}
               className="mt-3 inline-block text-sm font-medium text-primary underline hover:text-primary-hover"
             >
               Read the full Terms &amp; Conditions

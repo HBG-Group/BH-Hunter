@@ -25,6 +25,7 @@ const studentLinks: MenuLink[] = [
   { href: "/account", label: "My profile" },
   { href: "/account#favorites", label: "Favorites" },
   { href: "/account#settings", label: "Settings" },
+  { href: "/cookies#manage", label: "Cookie settings" },
 ];
 
 // The signed-in avatar with a dropdown. Closes on outside click.
@@ -42,7 +43,8 @@ export function ProfileMenu({
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(event.target as Node))
+        setOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);

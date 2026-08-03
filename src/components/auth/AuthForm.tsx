@@ -6,7 +6,10 @@ import { PasswordField } from "@/components/auth/PasswordField";
 import { Spinner } from "@/components/ui/Spinner";
 import type { AuthFormState } from "@/lib/auth/actions";
 
-type AuthAction = (state: AuthFormState, formData: FormData) => Promise<AuthFormState>;
+type AuthAction = (
+  state: AuthFormState,
+  formData: FormData,
+) => Promise<AuthFormState>;
 
 interface Props {
   mode: "signin" | "signup";
@@ -24,7 +27,14 @@ interface Props {
 const fieldClass =
   "w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-neutral-400";
 
-export function AuthForm({ mode, action, next, role, showFooter = true, agreed }: Props) {
+export function AuthForm({
+  mode,
+  action,
+  next,
+  role,
+  showFooter = true,
+  agreed,
+}: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   const isSignUp = mode === "signup";
   // Only gate on the terms box when the parent actually passes it (sign-up pages).
@@ -39,21 +49,38 @@ export function AuthForm({ mode, action, next, role, showFooter = true, agreed }
       )}
 
       {isSignUp && (
-        <input name="fullName" placeholder="Full name" required className={fieldClass} />
+        <input
+          name="fullName"
+          placeholder="Full name"
+          autoComplete="name"
+          required
+          className={fieldClass}
+        />
       )}
-      <input name="email" type="email" placeholder="Email" required className={fieldClass} />
-      <PasswordField />
+      <input
+        name="email"
+        type="email"
+        placeholder="Email"
+        autoComplete="email"
+        required
+        className={fieldClass}
+      />
+      <PasswordField
+        autoComplete={isSignUp ? "new-password" : "current-password"}
+      />
 
       {!isSignUp && (
         <p className="text-xs text-neutral-500">
-          Password reset is coming soon — please double-check your email and password
-          before signing in. After 5 incorrect attempts you&apos;ll be locked out for 30
-          seconds.
+          Password reset is coming soon — please double-check your email and
+          password before signing in. After 5 incorrect attempts you&apos;ll be
+          locked out for 30 seconds.
         </p>
       )}
 
       {state.error && <p className="text-sm text-rose-600">{state.error}</p>}
-      {state.notice && <p className="text-sm text-emerald-600">{state.notice}</p>}
+      {state.notice && (
+        <p className="text-sm text-emerald-600">{state.notice}</p>
+      )}
 
       <button
         type="submit"

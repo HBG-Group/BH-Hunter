@@ -25,7 +25,8 @@ export function AdminNav() {
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(event.target as Node))
+        setOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -35,7 +36,11 @@ export function AdminNav() {
     <>
       <nav className="hidden items-center gap-4 text-sm text-neutral-600 sm:flex">
         {navLinks.map((link) => (
-          <Link key={link.href} href={link.href} className="hover:text-neutral-900">
+          <Link
+            key={link.href}
+            href={link.href}
+            className="hover:text-neutral-900"
+          >
             {link.label}
           </Link>
         ))}
@@ -46,9 +51,16 @@ export function AdminNav() {
           onClick={() => setOpen((v) => !v)}
           aria-label="Admin menu"
           aria-expanded={open}
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-neutral-700 hover:bg-neutral-100"
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-neutral-700 hover:bg-neutral-100"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
             <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
           </svg>
         </button>

@@ -6,6 +6,7 @@ const LEGAL_LINKS = [
   { href: "/terms", label: "Terms of Service" },
   { href: "/community-guidelines", label: "Community Guidelines" },
   { href: "/cookies", label: "Cookie Policy" },
+  { href: "/cookies#manage", label: "Privacy & cookie settings" },
   { href: "/copyright", label: "Copyright Policy" },
 ];
 
@@ -34,7 +35,10 @@ export function SiteFooter() {
             <ul className="mt-3 space-y-2">
               {LEGAL_LINKS.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-sm text-muted hover:text-ink">
+                  <Link
+                    href={link.href}
+                    className="text-sm text-muted hover:text-ink"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -47,7 +51,10 @@ export function SiteFooter() {
             <ul className="mt-3 space-y-2">
               {COMPANY_LINKS.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-sm text-muted hover:text-ink">
+                  <Link
+                    href={link.href}
+                    className="text-sm text-muted hover:text-ink"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -57,7 +64,8 @@ export function SiteFooter() {
         </div>
 
         <p className="mt-10 text-xs text-neutral-400">
-          © {new Date().getFullYear()} Meino by HBG Production. All rights reserved.
+          © {new Date().getFullYear()} Meino by HBG Production. All rights
+          reserved.
         </p>
       </div>
     </footer>

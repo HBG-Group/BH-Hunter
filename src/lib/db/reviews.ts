@@ -14,13 +14,21 @@ function overallFrom(input: ReviewInput): number {
     input.waterSupply,
     input.ownerFriendliness,
   ];
-  return Math.round(aspects.reduce((sum, value) => sum + value, 0) / aspects.length);
+  return Math.round(
+    aspects.reduce((sum, value) => sum + value, 0) / aspects.length,
+  );
 }
 
-export function upsertReview(studentId: string, boardingHouseId: string, input: ReviewInput) {
+export function upsertReview(
+  studentId: string,
+  boardingHouseId: string,
+  input: ReviewInput,
+) {
   const data = { ...input, overall: overallFrom(input) };
   return prisma.review.upsert({
-    where: { boardingHouseId_authorId: { boardingHouseId, authorId: studentId } },
+    where: {
+      boardingHouseId_authorId: { boardingHouseId, authorId: studentId },
+    },
     update: data,
     create: { ...data, boardingHouseId, authorId: studentId },
   });
@@ -29,7 +37,22 @@ export function upsertReview(studentId: string, boardingHouseId: string, input: 
 // The signed-in student's own review for a listing, if any (used to prefill the form).
 export function findStudentReview(boardingHouseId: string, studentId: string) {
   return prisma.review.findUnique({
-    where: { boardingHouseId_authorId: { boardingHouseId, authorId: studentId } },
+    where: {
+      boardingHouseId_authorId: { boardingHouseId, authorId: studentId },
+    },
+  });
+}
+
+// A review can be created only after an owner confirms that the student viewed the
+// property. Existing reviews remain editable so a later request cleanup does not
+// lock a legitimate reviewer out of correcting their feedback.
+export function hasConfirmedViewingRequest(
+  studentId: string,
+  boardingHouseId: string,
+) {
+  return prisma.viewingRequest.findFirst({
+    where: { studentId, boardingHouseId, status: "CONFIRMED" },
+    select: { id: true },
   });
 }
 
@@ -37,7 +60,10 @@ export function findStudentReview(boardingHouseId: string, studentId: string) {
 // boardingHouseId (so the caller can invalidate that listing's cached reviews) or null
 // if nothing matched — same ownership guarantee as before (delete only fires when the
 // review is confirmed to belong to this student).
-export async function deleteOwnReview(reviewId: string, studentId: string): Promise<string | null> {
+export async function deleteOwnReview(
+  reviewId: string,
+  studentId: string,
+): Promise<string | null> {
   const owned = await prisma.review.findFirst({
     where: { id: reviewId, authorId: studentId },
     select: { boardingHouseId: true },
@@ -72,7 +98,9 @@ export interface RatingSummary {
   count: number;
 }
 
-export async function getRatingSummary(boardingHouseId: string): Promise<RatingSummary> {
+export async function getRatingSummary(
+  boardingHouseId: string,
+): Promise<RatingSummary> {
   const result = await prisma.review.aggregate({
     where: { boardingHouseId },
     _avg: { overall: true },
