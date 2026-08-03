@@ -19,9 +19,9 @@ function dateLabel(date: Date | null): string {
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-neutral-50 p-3">
+    <div className="min-w-0 rounded-xl bg-neutral-50 p-3">
       <dt className="text-xs text-neutral-500">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium text-neutral-900">{value}</dd>
+      <dd className="mt-0.5 break-words text-sm font-medium text-neutral-900">{value}</dd>
     </div>
   );
 }

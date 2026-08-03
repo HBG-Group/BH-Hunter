@@ -1,21 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth/profile";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { Logo } from "@/components/brand/Logo";
 import { AdminLogin } from "@/components/admin/AdminLogin";
+import { AdminNav } from "@/components/admin/AdminNav";
 
 // Keep the admin area out of search engines.
 export const metadata: Metadata = { robots: { index: false, follow: false } };
-
-const navLinks = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/listings", label: "Listings" },
-  { href: "/admin/owners", label: "Owners" },
-  { href: "/admin/reviews", label: "Reviews" },
-  { href: "/admin/ads", label: "Ads" },
-  { href: "/admin/audit-log", label: "Audit log" },
-];
 
 // The whole /admin area is admin-only. A non-admin (signed out or wrong role) is shown
 // the sign-in form in place of the dashboard, never the dashboard itself. Each page
@@ -32,7 +23,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="min-h-screen bg-canvas">
       <header className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-          <Logo href="/admin" label="Admin" />
+          <div className="flex items-center gap-6">
+            <Logo href="/admin" label="Admin" />
+            <AdminNav />
+          </div>
           <ProfileMenu
             name={profile.fullName}
             avatarUrl={profile.avatarUrl}
@@ -42,17 +36,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             ]}
           />
         </div>
-        <nav className="mx-auto flex max-w-5xl items-center gap-4 overflow-x-auto px-4 pb-3 text-sm text-neutral-600">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="shrink-0 hover:text-neutral-900"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
