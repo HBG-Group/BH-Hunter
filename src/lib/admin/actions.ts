@@ -14,6 +14,7 @@ import {
   setOwnerFrozen,
   setOwnerPlan,
   setOwnerVerified,
+  setOwnerVerificationRejected,
   type OwnerPlanId,
 } from "@/lib/db/admin";
 import { deleteAccountCompletely } from "@/lib/account/deletion";
@@ -246,6 +247,42 @@ export async function setOwnerVerifiedAction(ownerId: string, verified: boolean)
   );
 }
 
+// Decline a pending verification request without granting the badge.
+export async function rejectOwnerVerificationAction(ownerId: string): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.rejectOwnerVerification");
+  if (recent) return recent;
+
+  return guarded<Result>(
+    "rejectOwnerVerification",
+    async () => {
+      const ok = await setOwnerVerificationRejected(ownerId);
+      if (!ok) return { error: "That owner no longer exists." };
+
+      await logSecurityEvent({
+        action: "admin.rejectOwnerVerification",
+        outcome: "allowed",
+        actorId: admin.id,
+        actorRole: admin.role,
+        targetType: "owner",
+        targetId: ownerId,
+        detail: "rejected",
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "OWNER_VERIFICATION",
+        targetType: "owner",
+        targetId: ownerId,
+        detail: "rejected",
+      });
+      revalidateAdmin();
+      return {};
+    },
+    (message) => ({ error: message }),
+  );
+}
+
 // Assign a pricing plan to an owner. This automatically applies the plan's perks
 // (Verified badge for Advance/Premium, Featured listings for Premium). Admin-only.
 export async function setOwnerPlanAction(ownerId: string, plan: string): Promise<Result> {
@@ -301,6 +338,13 @@ export async function setOwnerFrozenAction(ownerId: string, frozen: boolean): Pr
         targetId: ownerId,
         detail: frozen ? "frozen" : "unfrozen",
       });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "OWNER_FREEZE",
+        targetType: "owner",
+        targetId: ownerId,
+        detail: frozen ? "frozen" : "unfrozen",
+      });
       revalidateAdmin();
       return {};
     },
@@ -327,6 +371,12 @@ export async function deleteOwnerAction(ownerId: string): Promise<Result> {
         outcome: "allowed",
         actorId: admin.id,
         actorRole: admin.role,
+        targetType: "owner",
+        targetId: ownerId,
+      });
+      await recordModerationEvent({
+        actorId: admin.id,
+        action: "OWNER_DELETION",
         targetType: "owner",
         targetId: ownerId,
       });

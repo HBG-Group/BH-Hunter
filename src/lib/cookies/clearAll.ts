@@ -16,3 +16,15 @@ export function clearAllOptionalCookies(): void {
   removeCookie(RECENT_LISTINGS_COOKIE);
   removeCookie(DISMISSED_NOTICES_COOKIE);
 }
+
+// Clears only what a "customize" choice turned off, without touching the consent
+// decision itself (unlike clearAllOptionalCookies, which is paired with a reset).
+export function clearCategoryCookies(category: "preferences" | "activity"): void {
+  if (category === "preferences") {
+    clearAllPreferences();
+    return;
+  }
+  removeCookie(SEARCH_FILTERS_COOKIE);
+  removeCookie(RECENT_LISTINGS_COOKIE);
+  removeCookie(DISMISSED_NOTICES_COOKIE);
+}

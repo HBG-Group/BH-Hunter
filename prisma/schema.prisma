@@ -73,10 +73,21 @@ enum ModerationAction {
   LISTING_FEATURED
   LISTING_DELETION
   OWNER_VERIFICATION
+  OWNER_FREEZE
+  OWNER_DELETION
   REVIEW_DELETION
   ADVERTISEMENT_CREATION
   ADVERTISEMENT_STATUS
   ADVERTISEMENT_DELETION
+}
+
+// Architecture for Phase 3 of the verified-owner workflow: tracks the state of a
+// verification request without requiring document uploads yet (see LEGAL.md).
+enum OwnerVerificationStatus {
+  UNVERIFIED
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 // ---------------------------------------------------------------------------
@@ -84,20 +95,21 @@ enum ModerationAction {
 // ---------------------------------------------------------------------------
 
 model Profile {
-  id                      String    @id
-  role                    Role      @default(STUDENT)
+  id                      String             @id
+  role                    Role               @default(STUDENT)
   fullName                String
-  email                   String    @unique
+  email                   String             @unique
   phone                   String?
   avatarUrl               String? // profile photo (auto-filled from Google when available)
-  verified                Boolean   @default(false) // admin-granted "Verified Owner" trust badge
-  verifiedUntil           DateTime? @db.Timestamptz(6) // when the current verification lapses (auto-expires monthly)
-  verificationRequestedAt DateTime? @db.Timestamptz(6) // set when an owner requests verification; cleared once granted
-  frozen                  Boolean   @default(false) // admin-frozen owner: read-only, blocked from the dashboard
+  verified                Boolean            @default(false) // admin-granted "Verified Owner" trust badge
+  verifiedUntil           DateTime?          @db.Timestamptz(6) // when the current verification lapses (auto-expires monthly)
+  verificationRequestedAt DateTime?          @db.Timestamptz(6) // set when an owner requests verification; cleared once granted
+  verificationStatus      OwnerVerificationStatus @default(UNVERIFIED) // Phase 3 architecture: request/review state, independent of the `verified` badge flag
+  frozen                  Boolean            @default(false) // admin-frozen owner: read-only, blocked from the dashboard
   plan                    String? // admin-assigned pricing plan: BASIC | ADVANCE | PREMIUM (null = none)
-  ownerTutorialCompleted  Boolean   @default(false) // has the owner finished/skipped onboarding once
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  ownerTutorialCompleted  Boolean            @default(false) // has the owner finished/skipped onboarding once
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
 
   boardingHouses         BoardingHouse[]         @relation("OwnerListings")
   reviews                Review[]

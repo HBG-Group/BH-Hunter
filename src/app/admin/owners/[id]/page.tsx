@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAdminOrNull } from "@/lib/auth/profile";
 import { findOwnerForAdmin } from "@/lib/db/admin";
 import { OwnerRow, type AdminOwnerView } from "@/components/admin/OwnerRow";
+import { OwnerVerificationPanel } from "@/components/admin/OwnerVerificationPanel";
 import { isVerified } from "@/lib/owner/verification";
 import { isSubscriptionExpired } from "@/lib/owner/subscription";
 
@@ -54,6 +55,8 @@ export default async function AdminOwnerDetailPage({ params }: PageProps) {
       <div className="rounded-2xl border border-neutral-200 bg-white">
         <OwnerRow owner={rowView} />
       </div>
+
+      <OwnerVerificationPanel ownerId={owner.id} status={owner.verificationStatus} />
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-5">
         <h2 className="text-sm font-semibold text-neutral-900">Details</h2>

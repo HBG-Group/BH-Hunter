@@ -9,6 +9,7 @@ import { TermsGate } from "@/components/system/TermsGate";
 import { Watermark } from "@/components/system/Watermark";
 import { BugReporter } from "@/components/system/BugReporter";
 import { CookieConsentBanner } from "@/components/cookies/CookieConsentBanner";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,10 +33,13 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="flex min-h-full flex-col">
         <RouteProgress />
         <TermsGate />
-        <AuthModalProvider>{children}</AuthModalProvider>
+        <div className="flex-1">
+          <AuthModalProvider>{children}</AuthModalProvider>
+        </div>
+        <SiteFooter />
         <Watermark />
         <BugReporter />
         <CookieConsentBanner />

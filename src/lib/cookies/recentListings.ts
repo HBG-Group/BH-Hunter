@@ -4,7 +4,7 @@
 // dropped first. This is separate from the DB-backed RecentlyViewed table used
 // for signed-in students (lib/student) — this one works without an account.
 
-import { hasOptionalConsent } from "@/lib/cookies/consent";
+import { hasCategoryConsent } from "@/lib/cookies/consent";
 import { readJsonCookie, removeCookie, writeJsonCookie } from "@/lib/cookies/cookie";
 
 export const RECENT_LISTINGS_COOKIE = "meino_recent_listings";
@@ -21,7 +21,7 @@ export function getRecentListingIds(): string[] {
 }
 
 export function recordRecentListing(listingId: string): void {
-  if (!hasOptionalConsent()) return;
+  if (!hasCategoryConsent("activity")) return;
   const current = getRecentListingIds().filter((id) => id !== listingId);
   const next = [listingId, ...current].slice(0, MAX_ENTRIES);
   writeJsonCookie(RECENT_LISTINGS_COOKIE, next, { maxAgeSeconds: NINETY_DAYS });

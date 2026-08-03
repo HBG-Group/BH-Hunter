@@ -57,6 +57,8 @@ layered architecture and the security model unless the user explicitly accepts t
 | `PERFORMANCE.md` | Current and planned performance work |
 | `BUSINESS_MODEL.md` | Pricing and the reasoning behind it |
 | `TODO.md` | Living development tracker |
+| `LEGAL.md` | Legal pages, moderation/reporting, verification, and audit-log workflows |
+| `PRODUCTION_CHECKLIST.md` | Env vars, deployment, manual QA, and rollback checklist |
 
 Keep these documents current. When you complete meaningful work, update `TODO.md` and any
 file whose facts changed, so the next session starts from truth.

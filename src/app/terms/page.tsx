@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { ADMIN_CONTACT } from "@/config/support";
 
 export const metadata: Metadata = {
   title: "Terms & Conditions — Meino",
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 //  Add, remove, or reword freely — keep the shape the same.
 //  Last updated date is shown to users, so bump it when you make changes.
 // ─────────────────────────────────────────────────────────────────────────────
-const LAST_UPDATED = "July 25, 2026";
+const LAST_UPDATED = "August 2, 2026";
 
 const SECTIONS: { heading: string; body: string }[] = [
   {
@@ -42,20 +43,12 @@ const SECTIONS: { heading: string; body: string }[] = [
     body: "Any payment for a room is arranged directly between the student and the owner. Meino does not process rent payments and is not responsible for any transaction that happens off the platform.",
   },
   {
-    heading: "Privacy",
-    body: "We collect the information you provide when you sign up (such as your name and email) and basic activity needed to run the service, such as your saved listings. We do not sell your personal information. Contact us if you would like your account and data removed.",
-  },
-  {
     heading: "Limitation of liability",
     body: "Meino is provided on an \"as is\" basis. To the extent permitted by law, we are not liable for any loss or damage arising from your use of the service or from any dealing between students and owners.",
   },
   {
     heading: "Changes to these terms",
     body: "We may update these terms from time to time. Continued use of Meino after an update means you accept the revised terms.",
-  },
-  {
-    heading: "Contact",
-    body: "Questions about these terms? Reach us at the support email listed on our sign-in screens.",
   },
 ];
 
@@ -77,6 +70,22 @@ export default function TermsPage() {
             </section>
           ))}
         </div>
+
+        <p className="mt-8 text-sm leading-relaxed text-muted">
+          For how we collect, store, and protect your information, see our{" "}
+          <Link href="/privacy" className="text-primary underline hover:text-primary-hover">
+            Privacy Policy
+          </Link>
+          . Questions about these terms can be sent to{" "}
+          <a href={`mailto:${ADMIN_CONTACT.email}`} className="text-primary underline hover:text-primary-hover">
+            {ADMIN_CONTACT.email}
+          </a>{" "}
+          or through our{" "}
+          <Link href="/contact" className="text-primary underline hover:text-primary-hover">
+            Contact page
+          </Link>
+          .
+        </p>
 
         <p className="mt-12 text-sm text-muted">
           <Link href="/" className="underline hover:text-ink">

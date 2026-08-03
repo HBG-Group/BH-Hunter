@@ -152,8 +152,29 @@ export async function setOwnerVerified(ownerId: string, verified: boolean): Prom
   const result = await prisma.profile.updateMany({
     where: { id: ownerId, role: "OWNER" },
     data: verified
-      ? { verified: true, verifiedUntil: verificationExpiry(), verificationRequestedAt: null }
-      : { verified: false, verifiedUntil: null, verificationRequestedAt: null },
+      ? {
+          verified: true,
+          verifiedUntil: verificationExpiry(),
+          verificationRequestedAt: null,
+          verificationStatus: "APPROVED",
+        }
+      : {
+          verified: false,
+          verifiedUntil: null,
+          verificationRequestedAt: null,
+          verificationStatus: "UNVERIFIED",
+        },
+  });
+  return result.count > 0;
+}
+
+// Reject a pending verification request without granting the badge. Distinct from
+// "revoke" (setOwnerVerified(false)) so the owner sees their request was reviewed
+// and declined, not just left unactioned.
+export async function setOwnerVerificationRejected(ownerId: string): Promise<boolean> {
+  const result = await prisma.profile.updateMany({
+    where: { id: ownerId, role: "OWNER" },
+    data: { verified: false, verificationRequestedAt: null, verificationStatus: "REJECTED" },
   });
   return result.count > 0;
 }
@@ -194,6 +215,7 @@ export function findOwnerForAdmin(ownerId: string) {
       verified: true,
       verifiedUntil: true,
       verificationRequestedAt: true,
+      verificationStatus: true,
       frozen: true,
       plan: true,
       createdAt: true,
@@ -220,7 +242,13 @@ export async function setOwnerPlan(ownerId: string, plan: OwnerPlanId): Promise<
     prisma.profile.updateMany({
       where: { id: ownerId, role: "OWNER" },
       // verifiedUntil null = valid while the plan lasts (no monthly expiry).
-      data: { plan, verified, verifiedUntil: null, verificationRequestedAt: null },
+      data: {
+        plan,
+        verified,
+        verifiedUntil: null,
+        verificationRequestedAt: null,
+        verificationStatus: verified ? "APPROVED" : "UNVERIFIED",
+      },
     }),
     prisma.boardingHouse.updateMany({ where: { ownerId }, data: { featured } }),
     prisma.subscription.upsert({
@@ -255,6 +283,33 @@ export function findRecentReviews(limit = 50) {
 export async function deleteReviewById(id: string): Promise<boolean> {
   const result = await prisma.review.deleteMany({ where: { id } });
   return result.count > 0;
+}
+
+export interface ModerationEventRow {
+  id: string;
+  action: ModerationAction;
+  targetType: string;
+  targetId: string;
+  detail: string | null;
+  createdAt: Date;
+  actor: { id: string; fullName: string };
+}
+
+// Read-only audit trail for the admin UI — newest first, capped so the page stays fast.
+export function listModerationEvents(): Promise<ModerationEventRow[]> {
+  return prisma.moderationEvent.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    select: {
+      id: true,
+      action: true,
+      targetType: true,
+      targetId: true,
+      detail: true,
+      createdAt: true,
+      actor: { select: { id: true, fullName: true } },
+    },
+  });
 }
 
 export function recordModerationEvent(input: {

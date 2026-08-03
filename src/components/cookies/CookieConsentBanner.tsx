@@ -2,14 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { getConsent, setConsent } from "@/lib/cookies/consent";
-import { clearAllOptionalCookies } from "@/lib/cookies/clearAll";
+import { getConsent, setConsent, setCustomConsent, type ConsentCategories } from "@/lib/cookies/consent";
+import { clearAllOptionalCookies, clearCategoryCookies } from "@/lib/cookies/clearAll";
+
+const DEFAULT_CATEGORIES: ConsentCategories = { preferences: false, activity: false };
 
 // First-visit banner. Shown only when no consent decision exists yet.
 // Rejecting keeps essential cookies (auth session) working; every optional
-// cookie helper in lib/cookies checks consent before writing.
+// cookie helper in lib/cookies checks its category's consent before writing.
 export function CookieConsentBanner() {
   const [visible, setVisible] = useState(false);
+  const [customizing, setCustomizing] = useState(false);
+  const [categories, setCategories] = useState<ConsentCategories>(DEFAULT_CATEGORIES);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,6 +34,13 @@ export function CookieConsentBanner() {
     setConsent("rejected");
     // Rejecting clears anything optional that may already be set.
     clearAllOptionalCookies();
+    setVisible(false);
+  };
+
+  const saveCustom = () => {
+    setCustomConsent(categories);
+    if (!categories.preferences) clearCategoryCookies("preferences");
+    if (!categories.activity) clearCategoryCookies("activity");
     setVisible(false);
   };
 
@@ -62,20 +73,73 @@ export function CookieConsentBanner() {
                 Learn more
               </a>
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                onClick={accept}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
-              >
-                Accept
-              </button>
-              <button
-                onClick={reject}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-ink ring-1 ring-inset ring-line hover:ring-neutral-300"
-              >
-                Reject non-essential
-              </button>
-            </div>
+
+            {customizing ? (
+              <div className="mt-4 space-y-3">
+                <label className="flex items-start gap-2.5 text-sm text-ink">
+                  <input
+                    type="checkbox"
+                    checked={categories.preferences}
+                    onChange={(e) => setCategories((c) => ({ ...c, preferences: e.target.checked }))}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="font-medium">Preferences</span>
+                    <span className="block text-xs text-muted">Theme, sidebar, language, map style.</span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2.5 text-sm text-ink">
+                  <input
+                    type="checkbox"
+                    checked={categories.activity}
+                    onChange={(e) => setCategories((c) => ({ ...c, activity: e.target.checked }))}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="font-medium">Activity</span>
+                    <span className="block text-xs text-muted">
+                      Search filters, recently viewed, dismissed notices.
+                    </span>
+                  </span>
+                </label>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    onClick={saveCustom}
+                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+                  >
+                    Save choices
+                  </button>
+                  <button
+                    onClick={() => setCustomizing(false)}
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-ink ring-1 ring-inset ring-line hover:ring-neutral-300"
+                  >
+                    Back
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  onClick={accept}
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+                >
+                  Accept
+                </button>
+                <button
+                  onClick={reject}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-ink ring-1 ring-inset ring-line hover:ring-neutral-300"
+                >
+                  Reject non-essential
+                </button>
+                <button
+                  onClick={() => setCustomizing(true)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-muted hover:text-ink"
+                >
+                  Customize
+                </button>
+              </div>
+            )}
           </div>
         </motion.div>
       )}

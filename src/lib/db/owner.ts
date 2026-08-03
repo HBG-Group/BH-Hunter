@@ -126,7 +126,7 @@ export async function confirmVacancies(ownerId: string, id: string) {
 export async function requestOwnerVerification(ownerId: string): Promise<boolean> {
   const result = await prisma.profile.updateMany({
     where: { id: ownerId, role: "OWNER", verified: false, verificationRequestedAt: null },
-    data: { verificationRequestedAt: new Date() },
+    data: { verificationRequestedAt: new Date(), verificationStatus: "PENDING" },
   });
   return result.count > 0;
 }

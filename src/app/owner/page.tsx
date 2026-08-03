@@ -13,7 +13,8 @@ import { resilientRead } from "@/lib/async/resilient-read";
 import { OwnerOnboarding } from "@/components/owner/OwnerOnboarding";
 import { TutorialChecklist } from "@/components/tutorial/TutorialChecklist";
 import { DangerZone } from "@/components/account/DangerZone";
-import { isVerified } from "@/lib/owner/verification";
+import { RequestVerificationButton } from "@/components/owner/RequestVerificationButton";
+import { isVerified, verificationStatus } from "@/lib/owner/verification";
 
 export default async function OwnerDashboardPage() {
   const owner = await requireOwner();
@@ -109,6 +110,8 @@ export default async function OwnerDashboardPage() {
           <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Settings &amp; Help</h2>
           <OwnerOnboarding autoLaunch={!owner.ownerTutorialCompleted} />
         </div>
+        {/* Owners without a plan can still request the badge directly; plans grant it automatically. */}
+        {!owner.plan && <RequestVerificationButton status={verificationStatus(owner)} />}
         <DangerZone />
       </section>
     </div>
