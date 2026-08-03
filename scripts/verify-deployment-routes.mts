@@ -32,6 +32,11 @@ const PUBLIC_ROUTES = [
   "/sitemap.xml",
   "/robots.txt",
   "/manifest.webmanifest",
+  // These must be protected routes, not missing routes. A redirect to sign-in is
+  // accepted by the checker; a 404/5xx blocks release promotion.
+  "/onboarding",
+  "/account/privacy",
+  "/subscribe/basic",
 ];
 
 async function check(path: string): Promise<{ path: string; status: number; ok: boolean }> {

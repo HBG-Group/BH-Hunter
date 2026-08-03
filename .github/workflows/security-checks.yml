@@ -75,3 +75,8 @@ jobs:
         env:
           SECURITY_CHECK_URL: ${{ inputs.security_check_url }}
         run: npm run security:verify-deployment
+
+      - name: Verify deployed public and protected route availability
+        env:
+          DEPLOY_URL: ${{ inputs.security_check_url }}
+        run: npm run verify:routes
