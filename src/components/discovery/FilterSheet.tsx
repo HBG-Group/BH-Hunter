@@ -138,7 +138,10 @@ export function FilterSheet({ open, onClose, filters, onChange, resultCount, sor
             </div>
 
             <div className="flex shrink-0 items-center gap-3 border-t border-line px-5 py-4">
-              <button onClick={clearAll} className="text-sm font-medium text-muted hover:text-ink">
+              <button
+                onClick={clearAll}
+                className="flex min-h-11 items-center text-sm font-medium text-muted hover:text-ink"
+              >
                 Clear all
               </button>
               <button

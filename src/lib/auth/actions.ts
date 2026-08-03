@@ -6,6 +6,7 @@ import { getCurrentProfile } from "@/lib/auth/profile";
 import { resolveSiteOrigin } from "@/lib/auth/site-origin";
 import { logSecurityEvent } from "@/lib/security/events";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
+import { checkLockout, clearFailedLogins, recordFailedLogin } from "@/lib/security/login-lockout";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { credentialsSchema, signUpSchema } from "@/lib/validation/auth";
@@ -35,13 +36,29 @@ export async function signInAction(
 
   const next = safeRedirectPath(formData.get("next") as string | null, "");
 
+  // Account-level lockout: 5 wrong-password attempts locks this email for 30s,
+  // independent of the IP-based rate limit above. Checked before touching Supabase so a
+  // locked-out account never even reaches the password check while waiting out the timer.
+  const lockout = await checkLockout(parsed.data.email);
+  if (lockout.locked) {
+    await logSecurityEvent({ action: "auth.signin", outcome: "denied", detail: "locked_out" });
+    return { error: `Too many failed attempts. Please wait ${lockout.retryAfterSeconds}s and try again.` };
+  }
+
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
+    const state = await recordFailedLogin(parsed.data.email);
     await logSecurityEvent({ action: "auth.signin", outcome: "denied", detail: "invalid_credentials" });
+    if (state.locked) {
+      return {
+        error: `Too many failed attempts. Please wait ${state.retryAfterSeconds}s and try again.`,
+      };
+    }
     return { error: "Incorrect email or password." };
   }
 
+  await clearFailedLogins(parsed.data.email);
   const profile = await getCurrentProfile();
   await logSecurityEvent({
     action: "auth.signin",
@@ -89,6 +106,15 @@ export async function signUpAction(
   if (error) {
     await logSecurityEvent({ action: "auth.signup", outcome: "error", detail: "supabase_signup_failed" });
     return { error: error.message };
+  }
+
+  // Supabase doesn't return an error for an already-registered email — for privacy, it
+  // returns a 200 with a user object whose `identities` array is empty and no session,
+  // which otherwise looks identical to "check your email" for a brand-new signup. That
+  // silence is exactly the kind of unexplained dead end we don't want here.
+  if (data.user && data.user.identities?.length === 0) {
+    await logSecurityEvent({ action: "auth.signup", outcome: "denied", detail: "email_already_registered" });
+    return { error: "An account with this email already exists. Please sign in instead." };
   }
 
   if (!data.session) {

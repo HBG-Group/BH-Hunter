@@ -10,6 +10,7 @@ import { Watermark } from "@/components/system/Watermark";
 import { BugReporter } from "@/components/system/BugReporter";
 import { CookieConsentBanner } from "@/components/cookies/CookieConsentBanner";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { supabaseUrl } from "@/config/env";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,6 +34,12 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Listing/ad photos load from Supabase Storage — warm the connection before
+            the first <Image> request needs it. */}
+        <link rel="preconnect" href={supabaseUrl} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={supabaseUrl} />
+      </head>
       <body className="flex min-h-full flex-col">
         <RouteProgress />
         <TermsGate />

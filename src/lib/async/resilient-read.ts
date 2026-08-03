@@ -13,7 +13,7 @@ export function resilientRead<T>(
   operation: () => Promise<T>,
   {
     attempts = 2,
-    timeoutMs = 5_000,
+    timeoutMs = 3_000,
     timeoutMessage = "A dependency did not respond in time",
   }: ResilientReadOptions = {},
 ): Promise<T> {

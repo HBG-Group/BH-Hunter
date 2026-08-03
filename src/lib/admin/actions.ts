@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/profile";
 import {
   deleteListingAsAdmin,
   deleteReviewById,
+  findListingSlugAndOwner,
   isListingVerified,
   recordModerationEvent,
   setListingFeatured,
@@ -17,6 +18,7 @@ import {
   setOwnerVerificationRejected,
   type OwnerPlanId,
 } from "@/lib/db/admin";
+import { invalidate } from "@/lib/cache/redis";
 import { deleteAccountCompletely } from "@/lib/account/deletion";
 import { listingExists } from "@/lib/db/listing-guards";
 import { guarded } from "@/lib/security/errors";
@@ -32,6 +34,13 @@ function revalidateAdmin() {
   revalidatePath("/admin");
   revalidatePath("/admin/listings");
   revalidatePath("/admin/owners");
+}
+
+// Admin verify/publish/feature/delete all change what the public sees for a listing —
+// clear its cached entry plus the published-listings set (docs/CACHING.md). Call with
+// the slug/ownerId looked up *before* the mutation (deletion makes it unreachable after).
+async function invalidateListingCaches(slug: string, ownerId: string) {
+  await invalidate("listings:published", `listing:${slug}`, `metrics:owner:${ownerId}`);
 }
 
 async function ensureRecentAdminAuth(
@@ -63,6 +72,7 @@ export async function setVerifiedAction(id: string, verified: boolean): Promise<
   return guarded<Result>(
     "setVerified",
     async () => {
+      const target = await findListingSlugAndOwner(id);
       const ok = await setListingVerified(id, Boolean(verified));
       if (!ok) return { error: "That listing no longer exists." };
 
@@ -82,6 +92,7 @@ export async function setVerifiedAction(id: string, verified: boolean): Promise<
         targetId: id,
         detail: verified ? "verified" : "verification_revoked",
       });
+      if (target) await invalidateListingCaches(target.slug, target.ownerId);
       revalidateAdmin();
       return {};
     },
@@ -114,8 +125,10 @@ export async function moderateStatusAction(
         }
       }
 
+      const target = await findListingSlugAndOwner(id);
       const ok = await setListingStatusAsAdmin(id, status);
       if (!ok) return { error: "That listing no longer exists." };
+      if (target) await invalidateListingCaches(target.slug, target.ownerId);
 
       await logSecurityEvent({
         action: "admin.moderateStatus",
@@ -149,8 +162,11 @@ export async function deleteListingAction(id: string): Promise<Result> {
   return guarded<Result>(
     "deleteListing",
     async () => {
+      // Look up before deleting — the row (and its slug/ownerId) is gone afterward.
+      const target = await findListingSlugAndOwner(id);
       const urls = await deleteListingAsAdmin(id);
       if (urls === null) return { error: "That listing no longer exists." };
+      if (target) await invalidateListingCaches(target.slug, target.ownerId);
 
       for (const url of urls) await removeListingPhoto(url);
 
@@ -185,8 +201,10 @@ export async function setFeaturedAction(id: string, featured: boolean): Promise<
   return guarded<Result>(
     "setFeatured",
     async () => {
+      const target = await findListingSlugAndOwner(id);
       const ok = await setListingFeatured(id, Boolean(featured));
       if (!ok) return { error: "That listing no longer exists." };
+      if (target) await invalidateListingCaches(target.slug, target.ownerId);
 
       await logSecurityEvent({
         action: "admin.setFeatured",

@@ -7,6 +7,7 @@ import { reviewSchema } from "@/lib/validation/review";
 import { publishedListingExists } from "@/lib/db/listing-guards";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
 import { guarded } from "@/lib/security/errors";
+import { invalidate } from "@/lib/cache/redis";
 
 export interface ReviewFormState {
   error?: string;
@@ -49,6 +50,7 @@ export async function submitReviewAction(
     "submitReview",
     async () => {
       await upsertReview(profile.id, target.boardingHouseId, parsed.data);
+      await invalidate(`reviews:${target.boardingHouseId}`, `listing:${target.slug}`);
       revalidatePath(`/listings/${target.slug}`);
       return { success: true };
     },
@@ -62,6 +64,7 @@ export async function deleteReviewAction(reviewId: string, slug: string): Promis
   if (!(await allow("write", LIMITS.write, profile.id))) return;
 
   // Verify ownership — deleteOwnReview is scoped to the author.
-  await deleteOwnReview(reviewId, profile.id);
+  const boardingHouseId = await deleteOwnReview(reviewId, profile.id);
+  if (boardingHouseId) await invalidate(`reviews:${boardingHouseId}`, `listing:${slug}`);
   revalidatePath(`/listings/${slug}`);
 }

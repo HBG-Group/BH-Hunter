@@ -89,7 +89,13 @@ export function RoomsEditor({ rooms, onChange }: Props) {
                   className={cell}
                 />
               </label>
-              <span className="shrink-0 pb-2 text-xs text-neutral-500">{available} available</span>
+              <span
+                className={`shrink-0 pb-2 text-xs font-medium ${
+                  available > 0 ? "text-emerald-600" : "text-rose-600"
+                }`}
+              >
+                {available > 0 ? `${available} available` : "Full"}
+              </span>
             </div>
           </div>
         );

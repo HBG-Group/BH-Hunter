@@ -4,7 +4,11 @@ import Image from "next/image";
 import { useRef, useState, useTransition } from "react";
 import { deletePhotosAction } from "@/lib/owner/photo-actions";
 import { usePhotoUpload } from "@/hooks/usePhotoUpload";
-import { MIN_LISTING_PHOTOS, PHOTO_REQUIREMENT_MESSAGE } from "@/config/listing";
+import {
+  MIN_LISTING_PHOTOS,
+  PHOTO_REQUIREMENT_MESSAGE,
+  RECOMMENDED_MAX_LISTING_PHOTOS,
+} from "@/config/listing";
 import {
   ALLOWED_PHOTO_MIME,
   MAX_PHOTO_BYTES,
@@ -88,6 +92,12 @@ export function PhotoManager({ boardingHouseId, images }: Props) {
           />
         </div>
         {!met && <p className="mt-2 text-xs text-neutral-500">{PHOTO_REQUIREMENT_MESSAGE}</p>}
+        {met && count > RECOMMENDED_MAX_LISTING_PHOTOS && (
+          <p className="mt-2 text-xs text-neutral-500">
+            You have {count} photos. Around {RECOMMENDED_MAX_LISTING_PHOTOS} well-chosen photos is
+            usually enough — consider trimming to your best shots.
+          </p>
+        )}
       </div>
 
       <div className="rounded-2xl border border-neutral-200 bg-white p-5">

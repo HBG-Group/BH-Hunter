@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { invalidate } from "@/lib/cache/redis";
 import { requireWritableOwner } from "@/lib/auth/profile";
 import {
   confirmVacancies,
@@ -67,16 +68,19 @@ export async function createListingAction(
     return { error: `You've used all ${quota.freeLimit} free listings. Contact the admin to add more (₱${quota.extraPrice} each).` };
   }
 
-  const created = await guarded<{ error?: string }>(
+  const created = await guarded<{ error?: string; slug?: string }>(
     "createListing",
     async () => {
-      await createOwnerListing(owner.id, toWriteData(result.data));
-      return {};
+      const row = await createOwnerListing(owner.id, toWriteData(result.data));
+      return { slug: row.slug };
     },
     (message) => ({ error: message }),
   );
   if (created.error) return created;
 
+  // New listings start as DRAFT (not in the published cache yet), but the owner's
+  // metrics tile and the listing's own cache key should reflect it right away.
+  await invalidate("listings:published", `listing:${created.slug}`, `metrics:owner:${owner.id}`);
   revalidatePath("/owner");
   redirect("/owner");
 }
@@ -107,6 +111,9 @@ export async function updateListingAction(
     reportError("notifyRoomAvailable", error);
   }
 
+  const keys = ["listings:published", `metrics:owner:${owner.id}`];
+  if (before) keys.push(`listing:${before.slug}`);
+  await invalidate(...keys);
   revalidatePath("/owner");
   redirect("/owner");
 }
@@ -164,7 +171,8 @@ export async function setStatusAction(
   if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
 
   // Verify ownership before reading anything about the listing.
-  if (!(await findOwnerListing(owner.id, id))) return { error: "Listing not found" };
+  const existing = await findOwnerListing(owner.id, id);
+  if (!existing) return { error: "Listing not found" };
 
   // A listing needs enough photos before it can go up for review.
   if (status === "PENDING") {
@@ -174,6 +182,10 @@ export async function setStatusAction(
 
   const ok = await setListingStatus(owner.id, id, status);
   if (!ok) return { error: "Listing not found" };
+
+  // Pulling a listing back to DRAFT drops it out of the public set; either direction
+  // can leave the published/listing caches stale otherwise.
+  await invalidate("listings:published", `listing:${existing.slug}`, `metrics:owner:${owner.id}`);
 
   revalidatePath("/owner");
   return {};

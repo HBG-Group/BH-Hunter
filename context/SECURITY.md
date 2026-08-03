@@ -14,6 +14,18 @@ the app is unaffected because it uses Prisma. Verified: all `public` tables (inc
 `subscriptions` and `advertisements`) have `relrowsecurity = true`.
 **Rule:** every new table must have RLS enabled — `db:push` does not do this.
 
+### ✓ Per-account sign-in lockout — `lib/security/login-lockout.ts`
+**Why:** the IP-based `LIMITS.auth` rate limit (8/min) stops a single client from
+hammering sign-in, but doesn't stop a slow, distributed, or NAT-shared-IP credential
+guess against one specific account. 5 wrong-password attempts for a given email locks
+that email out for 30s, tracked in Postgres (`rate_limit_windows`, same table the shared
+rate limiter uses) — not a cookie or client-side timer, so it survives a refresh, a new
+tab, incognito, or clearing browser storage, and is shared across every serverless
+instance. The check runs before Supabase auth is even called while locked out, so a
+locked account can't be used to probe further. Successful sign-in clears the counter.
+Forgot-password doesn't exist yet, so the sign-in form also carries a reminder to
+double-check credentials before submitting — a lockout is the only recovery path today.
+
 ### ✓ HMAC upload tickets — `lib/security/upload-ticket.ts`
 **Why:** the browser uploads photos directly to Storage, so the server must be sure a
 later "register this path" call refers to a file *it* authorized. Each ticket is an
