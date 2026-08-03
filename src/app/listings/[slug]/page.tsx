@@ -33,6 +33,7 @@ import { submitReviewAction } from "@/lib/student/review-actions";
 import { requestViewingAction } from "@/lib/student/viewing-actions";
 import { toListingDetail } from "@/services/listings";
 import { resilientRead } from "@/lib/async/resilient-read";
+import { ADMIN_CONTACT } from "@/config/support";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -257,6 +258,12 @@ export default async function ListingDetailPage({ params }: PageProps) {
               {listing.ownerVerified && <VerifiedOwnerBadge compact />}
             </div>
             <ContactPanel listing={listing} />
+            <a
+              href={`mailto:${ADMIN_CONTACT.email}?subject=${encodeURIComponent(`Report listing: ${listing.name}`)}&body=${encodeURIComponent(`Please describe the issue with this listing:\n\nListing: ${listing.name}\nURL: /listings/${slug}\n\nIssue:`)}`}
+              className="block text-center text-xs text-muted underline hover:text-ink"
+            >
+              Report an incorrect or unsafe listing
+            </a>
             {profile ? (
               <ViewingRequestForm
                 action={requestViewingAction.bind(null, target)}
