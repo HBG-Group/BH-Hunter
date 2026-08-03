@@ -54,7 +54,7 @@ export function AdminNav() {
         </button>
 
         {open && (
-          <div className="absolute left-0 mt-2 w-48 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+          <div className="absolute left-0 z-50 mt-2 w-48 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
             {navLinks.map((link) => (
               <Link
                 key={link.href}

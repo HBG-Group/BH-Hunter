@@ -60,7 +60,7 @@ export function ProfileMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+        <div className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
           <p className="truncate px-4 py-2 text-xs text-neutral-500">{name}</p>
           {isAdmin && (
             <a
