@@ -198,7 +198,19 @@ export async function signUpAction(
       outcome: "error",
       detail: "supabase_signup_failed",
     });
-    return { error: error.message };
+    const message = error.message.toLowerCase();
+    if (message.includes("rate limit")) {
+      return {
+        error:
+          "Too many confirmation emails were requested. Please wait a few minutes and try again.",
+      };
+    }
+    if (message.includes("email address") && message.includes("invalid")) {
+      return { error: "Enter a valid email address." };
+    }
+    return {
+      error: "We couldn’t create your account right now. Please try again.",
+    };
   }
 
   // Supabase doesn't return an error for an already-registered email — for privacy, it
