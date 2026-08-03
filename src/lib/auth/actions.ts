@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { OAUTH_CALLBACK_PATH } from "@/config/auth";
+import { PUBLIC_SITE_URL } from "@/config/site";
 import { getCurrentProfile } from "@/lib/auth/profile";
 import { resolveSiteOrigin } from "@/lib/auth/site-origin";
 import { logSecurityEvent } from "@/lib/security/events";
@@ -175,14 +176,21 @@ export async function signUpAction(
   }
   const { fullName, email, password, role } = parsed.data;
 
-  const origin = await resolveSiteOrigin();
-  const emailRedirectTo = `${origin}${OAUTH_CALLBACK_PATH}?next=${role === "OWNER" ? "/owner" : "/account"}`;
+  // Supabase only accepts confirmation redirects on its allow-list. Do not use a
+  // transient Vercel preview hostname when the canonical public URL has not been
+  // configured: omitting it lets Supabase use its configured Site URL instead.
+  const emailRedirectTo = PUBLIC_SITE_URL
+    ? `${PUBLIC_SITE_URL}${OAUTH_CALLBACK_PATH}?next=${role === "OWNER" ? "/owner" : "/account"}`
+    : undefined;
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName, role }, emailRedirectTo },
+    options: {
+      data: { full_name: fullName, role },
+      ...(emailRedirectTo ? { emailRedirectTo } : {}),
+    },
   });
   if (error) {
     await logSecurityEvent({
