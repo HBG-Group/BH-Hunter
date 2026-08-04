@@ -24,28 +24,28 @@ export const getCurrentUser = cache(async () => {
 // account always has a matching profile without needing a database trigger.
 export async function getCurrentProfile(roleHint?: "OWNER" | "STUDENT"): Promise<Profile | null> {
   const result = await ensureProfileForCurrentUser(roleHint);
-  return result?.profile ?? null;
+  return result && "profile" in result ? result.profile : null;
 }
 
 // Like getCurrentProfile, but reports whether the row was created just now — the signal
-// the OAuth callback uses to send genuinely first-time users through onboarding. Dedupes
-// by id then email, so the same person signing in a second way never gets a duplicate.
+// the OAuth callback uses to send genuinely first-time users through onboarding. It
+// only resolves an existing profile by the authenticated Supabase user ID.
 // Cached per request+roleHint so repeated calls (page + header + nested components)
 // share one lookup instead of re-querying Supabase Auth and Prisma each time.
 export const ensureProfileForCurrentUser = cache(async (
   roleHint?: "OWNER" | "STUDENT",
-): Promise<{ profile: Profile; created: boolean } | null> => {
+): Promise<{ profile: Profile; created: boolean } | { conflict: true } | null> => {
   const user = await getCurrentUser();
   if (!user) return null;
 
   const existing = await resilientRead(() => prisma.profile.findUnique({ where: { id: user.id } }));
   if (existing) return { profile: existing, created: false };
 
-  // The same email may already have a profile from a different sign-in method
-  // (e.g. email/password first, then Google). Reuse it — it's the same person.
+  // A matching email does not prove that two provider identities are linked. Block the
+  // new subject and require explicit Supabase identity linking instead of sharing data.
   if (user.email) {
     const byEmail = await resilientRead(() => prisma.profile.findUnique({ where: { email: user.email } }));
-    if (byEmail) return { profile: byEmail, created: false };
+    if (byEmail && byEmail.id !== user.id) return { conflict: true };
   }
 
   // Metadata differs between email sign-up and Google (name / avatar live here).

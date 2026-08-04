@@ -23,9 +23,16 @@ export async function GET(request: NextRequest) {
       const result = await ensureProfileForCurrentUser(
         searchParams.get("role") === "OWNER" ? "OWNER" : undefined,
       );
+      if (result && "conflict" in result && result.conflict) {
+        // Do not leave a newly authenticated provider session attached to an
+        // existing account's Profile. The user must sign in with the original
+        // provider or complete explicit identity linking first.
+        await supabase.auth.signOut();
+        return NextResponse.redirect(new URL("/login?error=identity-conflict", origin));
+      }
       // First-time users set a display name before entering the app; existing users
       // (created === false) skip onboarding entirely and go straight to `next`.
-      if (result?.created) {
+      if (result && "profile" in result && result.created) {
         const onboarding = new URL("/onboarding", origin);
         onboarding.searchParams.set("next", next);
         return NextResponse.redirect(onboarding);

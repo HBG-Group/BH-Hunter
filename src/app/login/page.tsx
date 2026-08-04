@@ -22,6 +22,12 @@ export default async function LoginPage({ searchParams }: Props) {
           Sign-in didn&apos;t complete. Please try again.
         </p>
       )}
+      {error === "identity-conflict" && (
+        <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          This email already belongs to another Meino sign-in method. Use the
+          original provider, or link Google from that signed-in account first.
+        </p>
+      )}
       <GoogleButton next={next || "/"} />
       <AuthDivider />
       <AuthForm mode="signin" action={signInAction} next={next || undefined} />
