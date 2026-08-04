@@ -28,6 +28,12 @@ export default async function LoginPage({ searchParams }: Props) {
           original provider, or link Google from that signed-in account first.
         </p>
       )}
+      {error === "confirmation" && (
+        <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          That confirmation link is invalid or expired. Request a new one and
+          wait at least 60 seconds before retrying.
+        </p>
+      )}
       <GoogleButton next={next || "/"} />
       <AuthDivider />
       <AuthForm mode="signin" action={signInAction} next={next || undefined} />

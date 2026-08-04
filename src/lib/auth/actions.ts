@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { OAUTH_CALLBACK_PATH } from "@/config/auth";
-import { PUBLIC_SITE_URL } from "@/config/site";
+import { serverSiteUrl } from "@/config/site";
 import { getCurrentProfile } from "@/lib/auth/profile";
 import { resolveSiteOrigin } from "@/lib/auth/site-origin";
 import { logSecurityEvent } from "@/lib/security/events";
@@ -179,8 +179,9 @@ export async function signUpAction(
   // Supabase only accepts confirmation redirects on its allow-list. Do not use a
   // transient Vercel preview hostname when the canonical public URL has not been
   // configured: omitting it lets Supabase use its configured Site URL instead.
-  const emailRedirectTo = PUBLIC_SITE_URL
-    ? `${PUBLIC_SITE_URL}${OAUTH_CALLBACK_PATH}?next=${role === "OWNER" ? "/owner" : "/account"}`
+  const confirmationOrigin = serverSiteUrl();
+  const emailRedirectTo = confirmationOrigin
+    ? `${confirmationOrigin}/auth/confirmed`
     : undefined;
 
   const supabase = await createSupabaseServerClient();
@@ -202,7 +203,7 @@ export async function signUpAction(
     if (message.includes("rate limit")) {
       return {
         error:
-          "Too many confirmation emails were requested. Please wait a few minutes and try again.",
+          "Too many confirmation emails were requested. Wait at least 60 seconds before retrying. If the limit continues, wait up to an hour for the project email quota to reset.",
       };
     }
     if (message.includes("email address") && message.includes("invalid")) {
@@ -236,7 +237,8 @@ export async function signUpAction(
       detail: "awaiting_email_confirmation",
     });
     return {
-      notice: "Check your email to confirm your account, then sign in.",
+      notice:
+        "Check your email to confirm your account, then return here to sign in. If you need another confirmation email, wait at least 60 seconds before retrying; repeated requests may be limited for up to an hour.",
     };
   }
 

@@ -10,7 +10,19 @@ import { resolveSiteOrigin } from "@/lib/auth/site-origin";
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
+  const tokenHash = searchParams.get("token_hash");
   const origin = await resolveSiteOrigin();
+
+  // Older/custom Supabase email templates may still point confirmation links at
+  // this callback with a token_hash. Send them through the dedicated confirmation
+  // verifier so they receive the same success page as new links.
+  if (!code && tokenHash) {
+    const confirmation = new URL("/auth/confirmed", origin);
+    confirmation.searchParams.set("token_hash", tokenHash);
+    const type = searchParams.get("type");
+    if (type) confirmation.searchParams.set("type", type);
+    return NextResponse.redirect(confirmation);
+  }
 
   // Validate redirect — never concatenate a raw query parameter onto the origin.
   const next = safeRedirectPath(searchParams.get("next"), "/");
