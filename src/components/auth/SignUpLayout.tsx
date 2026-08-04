@@ -8,7 +8,6 @@ interface Props {
   formTitle: string;
   formSubtitle: string;
   children: React.ReactNode;
-  footer: React.ReactNode;
 }
 
 // Two very different-feeling sign-up experiences that still share Meino branding. The
@@ -34,7 +33,6 @@ export function SignUpLayout({
   formTitle,
   formSubtitle,
   children,
-  footer,
 }: Props) {
   const theme = themes[variant];
 
@@ -75,7 +73,6 @@ export function SignUpLayout({
             <p className="mb-4 mt-0.5 text-sm text-muted">{formSubtitle}</p>
             {children}
           </div>
-          <div className="mt-4 text-center text-xs text-neutral-500">{footer}</div>
         </div>
       </main>
     </div>
