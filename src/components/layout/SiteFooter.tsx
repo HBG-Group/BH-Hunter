@@ -1,8 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useSyncExternalStore } from "react";
 import { Logo } from "@/components/brand/Logo";
 import { PUBLIC_SITE_HOMEPAGE } from "@/config/site";
+
+const PUBLIC_PREVIEW_HOMEPAGE = "https://meino-git-bugfix-ui-hbg1.vercel.app";
 
 const LEGAL_LINKS = [
   { href: "/privacy", label: "Privacy Policy" },
@@ -22,7 +25,37 @@ const COMPANY_LINKS = [
 // the root layout so every page gets it without each page wiring it in separately.
 export function SiteFooter() {
   const pathname = usePathname();
-  const publicUrl = (path: string) => `${PUBLIC_SITE_HOMEPAGE}${path}`;
+  const controlHost = useSyncExternalStore(
+    () => () => {},
+    () => {
+      const hostname = window.location.hostname;
+      return (
+        hostname === "meinocontrol.vercel.app" ||
+        (hostname.startsWith("meinocontrol-") && hostname.endsWith(".vercel.app"))
+      );
+    },
+    () => false,
+  );
+  const controlPreview = useSyncExternalStore(
+    () => () => {},
+    () => {
+      const hostname = window.location.hostname;
+      const isControl =
+        hostname === "meinocontrol.vercel.app" ||
+        (hostname.startsWith("meinocontrol-") && hostname.endsWith(".vercel.app"));
+      return isControl && hostname !== "meinocontrol.vercel.app";
+    },
+    () => false,
+  );
+
+  // Public pages keep same-origin links so preview deployments resolve their own
+  // routes. Control-host pages need an explicit public origin because the control
+  // proxy intentionally rejects public routes on that host.
+  const publicUrl = (path: string) => {
+    if (!controlHost) return path;
+    const origin = controlPreview ? PUBLIC_PREVIEW_HOMEPAGE : PUBLIC_SITE_HOMEPAGE;
+    return `${origin}${path}`;
+  };
 
   // Signup is a focused conversion flow. The global legal/company footer adds a
   // second navigation surface and unnecessary vertical space to both account
@@ -34,7 +67,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-7xl px-4 py-6 sm:py-10">
         <div className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 sm:gap-8">
           <div className="col-span-2 sm:col-span-1">
-            <Logo href={PUBLIC_SITE_HOMEPAGE} />
+            <Logo href={publicUrl("/")} />
             <p className="mt-2 max-w-xs text-xs leading-5 text-muted sm:mt-3 sm:text-sm">
               Helping VSU students find a boarding house that feels like home.
             </p>
