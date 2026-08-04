@@ -1,18 +1,23 @@
 import { z } from "zod";
+import { normalizeTextInput } from "@/lib/validation/text";
 
 const rating = z.coerce.number().int().min(1).max(5);
 
 // A review scores several aspects 1–5, plus an optional written note. The overall
 // score is computed from the aspects so it always matches them.
-export const reviewSchema = z.object({
-  cleanliness: rating,
-  internet: rating,
-  safety: rating,
-  noiseLevel: rating,
-  waterSupply: rating,
-  ownerFriendliness: rating,
-  body: z.string().trim().max(1000).optional(),
-});
+export const reviewSchema = z
+  .object({
+    cleanliness: rating,
+    internet: rating,
+    safety: rating,
+    noiseLevel: rating,
+    waterSupply: rating,
+    ownerFriendliness: rating,
+    body: z
+      .preprocess(normalizeTextInput, z.string().trim().max(1000))
+      .optional(),
+  })
+  .strict();
 
 export type ReviewInput = z.infer<typeof reviewSchema>;
 

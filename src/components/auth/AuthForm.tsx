@@ -6,7 +6,10 @@ import { PasswordField } from "@/components/auth/PasswordField";
 import { Spinner } from "@/components/ui/Spinner";
 import type { AuthFormState } from "@/lib/auth/actions";
 
-type AuthAction = (state: AuthFormState, formData: FormData) => Promise<AuthFormState>;
+type AuthAction = (
+  state: AuthFormState,
+  formData: FormData,
+) => Promise<AuthFormState>;
 
 interface Props {
   mode: "signin" | "signup";
@@ -24,7 +27,14 @@ interface Props {
 const fieldClass =
   "w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-neutral-400";
 
-export function AuthForm({ mode, action, next, role, showFooter = true, agreed }: Props) {
+export function AuthForm({
+  mode,
+  action,
+  next,
+  role,
+  showFooter = true,
+  agreed,
+}: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   const isSignUp = mode === "signup";
   // Only gate on the terms box when the parent actually passes it (sign-up pages).
@@ -39,13 +49,51 @@ export function AuthForm({ mode, action, next, role, showFooter = true, agreed }
       )}
 
       {isSignUp && (
-        <input name="fullName" placeholder="Full name" required className={fieldClass} />
+        <input
+          name="fullName"
+          placeholder="Full name"
+          autoComplete="name"
+          minLength={2}
+          maxLength={80}
+          required
+          className={fieldClass}
+        />
       )}
-      <input name="email" type="email" placeholder="Email" required className={fieldClass} />
-      <PasswordField />
+      <input
+        name="email"
+        type="email"
+        placeholder="Email"
+        autoComplete="email"
+        maxLength={254}
+        required
+        className={fieldClass}
+      />
+      <PasswordField
+        autoComplete={isSignUp ? "new-password" : "current-password"}
+      />
 
-      {state.error && <p className="text-sm text-rose-600">{state.error}</p>}
-      {state.notice && <p className="text-sm text-emerald-600">{state.notice}</p>}
+      {isSignUp ? (
+        <p className="text-xs text-neutral-500">
+          Use 8–72 characters. A longer passphrase is recommended.
+        </p>
+      ) : (
+        <p className="text-xs text-neutral-500">
+          After 5 incorrect attempts you&apos;ll be locked out briefly.{" "}
+          <Link
+            href="/forgot-password"
+            className="underline hover:text-neutral-800"
+          >
+            Forgot password?
+          </Link>
+        </p>
+      )}
+
+      <div aria-live="polite">
+        {state.error && <p className="text-sm text-rose-600">{state.error}</p>}
+        {state.notice && (
+          <p className="text-sm text-emerald-600">{state.notice}</p>
+        )}
+      </div>
 
       <button
         type="submit"

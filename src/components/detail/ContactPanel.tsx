@@ -1,4 +1,5 @@
 import { AvailabilityBadge } from "@/components/ui/AvailabilityBadge";
+import { SafetyReminder } from "@/components/ui/SafetyReminder";
 import { ContactButtons } from "@/components/detail/ContactButtons";
 import { formatPeso, formatRelativeTime } from "@/lib/utils/format";
 import type { ListingDetail } from "@/types/listing";
@@ -32,6 +33,11 @@ export function ContactPanel({ listing }: Props) {
         contactPhone={listing.contactPhone}
         messengerUrl={listing.messengerUrl}
         contactEmail={listing.contactEmail}
+      />
+
+      <SafetyReminder
+        className="mt-3 border-t border-line pt-3"
+        message="Never send a deposit before viewing the property in person. Meino doesn't process payments."
       />
     </div>
   );

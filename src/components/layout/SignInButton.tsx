@@ -11,7 +11,7 @@ export function SignInButton() {
   return (
     <button
       onClick={() => open(pathname)}
-      className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-hover"
+      className="min-h-11 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover"
     >
       Sign in
     </button>

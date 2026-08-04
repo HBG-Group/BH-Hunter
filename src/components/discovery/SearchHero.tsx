@@ -37,18 +37,29 @@ export function SearchHero({
 
   const toggleAmenity = (key: string) =>
     onChange({
-      amenities: amenities.includes(key) ? amenities.filter((a) => a !== key) : [...amenities, key],
+      amenities: amenities.includes(key)
+        ? amenities.filter((a) => a !== key)
+        : [...amenities, key],
     });
 
   // Active filter count for the mobile "Filters" button badge.
   const activeCount =
-    (filters.availableOnly ? 1 : 0) + (filters.gender ? 1 : 0) + (filters.maxPrice ? 1 : 0) + amenities.length;
+    (filters.availableOnly ? 1 : 0) +
+    (filters.gender ? 1 : 0) +
+    (filters.maxPrice ? 1 : 0) +
+    amenities.length;
 
   return (
     <div className="space-y-4">
       {/* Search state */}
       <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5 shadow-sm ring-1 ring-line transition-shadow duration-200 focus-within:shadow-md focus-within:ring-primary">
-        <svg className="h-5 w-5 shrink-0 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <svg
+          className="h-5 w-5 shrink-0 text-muted"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
           <circle cx="11" cy="11" r="7" />
           <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
         </svg>
@@ -60,7 +71,9 @@ export function SearchHero({
           aria-label="Search boarding houses by name or area"
           className="w-full bg-transparent text-base text-ink outline-none placeholder:text-muted"
         />
-        <span className="hidden shrink-0 text-sm text-muted sm:block">{resultCount} places</span>
+        <span className="hidden shrink-0 text-sm text-muted sm:block">
+          {resultCount} places
+        </span>
       </div>
 
       {/* Desktop: all filters inline */}
@@ -75,17 +88,26 @@ export function SearchHero({
             key={gender.value}
             label={gender.label}
             active={filters.gender === gender.value}
-            onClick={() => onChange({ gender: filters.gender === gender.value ? undefined : gender.value })}
+            onClick={() =>
+              onChange({
+                gender:
+                  filters.gender === gender.value ? undefined : gender.value,
+              })
+            }
           />
         ))}
         <input
           type="number"
           min={0}
           value={filters.maxPrice ?? ""}
-          onChange={(e) => onChange({ maxPrice: e.target.value ? Number(e.target.value) : undefined })}
+          onChange={(e) =>
+            onChange({
+              maxPrice: e.target.value ? Number(e.target.value) : undefined,
+            })
+          }
           placeholder="Max ₱"
           aria-label="Maximum monthly price in pesos"
-          className="w-24 rounded-full bg-white px-3.5 py-1.5 text-sm outline-none ring-1 ring-inset ring-line focus:ring-primary"
+          className="h-11 w-24 rounded-full bg-white px-3.5 text-sm outline-none ring-1 ring-inset ring-line focus:ring-primary"
         />
         <span className="mx-1 w-px self-stretch bg-line" />
         {AMENITIES.map((amenity) => (
@@ -104,7 +126,7 @@ export function SearchHero({
             value={sort}
             onChange={(e) => onSortChange(e.target.value as SortOption)}
             aria-label="Sort listings"
-            className="rounded-full bg-white px-3 py-1.5 text-sm text-ink outline-none ring-1 ring-inset ring-line focus:ring-primary"
+            className="h-11 rounded-full bg-white px-3 text-sm text-ink outline-none ring-1 ring-inset ring-line focus:ring-primary"
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -117,7 +139,7 @@ export function SearchHero({
         {activeCount > 0 && (
           <button
             onClick={onClearFilters}
-            className="rounded-full px-3 py-1.5 text-sm font-medium text-muted underline hover:text-ink"
+            className="min-h-11 rounded-full px-3 py-1.5 text-sm font-medium text-muted underline hover:text-ink"
           >
             Clear filters
           </button>
@@ -133,9 +155,16 @@ export function SearchHero({
         />
         <button
           onClick={() => setSheetOpen(true)}
-          className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-medium text-ink ring-1 ring-inset ring-line"
+          className="flex min-h-11 items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-medium text-ink ring-1 ring-inset ring-line"
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
             <path d="M3 6h18M6 12h12M10 18h4" strokeLinecap="round" />
           </svg>
           Filters

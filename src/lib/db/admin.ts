@@ -3,6 +3,19 @@
 // action layer via requireAdmin().
 
 import { prisma } from "@/lib/db/prisma";
+import type { ModerationAction } from "@prisma/client";
+import { verificationExpiry } from "@/lib/owner/verification";
+import { subscriptionExpiry } from "@/lib/owner/subscription";
+import { PLANS } from "@/config/pricing";
+import { cached } from "@/lib/cache/redis";
+
+export type OwnerPlanId = "BASIC" | "ADVANCE" | "PREMIUM";
+
+// The perks a plan grants, read from the pricing config so there's one source of truth.
+function planPerks(plan: OwnerPlanId): { verified: boolean; featured: boolean } {
+  const found = PLANS.find((p) => p.id === plan.toLowerCase());
+  return { verified: found?.verifiedBadge ?? false, featured: found?.featuredListing ?? false };
+}
 
 export interface PlatformStats {
   listings: number;
@@ -15,18 +28,20 @@ export interface PlatformStats {
 }
 
 export async function getPlatformStats(): Promise<PlatformStats> {
-  const [listings, published, unverified, owners, students, reviews, viewingRequests] =
-    await Promise.all([
-      prisma.boardingHouse.count(),
-      prisma.boardingHouse.count({ where: { status: "PUBLISHED" } }),
-      prisma.boardingHouse.count({ where: { verifiedAt: null } }),
-      prisma.profile.count({ where: { role: "OWNER" } }),
-      prisma.profile.count({ where: { role: "STUDENT" } }),
-      prisma.review.count(),
-      prisma.viewingRequest.count(),
-    ]);
+  return cached("stats:platform", 900, async () => {
+    const [listings, published, unverified, owners, students, reviews, viewingRequests] =
+      await Promise.all([
+        prisma.boardingHouse.count(),
+        prisma.boardingHouse.count({ where: { status: "PUBLISHED" } }),
+        prisma.boardingHouse.count({ where: { verifiedAt: null } }),
+        prisma.profile.count({ where: { role: "OWNER" } }),
+        prisma.profile.count({ where: { role: "STUDENT" } }),
+        prisma.review.count(),
+        prisma.viewingRequest.count(),
+      ]);
 
-  return { listings, published, unverified, owners, students, reviews, viewingRequests };
+    return { listings, published, unverified, owners, students, reviews, viewingRequests };
+  });
 }
 
 const adminListingSelect = {
@@ -69,6 +84,15 @@ export function findAllListingsForAdmin(filter: AdminListingFilter = "all") {
     where,
     select: adminListingSelect,
     orderBy: { createdAt: "desc" },
+  });
+}
+
+// Cheap lookup used only to build cache-invalidation keys before a moderation write
+// (slug for `listing:{slug}`, ownerId for `metrics:owner:{ownerId}`).
+export function findListingSlugAndOwner(id: string) {
+  return prisma.boardingHouse.findUnique({
+    where: { id },
+    select: { slug: true, ownerId: true },
   });
 }
 
@@ -135,10 +159,132 @@ export async function setListingFeatured(id: string, featured: boolean): Promise
 
 // Grant or revoke an owner's "Verified Owner" badge. Scoped to OWNER profiles, so an
 // admin can't accidentally flag a student, and owners can never verify themselves.
+// Granting sets a one-month expiry and clears any pending request; revoking wipes both.
 export async function setOwnerVerified(ownerId: string, verified: boolean): Promise<boolean> {
   const result = await prisma.profile.updateMany({
     where: { id: ownerId, role: "OWNER" },
-    data: { verified },
+    data: verified
+      ? {
+          verified: true,
+          verifiedUntil: verificationExpiry(),
+          verificationRequestedAt: null,
+          verificationStatus: "APPROVED",
+        }
+      : {
+          verified: false,
+          verifiedUntil: null,
+          verificationRequestedAt: null,
+          verificationStatus: "UNVERIFIED",
+        },
+  });
+  return result.count > 0;
+}
+
+// Reject a pending verification request without granting the badge. Distinct from
+// "revoke" (setOwnerVerified(false)) so the owner sees their request was reviewed
+// and declined, not just left unactioned.
+export async function setOwnerVerificationRejected(ownerId: string): Promise<boolean> {
+  const result = await prisma.profile.updateMany({
+    where: { id: ownerId, role: "OWNER" },
+    data: { verified: false, verificationRequestedAt: null, verificationStatus: "REJECTED" },
+  });
+  return result.count > 0;
+}
+
+// All owners for the admin "Owners" page, newest first, with their listing count and
+// verification fields so the list can show status at a glance.
+export function findAllOwners() {
+  return prisma.profile.findMany({
+    where: { role: "OWNER" },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      phone: true,
+      verified: true,
+      verifiedUntil: true,
+      verificationRequestedAt: true,
+      frozen: true,
+      plan: true,
+      createdAt: true,
+      subscription: { select: { status: true, expiresAt: true } },
+      _count: { select: { boardingHouses: true } },
+    },
+    orderBy: [{ verificationRequestedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+  });
+}
+
+// Full owner record for the admin owner-detail page, including their listings.
+export function findOwnerForAdmin(ownerId: string) {
+  return prisma.profile.findFirst({
+    where: { id: ownerId, role: "OWNER" },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      phone: true,
+      avatarUrl: true,
+      verified: true,
+      verifiedUntil: true,
+      verificationRequestedAt: true,
+      verificationStatus: true,
+      frozen: true,
+      plan: true,
+      createdAt: true,
+      subscription: { select: { status: true, expiresAt: true } },
+      subscriptionEvents: {
+        select: { id: true, eventType: true, plan: true, status: true, amount: true, receiptUrl: true, createdAt: true, reviewedAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      },
+      boardingHouses: {
+        select: { id: true, name: true, slug: true, status: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+}
+
+// Assign a pricing plan to an owner. The plan drives their perks: the Verified Owner
+// badge (Advance/Premium) and Featured listings (Premium) are applied automatically, in
+// one transaction, so there's no separate manual verify/feature step. Activating a plan
+// also (re)starts a 5-month subscription — after that it expires and the owner is
+// prompted to re-subscribe.
+export async function setOwnerPlan(ownerId: string, plan: OwnerPlanId, reviewedById: string): Promise<boolean> {
+  const { verified, featured } = planPerks(plan);
+  const now = new Date();
+  const expiresAt = subscriptionExpiry(now);
+
+  const [profileResult] = await prisma.$transaction([
+    prisma.profile.updateMany({
+      where: { id: ownerId, role: "OWNER" },
+      // verifiedUntil null = valid while the plan lasts (no monthly expiry).
+      data: {
+        plan,
+        verified,
+        verifiedUntil: null,
+        verificationRequestedAt: null,
+        verificationStatus: verified ? "APPROVED" : "UNVERIFIED",
+      },
+    }),
+    prisma.boardingHouse.updateMany({ where: { ownerId }, data: { featured } }),
+    prisma.subscription.upsert({
+      where: { ownerId },
+      create: { ownerId, plan, status: "ACTIVE", startedAt: now, expiresAt, renewalDate: expiresAt },
+      update: { plan, status: "ACTIVE", startedAt: now, expiresAt, renewalDate: expiresAt },
+    }),
+    prisma.subscriptionEvent.create({
+      data: { ownerId, eventType: "PLAN_ASSIGNED", plan, status: "ACTIVE", reviewedAt: now, reviewedById },
+    }),
+  ]);
+  return profileResult.count > 0;
+}
+
+// Freeze or unfreeze an owner. Scoped to OWNER profiles so a student can't be frozen.
+export async function setOwnerFrozen(ownerId: string, frozen: boolean): Promise<boolean> {
+  const result = await prisma.profile.updateMany({
+    where: { id: ownerId, role: "OWNER" },
+    data: { frozen },
   });
   return result.count > 0;
 }
@@ -157,4 +303,41 @@ export function findRecentReviews(limit = 50) {
 export async function deleteReviewById(id: string): Promise<boolean> {
   const result = await prisma.review.deleteMany({ where: { id } });
   return result.count > 0;
+}
+
+export interface ModerationEventRow {
+  id: string;
+  action: ModerationAction;
+  targetType: string;
+  targetId: string;
+  detail: string | null;
+  createdAt: Date;
+  actor: { id: string; fullName: string };
+}
+
+// Read-only audit trail for the admin UI — newest first, capped so the page stays fast.
+export function listModerationEvents(): Promise<ModerationEventRow[]> {
+  return prisma.moderationEvent.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    select: {
+      id: true,
+      action: true,
+      targetType: true,
+      targetId: true,
+      detail: true,
+      createdAt: true,
+      actor: { select: { id: true, fullName: true } },
+    },
+  });
+}
+
+export function recordModerationEvent(input: {
+  actorId: string;
+  action: ModerationAction;
+  targetType: string;
+  targetId: string;
+  detail?: string;
+}) {
+  return prisma.moderationEvent.create({ data: input });
 }

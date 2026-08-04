@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { SafetyReminder } from "@/components/ui/SafetyReminder";
 import type { ViewingFormState } from "@/lib/student/viewing-actions";
 
 type Action = (state: ViewingFormState, formData: FormData) => Promise<ViewingFormState>;
@@ -46,6 +47,8 @@ export function ViewingRequestForm({ action }: Props) {
       >
         {pending ? "Sending…" : "Send request"}
       </button>
+
+      <SafetyReminder message="Always meet at the property in a well-lit, public time of day." />
     </form>
   );
 }

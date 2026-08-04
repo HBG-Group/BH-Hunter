@@ -1,0 +1,102 @@
+name: Security Checks
+
+on:
+  pull_request:
+  deployment_status:
+  push:
+    branches:
+      - main
+      - develop
+      - feature/improved-security
+  workflow_dispatch:
+    inputs:
+      security_check_url:
+        description: HTTPS staging or Preview deployment URL to verify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  security-checks:
+    if: github.event_name != 'deployment_status'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Security regression tests
+        run: npm test
+
+      - name: Production dependency audit
+        run: npm audit --omit=dev
+
+      - name: Generate SBOM
+        run: npm run sbom > sbom.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+          if-no-files-found: error
+
+  deployed-security-check:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check whether the deployment is publicly testable
+        id: deployment-access
+        env:
+          DEPLOY_URL: ${{ inputs.security_check_url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+        shell: bash
+        run: |
+          location="$(curl --silent --show-error --head --max-redirs 0 "$DEPLOY_URL" | tr -d '\r' | awk 'tolower($1) == "location:" { print $2; exit }')"
+          if [[ "$location" == https://vercel.com/* ]]; then
+            echo "public=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Deployment is protected by Vercel Authentication. Configure a protection-bypass secret or run this workflow manually against a public alias."
+          else
+            echo "public=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify deployed security headers and source maps
+        if: steps.deployment-access.outputs.public == 'true'
+        env:
+          SECURITY_CHECK_URL: ${{ inputs.security_check_url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+        run: npm run security:verify-deployment
+
+      - name: Verify deployed public and protected route availability
+        if: steps.deployment-access.outputs.public == 'true'
+        env:
+          DEPLOY_URL: ${{ inputs.security_check_url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+        run: npm run verify:routes

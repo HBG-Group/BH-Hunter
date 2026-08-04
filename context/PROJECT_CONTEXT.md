@@ -2,6 +2,11 @@
 
 _The "what is this project?" document. Read this first._
 
+> **Recent work:** several features shipped after this doc was written (owner plans,
+> pricing page, onboarding tutorial, freeze/delete owners, account deletion, admin domain,
+> terms gate, multi-number contacts, viewing calendar). See **`CHANGELOG.md`** — it is
+> authoritative where it conflicts with the descriptions below.
+
 ## Project name
 
 **Meino** (formerly "BH Hunter").
@@ -47,14 +52,21 @@ through. The name and voice lean into "finding a place that feels like home."
 - Submit for review (PENDING) or pull back to DRAFT — owners can never self-publish.
 - Free-listing quota banner (5 free; pricing beyond is scaffolded, off in Phase 1).
 
-**Admins (login at `/admin`):**
+**Admins (login at `/admin`; can be moved to a separate domain via `ADMIN_HOST`):**
 - Overview queue of listings needing attention; full listings list with **All /
   Unverified / Unpublished** filters.
 - Per-listing admin detail page showing all info + every photo (any status) for review.
-- Verify listing, publish (requires verified + ≥5 real photos), feature, delete
+- Verify listing (gates publishing), publish (requires verified + ≥5 real photos), delete
   (permanent, cascades + removes stored photos).
-- Verify owners (Verified Owner badge). Moderate/delete reviews.
+- **Owners page** (`/admin/owners`): assign a **plan** (Basic/Advance/Premium) which
+  auto-applies the Verified Owner badge (Advance/Premium) and Featured listings (Premium);
+  **freeze/unfreeze** (read-only lockout, listings stay public); **delete owner** (full
+  cleanup incl. storage + auth user). Moderate/delete reviews.
 - Advertisements: create (gallery image upload, up to 5), pause/resume, delete.
+
+**Newer surfaces:** `/pricing` (display-only plan cards, no billing), `/onboarding`
+(first-time display-name step), `/terms`, a first-run owner tutorial, a site-wide terms
+gate, and self-serve account deletion (Danger Zone). See `CHANGELOG.md`.
 
 ## Authentication flow
 
@@ -119,5 +131,13 @@ secrets, and RLS enabled on all tables.
   dedicated hardening pass were completed; RLS is enabled on all tables.
 - Rebranded from BH Hunter to Meino (name, terracotta palette, doorway logo).
 - Monetization is **scaffolded but off** (`BILLING_ENABLED = false`) — Phase 1 is free.
-- Database is live on Supabase (ref `qcrkhrhqugdyyliaevzf`); QA accounts exist.
-- Deploys to Vercel from the `develop` branch. Work is committed on request only.
+  Pricing plans exist for **display and admin assignment only** (drive badge/featured
+  perks), not billing. See `CHANGELOG.md` + `BUSINESS_MODEL.md`.
+- Database is live on Supabase (ref `qcrkhrhqugdyyliaevzf`); QA accounts exist. `Profile`
+  has extra columns: `frozen`, `plan`, `ownerTutorialCompleted`, `verifiedUntil`,
+  `verificationRequestedAt`.
+- **Production deploys from `main`** (recent work merged, commit `ef2a8b2`); `develop` is
+  the working branch. Vercel needs all env vars set or the build fails. Work is committed
+  on request only.
+- Placeholders to fill before launch: `config/support.ts` (admin contact), optional
+  `ADMIN_HOST` for the separate admin domain, custom SMTP for auth email.

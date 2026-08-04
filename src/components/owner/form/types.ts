@@ -38,7 +38,7 @@ export function emptyListingForm(): ListingFormValues {
     depositMonths: 1,
     utilitiesIncluded: false,
     internetIncluded: false,
-    curfew: "",
+    curfew: "22:00",
     houseRules: "",
     contactNumbers: [{ number: "", carrier: "" }],
     messengerUrl: "",

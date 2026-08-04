@@ -67,20 +67,49 @@ enum AnalyticsEventType {
   VIEWING_REQUEST
 }
 
+enum ModerationAction {
+  LISTING_VERIFICATION
+  LISTING_STATUS
+  LISTING_FEATURED
+  LISTING_DELETION
+  OWNER_VERIFICATION
+  OWNER_FREEZE
+  OWNER_DELETION
+  REVIEW_DELETION
+  ADVERTISEMENT_CREATION
+  ADVERTISEMENT_STATUS
+  ADVERTISEMENT_DELETION
+}
+
+// Architecture for Phase 3 of the verified-owner workflow: tracks the state of a
+// verification request without requiring document uploads yet (see LEGAL.md).
+enum OwnerVerificationStatus {
+  UNVERIFIED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ---------------------------------------------------------------------------
 // People. Profile.id matches the Supabase Auth user id (auth.users.id).
 // ---------------------------------------------------------------------------
 
 model Profile {
-  id        String   @id
-  role      Role     @default(STUDENT)
-  fullName  String
-  email     String   @unique
-  phone     String?
-  avatarUrl String?  // profile photo (auto-filled from Google when available)
-  verified  Boolean  @default(false) // admin-granted "Verified Owner" trust badge
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                      String             @id
+  role                    Role               @default(STUDENT)
+  fullName                String
+  email                   String             @unique
+  phone                   String?
+  avatarUrl               String? // profile photo (auto-filled from Google when available)
+  verified                Boolean            @default(false) // admin-granted "Verified Owner" trust badge
+  verifiedUntil           DateTime?          @db.Timestamptz(6) // when the current verification lapses (auto-expires monthly)
+  verificationRequestedAt DateTime?          @db.Timestamptz(6) // set when an owner requests verification; cleared once granted
+  verificationStatus      OwnerVerificationStatus @default(UNVERIFIED) // Phase 3 architecture: request/review state, independent of the `verified` badge flag
+  frozen                  Boolean            @default(false) // admin-frozen owner: read-only, blocked from the dashboard
+  plan                    String? // admin-assigned pricing plan: BASIC | ADVANCE | PREMIUM (null = none)
+  ownerTutorialCompleted  Boolean            @default(false) // has the owner finished/skipped onboarding once
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
 
   boardingHouses         BoardingHouse[]         @relation("OwnerListings")
   reviews                Review[]
@@ -90,6 +119,9 @@ model Profile {
   recentlyViewed         RecentlyViewed[]
   notificationPreference NotificationPreference?
   subscription           Subscription?
+  subscriptionEvents     SubscriptionEvent[] @relation("SubscriptionEventsOwner")
+  reviewedSubscriptionEvents SubscriptionEvent[] @relation("SubscriptionEventsReviewer")
+  moderationEvents       ModerationEvent[]       @relation("ModerationActor")
 
   @@map("profiles")
 }
@@ -97,9 +129,9 @@ model Profile {
 // Scaffolding for a future owner subscription (Phase 2). Nothing enforces it yet —
 // no code reads status to gate features. See docs/CACHING.md roadmap and config/billing.ts.
 model Subscription {
-  id               String    @id @default(cuid())
-  ownerId          String    @unique
-  owner            Profile   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  id      String  @id @default(cuid())
+  ownerId String  @unique
+  owner   Profile @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   plan             String    @default("FREE") // FREE | OWNER_MONTHLY
   status           String    @default("INACTIVE") // INACTIVE | ACTIVE | PAST_DUE | CANCELLED
@@ -114,12 +146,38 @@ model Subscription {
   @@map("subscriptions")
 }
 
+// Immutable payment and plan-change ledger. The Subscription row is the current
+// entitlement; this table preserves the evidence and review history behind it.
+model SubscriptionEvent {
+  id      String  @id @default(cuid())
+  ownerId String
+  owner   Profile @relation("SubscriptionEventsOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  eventType        String // PAYMENT_SUBMITTED | PLAN_ASSIGNED
+  plan             String
+  status           String // PENDING | ACTIVE | REJECTED | CANCELLED
+  amount           Int?
+  paymentReference String?
+  receiptUrl       String?
+  payerName        String?
+  phoneLast4       String?
+
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   Profile? @relation("SubscriptionEventsReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  @@index([ownerId, createdAt])
+  @@index([status, createdAt])
+  @@map("subscription_events")
+}
+
 // Scaffolding for local business ads (Part 6). Admin-managed; not rendered yet.
 model Advertisement {
   id           String    @id @default(cuid())
   title        String
   description  String?
-  imageUrls    String[]  // uploaded to Supabase Storage, first is the cover
+  imageUrls    String[] // uploaded to Supabase Storage, first is the cover
   websiteUrl   String?
   facebookUrl  String?
   messengerUrl String?
@@ -149,8 +207,8 @@ model RecentlyViewed {
 
 // Per-student notification settings. One row per student.
 model NotificationPreference {
-  studentId          String  @id
-  student            Profile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId           String  @id
+  student             Profile @relation(fields: [studentId], references: [id], onDelete: Cascade)
   roomAvailableAlerts Boolean @default(true)
 
   @@map("notification_preferences")
@@ -161,25 +219,25 @@ model NotificationPreference {
 // ---------------------------------------------------------------------------
 
 model BoardingHouse {
-  id           String        @id @default(cuid())
-  slug         String        @unique
-  ownerId      String
-  owner        Profile       @relation("OwnerListings", fields: [ownerId], references: [id], onDelete: Cascade)
+  id      String  @id @default(cuid())
+  slug    String  @unique
+  ownerId String
+  owner   Profile @relation("OwnerListings", fields: [ownerId], references: [id], onDelete: Cascade)
 
-  name         String
-  addressLine  String
-  latitude     Float
-  longitude    Float
+  name        String
+  addressLine String
+  latitude    Float
+  longitude   Float
 
-  genderPolicy GenderPolicy
-  priceMonthly Int           // lowest room price, in PHP
-  advanceMonths Int          @default(1)
-  depositMonths Int          @default(1)
-  utilitiesIncluded Boolean  @default(false)
-  internetIncluded  Boolean  @default(false)
+  genderPolicy      GenderPolicy
+  priceMonthly      Int // lowest room price, in PHP
+  advanceMonths     Int          @default(1)
+  depositMonths     Int          @default(1)
+  utilitiesIncluded Boolean      @default(false)
+  internetIncluded  Boolean      @default(false)
 
-  curfew       String?
-  houseRules   String?
+  curfew     String?
+  houseRules String?
 
   contactPhone String
   messengerUrl String?
@@ -187,8 +245,8 @@ model BoardingHouse {
 
   status          ListingStatus @default(DRAFT)
   featured        Boolean       @default(false) // admin-promoted; shown first on the homepage
-  lastConfirmedAt DateTime?     // last time the owner confirmed vacancies
-  verifiedAt      DateTime?     // set by an admin after verification
+  lastConfirmedAt DateTime? // last time the owner confirmed vacancies
+  verifiedAt      DateTime? // set by an admin after verification
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -217,7 +275,7 @@ model Room {
 
   label        String
   capacity     Int
-  occupied     Int  @default(0)
+  occupied     Int    @default(0)
   priceMonthly Int?
 
   @@index([boardingHouseId])
@@ -286,15 +344,15 @@ model Review {
   authorId        String
   author          Profile       @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  overall          Int
-  cleanliness      Int
-  internet         Int
-  safety           Int
-  noiseLevel       Int
-  waterSupply      Int
+  overall           Int
+  cleanliness       Int
+  internet          Int
+  safety            Int
+  noiseLevel        Int
+  waterSupply       Int
   ownerFriendliness Int
-  body             String?
-  isVerified       Boolean @default(false)
+  body              String?
+  isVerified        Boolean @default(false)
 
   createdAt DateTime @default(now())
 
@@ -317,27 +375,45 @@ model Favorite {
 }
 
 model ViewingRequest {
-  id              String               @id @default(cuid())
+  id              String        @id @default(cuid())
   studentId       String
   boardingHouseId String
-  student         Profile              @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  boardingHouse   BoardingHouse        @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+  student         Profile       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  boardingHouse   BoardingHouse @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
 
   preferredAt DateTime
   status      ViewingRequestStatus @default(PENDING)
   message     String?
   createdAt   DateTime             @default(now())
 
+  @@unique([studentId, boardingHouseId, preferredAt])
   @@index([boardingHouseId])
   @@index([studentId])
   @@map("viewing_requests")
 }
 
+// Durable record of privileged moderation decisions. Target IDs are scalar fields
+// so history remains available even when a moderated record is deleted.
+model ModerationEvent {
+  id         String           @id @default(cuid())
+  actorId    String
+  actor      Profile          @relation("ModerationActor", fields: [actorId], references: [id], onDelete: Restrict)
+  action     ModerationAction
+  targetType String
+  targetId   String
+  detail     String?
+  createdAt  DateTime         @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@map("moderation_events")
+}
+
 // One row per meaningful action, so owner analytics can be aggregated later.
 model AnalyticsEvent {
-  id              String             @id @default(cuid())
+  id              String        @id @default(cuid())
   boardingHouseId String
-  boardingHouse   BoardingHouse      @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
+  boardingHouse   BoardingHouse @relation(fields: [boardingHouseId], references: [id], onDelete: Cascade)
 
   type      AnalyticsEventType
   createdAt DateTime           @default(now())
@@ -360,4 +436,15 @@ model Notification {
 
   @@index([userId])
   @@map("notifications")
+}
+
+// Shared fixed-window counters. This table is private to the server-side Prisma
+// connection and is never exposed through the Supabase Data API.
+model RateLimitWindow {
+  key     String   @id
+  count   Int
+  resetAt DateTime @map("reset_at") @db.Timestamptz(6)
+
+  @@index([resetAt])
+  @@map("rate_limit_windows")
 }

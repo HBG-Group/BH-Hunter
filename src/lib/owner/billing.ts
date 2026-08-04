@@ -1,10 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
-import {
-  EXTRA_LISTING_PRICE,
-  FREE_LISTING_LIMIT,
-  freeListingsLeft,
-  nextListingNeedsPayment,
-} from "@/config/billing";
+import { EXTRA_LISTING_PRICE, FREE_LISTING_LIMIT } from "@/config/billing";
+import { getOwnerRoomEntitlement } from "@/lib/owner/entitlements";
 
 // How many listings an owner already has — the basis for the free-tier check.
 export function countOwnerListings(ownerId: string): Promise<number> {
@@ -16,17 +12,25 @@ export interface ListingQuota {
   freeLimit: number;
   freeLeft: number;
   nextNeedsPayment: boolean;
+  // Reached the free ceiling — the create form is blocked and the owner must contact
+  // the admin. Always enforced (not tied to BILLING_ENABLED).
+  atLimit: boolean;
   extraPrice: number;
 }
 
-// Everything the UI needs to show the quota banner and, later, the paywall.
+// Everything the UI needs to show the quota banner and block over-limit creation.
 export async function getListingQuota(ownerId: string): Promise<ListingQuota> {
-  const used = await countOwnerListings(ownerId);
+  const [used, entitlement] = await Promise.all([
+    countOwnerListings(ownerId),
+    getOwnerRoomEntitlement(ownerId),
+  ]);
+  const limit = entitlement.listingLimit || FREE_LISTING_LIMIT;
   return {
     used,
-    freeLimit: FREE_LISTING_LIMIT,
-    freeLeft: freeListingsLeft(used),
-    nextNeedsPayment: nextListingNeedsPayment(used),
+    freeLimit: limit,
+    freeLeft: Math.max(0, limit - used),
+    nextNeedsPayment: used + 1 > limit,
+    atLimit: used >= limit,
     extraPrice: EXTRA_LISTING_PRICE,
   };
 }

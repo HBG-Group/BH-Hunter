@@ -24,7 +24,7 @@ interface Props {
 const studentLinks: MenuLink[] = [
   { href: "/account", label: "My profile" },
   { href: "/account#favorites", label: "Favorites" },
-  { href: "/account#settings", label: "Settings" },
+  { href: "/settings", label: "Settings" },
 ];
 
 // The signed-in avatar with a dropdown. Closes on outside click.
@@ -42,7 +42,8 @@ export function ProfileMenu({
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(event.target as Node))
+        setOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -60,7 +61,7 @@ export function ProfileMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+        <div className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
           <p className="truncate px-4 py-2 text-xs text-neutral-500">{name}</p>
           {isAdmin && (
             <a

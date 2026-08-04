@@ -5,7 +5,10 @@ import { findFavoriteListings, getFavoriteIds } from "@/lib/db/favorites";
 import { findRecentlyViewed } from "@/lib/db/recently-viewed";
 import { findReviewsByStudent } from "@/lib/db/reviews";
 import { findViewingRequestsByStudent } from "@/lib/db/viewing-requests";
-import { getNotificationPreference, findNotifications } from "@/lib/db/notifications";
+import {
+  getNotificationPreference,
+  findNotifications,
+} from "@/lib/db/notifications";
 import { toListingCards } from "@/services/listings";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { ListingCard } from "@/components/listing/ListingCard";
@@ -14,14 +17,24 @@ import { Stars } from "@/components/ui/Stars";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NotificationSettings } from "@/components/student/NotificationSettings";
 import { NotificationList } from "@/components/student/NotificationList";
+import { resilientRead } from "@/lib/async/resilient-read";
+import { DangerZone } from "@/components/account/DangerZone";
 
 export default async function AccountPage() {
   const profile = await requireProfile("/account");
   // Owners have their own dashboard; send them there.
   if (profile.role === "OWNER") redirect("/owner");
 
-  const [favoriteRows, recentRows, favoriteIds, reviews, viewings, preference, notifications] =
-    await Promise.all([
+  const [
+    favoriteRows,
+    recentRows,
+    favoriteIds,
+    reviews,
+    viewings,
+    preference,
+    notifications,
+  ] = await resilientRead(() =>
+    Promise.all([
       findFavoriteListings(profile.id),
       findRecentlyViewed(profile.id),
       getFavoriteIds(profile.id),
@@ -29,7 +42,8 @@ export default async function AccountPage() {
       findViewingRequestsByStudent(profile.id),
       getNotificationPreference(profile.id),
       findNotifications(profile.id),
-    ]);
+    ]),
+  );
 
   const favorites = toListingCards(favoriteRows);
   const recent = toListingCards(recentRows);
@@ -38,7 +52,11 @@ export default async function AccountPage() {
   const grid = (listings: ReturnType<typeof toListingCards>) => (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {listings.map((listing) => (
-        <ListingCard key={listing.id} listing={listing} isFavorited={favoritedSet.has(listing.id)} />
+        <ListingCard
+          key={listing.id}
+          listing={listing}
+          isFavorited={favoritedSet.has(listing.id)}
+        />
       ))}
     </div>
   );
@@ -50,16 +68,23 @@ export default async function AccountPage() {
         <section className="flex items-center gap-4 rounded-2xl border border-neutral-200 bg-white p-5">
           <Avatar name={profile.fullName} src={profile.avatarUrl} size={56} />
           <div>
-            <h1 className="text-lg font-semibold text-neutral-900">{profile.fullName}</h1>
+            <h1 className="text-lg font-semibold text-neutral-900">
+              {profile.fullName}
+            </h1>
             <p className="text-sm text-neutral-500">{profile.email}</p>
           </div>
         </section>
 
         <section id="favorites" className="scroll-mt-20 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Places you saved</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-neutral-900">
+              Places you saved
+            </h2>
             {favorites.length >= 2 && (
-              <Link href="/compare" className="text-sm text-neutral-600 hover:text-neutral-900">
+              <Link
+                href="/compare"
+                className="text-sm text-neutral-600 hover:text-neutral-900"
+              >
                 Compare →
               </Link>
             )}
@@ -78,13 +103,17 @@ export default async function AccountPage() {
 
         {recent.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Recently viewed</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-neutral-900">
+              Recently viewed
+            </h2>
             {grid(recent)}
           </section>
         )}
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Reviews written</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-neutral-900">
+            Reviews written
+          </h2>
           {reviews.length === 0 ? (
             <EmptyState
               title="No reviews yet"
@@ -95,7 +124,10 @@ export default async function AccountPage() {
           ) : (
             <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
               {reviews.map((review) => (
-                <div key={review.id} className="flex items-center justify-between px-4 py-3">
+                <div
+                  key={review.id}
+                  className="flex items-center justify-between px-4 py-3"
+                >
                   <Link
                     href={`/listings/${review.boardingHouse.slug}`}
                     className="text-sm font-medium text-neutral-900 hover:underline"
@@ -110,7 +142,9 @@ export default async function AccountPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Notifications</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-neutral-900">
+            Notifications
+          </h2>
           <NotificationList
             notifications={notifications.map((n) => ({
               id: n.id,
@@ -123,13 +157,31 @@ export default async function AccountPage() {
         </section>
 
         <section id="settings" className="scroll-mt-20 space-y-3">
-          <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Settings</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-neutral-900">
+            Settings
+          </h2>
           <NotificationSettings roomAlerts={preference.roomAvailableAlerts} />
+          <p className="text-sm text-neutral-600">
+            <Link
+              href="/settings"
+              className="mr-4 underline hover:text-neutral-900"
+            >
+              Settings
+            </Link>
+            <Link
+              href="/account/privacy"
+              className="underline hover:text-neutral-900"
+            >
+              Privacy controls
+            </Link>
+          </p>
         </section>
 
         {viewings.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Viewing requests</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-neutral-900">
+              Viewing requests
+            </h2>
             <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
               {viewings.map((viewing) => (
                 <Link
@@ -138,12 +190,16 @@ export default async function AccountPage() {
                   className="block px-4 py-3 text-sm text-neutral-900 hover:bg-canvas"
                 >
                   {viewing.boardingHouse.name}
-                  <span className="ml-2 text-xs text-neutral-500">{viewing.status.toLowerCase()}</span>
+                  <span className="ml-2 text-xs text-neutral-500">
+                    {viewing.status.toLowerCase()}
+                  </span>
                 </Link>
               ))}
             </div>
           </section>
         )}
+
+        <DangerZone />
       </main>
     </div>
   );

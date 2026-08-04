@@ -6,10 +6,16 @@ interface Props {
   name?: string;
   placeholder?: string;
   minLength?: number;
+  autoComplete?: "current-password" | "new-password";
 }
 
 // Password input with a show/hide toggle so users can check for mistyped characters.
-export function PasswordField({ name = "password", placeholder = "Password", minLength = 6 }: Props) {
+export function PasswordField({
+  name = "password",
+  placeholder = "Password",
+  minLength = 6,
+  autoComplete = "current-password",
+}: Props) {
   const [visible, setVisible] = useState(false);
 
   return (
@@ -20,6 +26,8 @@ export function PasswordField({ name = "password", placeholder = "Password", min
         placeholder={placeholder}
         required
         minLength={minLength}
+        maxLength={72}
+        autoComplete={autoComplete}
         className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 pr-16 text-sm outline-none focus:border-neutral-400"
       />
       <button

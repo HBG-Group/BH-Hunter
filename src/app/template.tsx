@@ -8,7 +8,8 @@ import { DURATION, EASE } from "@/lib/motion";
 export default function Template({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
+      // Keep server-rendered content visible if a client script fails to hydrate.
+      initial={false}
       animate={{ opacity: 1 }}
       transition={{ duration: DURATION.slow, ease: EASE }}
     >

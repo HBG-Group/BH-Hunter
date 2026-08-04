@@ -6,6 +6,7 @@ compare prices, check real vacancies, see amenities, and view walking distance t
 
 > Full product vision and requirements live in [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md).
 > Architecture notes live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+> Security and privacy materials live in [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/PRIVACY.md`](docs/PRIVACY.md), and [`docs/CI_SECURITY.md`](docs/CI_SECURITY.md).
 
 ## Tech stack
 

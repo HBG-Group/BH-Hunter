@@ -1,10 +1,11 @@
 import "server-only";
+import { clientErrorMessage, GENERIC_ERROR } from "@/lib/security/errors-core";
 
 // Keep internals off the client. Prisma codes, Supabase messages, connection strings
 // and stack traces all leak schema detail, so actions return a generic message and the
 // real error is logged server-side only.
 
-export const GENERIC_ERROR = "Something went wrong. Please try again.";
+export { GENERIC_ERROR };
 
 let counter = 0;
 
@@ -23,7 +24,7 @@ export function reportError(context: string, error: unknown): string {
   const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
   console.error(`[${ref}] ${context}: ${detail}`);
   if (error instanceof Error && error.stack) console.error(error.stack);
-  return `${GENERIC_ERROR} (ref ${ref})`;
+  return clientErrorMessage(ref);
 }
 
 // Wraps an action body so no unexpected throw ever reaches the client verbatim.

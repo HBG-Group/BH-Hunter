@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { AnimatePresence } from "framer-motion";
 import { SearchHero } from "@/components/discovery/SearchHero";
 import { ListingGrid } from "@/components/listing/ListingGrid";
@@ -10,6 +11,11 @@ import { MapSkeleton } from "@/components/map/MapSkeleton";
 import { filterListings } from "@/services/filter-listings";
 import { sortListings } from "@/services/sort-listings";
 import { DEFAULT_SORT, type SortOption } from "@/config/sorting";
+import {
+  clearRememberedFilters,
+  getRememberedFilters,
+  rememberFilters,
+} from "@/lib/cookies/searchFilters";
 import type { ListingFilters } from "@/lib/validation/filters";
 import type { ListingCard } from "@/types/listing";
 
@@ -18,10 +24,13 @@ import type { ListingCard } from "@/types/listing";
 const PAGE_SIZE = 20;
 
 // Leaflet touches `window`, so the map is loaded client-only, never server-rendered.
-const MapView = dynamic(() => import("@/components/map/MapView").then((m) => m.MapView), {
-  ssr: false,
-  loading: () => <MapSkeleton />,
-});
+const MapView = dynamic(
+  () => import("@/components/map/MapView").then((m) => m.MapView),
+  {
+    ssr: false,
+    loading: () => <MapSkeleton />,
+  },
+);
 
 interface Props {
   listings: ListingCard[];
@@ -29,13 +38,33 @@ interface Props {
   isAuthenticated: boolean;
 }
 
-export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props) {
+export function DiscoveryView({
+  listings,
+  favoritedIds,
+  isAuthenticated,
+}: Props) {
   const [filters, setFilters] = useState<ListingFilters>({});
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mapExpanded, setMapExpanded] = useState(false);
   const [sort, setSort] = useState<SortOption>(DEFAULT_SORT);
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
+  const loadedRemembered = useRef(false);
+
+  // Load remembered filters once on mount (after consent, if any was given).
+  useEffect(() => {
+    if (loadedRemembered.current) return;
+    loadedRemembered.current = true;
+    const remembered = getRememberedFilters();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (remembered) setFilters((current) => ({ ...current, ...remembered }));
+  }, []);
+
+  // Persist filter changes (skips the initial mount so we don't immediately
+  // overwrite what was just loaded).
+  useEffect(() => {
+    if (!loadedRemembered.current) return;
+    rememberFilters(filters);
+  }, [filters]);
 
   const favoritedSet = useMemo(() => new Set(favoritedIds), [favoritedIds]);
 
@@ -54,6 +83,7 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
   // Reset filters (keeps the search text)
   const clearFilters = () => {
     resetPaging();
+    clearRememberedFilters();
     setFilters((current) => ({
       query: current.query,
       availableOnly: undefined,
@@ -63,7 +93,8 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
     }));
   };
 
-  const selected = visibleListings.find((listing) => listing.id === selectedId) ?? null;
+  const selected =
+    visibleListings.find((listing) => listing.id === selectedId) ?? null;
 
   const patchFilters = (patch: Partial<ListingFilters>) => {
     resetPaging();
@@ -93,7 +124,9 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
           className="flex items-center justify-between rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-ink sm:hidden"
         >
           <span>
-            {visibleListings.length} {visibleListings.length === 1 ? "place" : "places"} · see them on the map
+            {visibleListings.length}{" "}
+            {visibleListings.length === 1 ? "place" : "places"} · see them on
+            the map
           </span>
           <span aria-hidden>→</span>
         </a>
@@ -120,23 +153,26 @@ export function DiscoveryView({ listings, favoritedIds, isAuthenticated }: Props
 
       {/* Full-width map at the bottom — scroll here to see every BH on the map. */}
       <div id="map" className="scroll-mt-20 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-ink">All boarding houses on the map</h2>
-            <p className="mt-1 text-muted">Green means available, amber almost full, red fully occupied.</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+              All boarding houses on the map
+            </h2>
+            <p className="mt-1 text-muted">
+              Green means available, amber almost full, red fully occupied.
+            </p>
           </div>
-          {/* Mobile-only: full map is one tap away */}
-          <button
-            onClick={() => setMapExpanded((v) => !v)}
-            className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-primary ring-1 ring-inset ring-line hover:ring-neutral-300 lg:hidden"
-          >
-            {mapExpanded ? "Collapse" : "Expand map"}
-          </button>
+          <div className="flex w-full shrink-0 justify-end gap-2 sm:w-auto">
+            <Link
+              href="/map"
+              className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-primary ring-1 ring-inset ring-line hover:ring-neutral-300"
+            >
+              Open full map
+            </Link>
+          </div>
         </div>
         <div
-          className={`relative overflow-hidden rounded-2xl ring-1 ring-neutral-200 transition-[height] duration-300 lg:h-[70vh] ${
-            mapExpanded ? "h-[80vh]" : "h-[42vh]"
-          }`}
+          className="relative h-[42vh] min-h-72 overflow-hidden rounded-2xl ring-1 ring-neutral-200 lg:h-[70vh]"
         >
           <MapView
             listings={visibleListings}

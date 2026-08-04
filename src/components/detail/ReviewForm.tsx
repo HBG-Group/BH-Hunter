@@ -6,7 +6,10 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { deleteReviewAction } from "@/lib/student/review-actions";
 import type { ReviewFormState } from "@/lib/student/review-actions";
 
-type Action = (state: ReviewFormState, formData: FormData) => Promise<ReviewFormState>;
+type Action = (
+  state: ReviewFormState,
+  formData: FormData,
+) => Promise<ReviewFormState>;
 
 // The student's existing review, if they've already left one.
 export interface ExistingReview {
@@ -24,55 +27,82 @@ interface Props {
   action: Action;
   slug: string;
   existing?: ExistingReview | null;
+  eligible: boolean;
 }
 
 // Rate each aspect 1–5 and leave an optional note. Prefills when editing an existing
 // review, and offers delete.
-export function ReviewForm({ action, slug, existing }: Props) {
+export function ReviewForm({ action, slug, existing, eligible }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   const [deleting, startDelete] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <form action={formAction} className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-5">
+    <form
+      action={formAction}
+      className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-5"
+    >
       <h3 className="text-sm font-semibold text-neutral-900">
         {existing ? "Your review" : "Leave a review"}
       </h3>
+      {!existing && !eligible && (
+        <p className="text-xs text-neutral-500">
+          You can leave a review after the owner confirms your viewing request.
+        </p>
+      )}
 
-      <div className="grid grid-cols-2 gap-3">
-        {REVIEW_ASPECTS.map((aspect) => (
-          <label key={aspect.key} className="flex items-center justify-between gap-2 text-sm">
-            <span className="text-neutral-600">{aspect.label}</span>
-            <select
-              name={aspect.key}
-              defaultValue={String(existing?.[aspect.key] ?? 5)}
-              className="rounded-lg border border-neutral-200 px-2 py-1 text-sm outline-none focus:border-neutral-400"
+      <fieldset
+        disabled={!eligible && !existing}
+        className="space-y-3 disabled:opacity-50"
+      >
+        <div className="grid grid-cols-2 gap-3">
+          {REVIEW_ASPECTS.map((aspect) => (
+            <label
+              key={aspect.key}
+              className="flex items-center justify-between gap-2 text-sm"
             >
-              {[5, 4, 3, 2, 1].map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
-      </div>
+              <span className="text-neutral-600">{aspect.label}</span>
+              <select
+                name={aspect.key}
+                required
+                defaultValue={existing ? String(existing[aspect.key]) : ""}
+                className="rounded-lg border border-neutral-200 px-2 py-1 text-sm outline-none focus:border-neutral-400"
+              >
+                {!existing && (
+                  <option value="" disabled>
+                    Rate
+                  </option>
+                )}
+                {[5, 4, 3, 2, 1].map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
 
-      <textarea
-        name="body"
-        rows={3}
-        defaultValue={existing?.body ?? ""}
-        placeholder="Share your experience (optional)"
-        className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
-      />
+        <textarea
+          name="body"
+          rows={3}
+          defaultValue={existing?.body ?? ""}
+          placeholder="Share your experience (optional)"
+          className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
+        />
+      </fieldset>
 
       {state.error && <p className="text-sm text-rose-600">{state.error}</p>}
-      {state.success && <p className="text-sm text-emerald-600">Thanks! Your review was saved.</p>}
+      {state.success && (
+        <p className="text-sm text-emerald-600">
+          Thanks! Your review was saved.
+        </p>
+      )}
 
       <div className="flex items-center gap-2">
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || (!eligible && !existing)}
           className="rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-60"
         >
           {pending ? "Saving…" : existing ? "Update review" : "Submit review"}

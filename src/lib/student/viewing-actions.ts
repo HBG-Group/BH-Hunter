@@ -44,13 +44,15 @@ export async function requestViewingAction(
   return guarded<ViewingFormState>(
     "requestViewing",
     async () => {
-      await createViewingRequest(
+      const created = await createViewingRequest(
         profile.id,
         target.boardingHouseId,
         parsed.data.preferredAt,
         parsed.data.message,
       );
-      await logAnalyticsEvent(target.boardingHouseId, "VIEWING_REQUEST");
+      if (created) {
+        await logAnalyticsEvent(target.boardingHouseId, "VIEWING_REQUEST");
+      }
 
       revalidatePath("/account");
       return { success: true };

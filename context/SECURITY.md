@@ -14,6 +14,18 @@ the app is unaffected because it uses Prisma. Verified: all `public` tables (inc
 `subscriptions` and `advertisements`) have `relrowsecurity = true`.
 **Rule:** every new table must have RLS enabled — `db:push` does not do this.
 
+### ✓ Per-account sign-in lockout — `lib/security/login-lockout.ts`
+**Why:** the IP-based `LIMITS.auth` rate limit (8/min) stops a single client from
+hammering sign-in, but doesn't stop a slow, distributed, or NAT-shared-IP credential
+guess against one specific account. 5 wrong-password attempts for a given email locks
+that email out for 30s, tracked in Postgres (`rate_limit_windows`, same table the shared
+rate limiter uses) — not a cookie or client-side timer, so it survives a refresh, a new
+tab, incognito, or clearing browser storage, and is shared across every serverless
+instance. The check runs before Supabase auth is even called while locked out, so a
+locked account can't be used to probe further. Successful sign-in clears the counter.
+Forgot-password doesn't exist yet, so the sign-in form also carries a reminder to
+double-check credentials before submitting — a lockout is the only recovery path today.
+
 ### ✓ HMAC upload tickets — `lib/security/upload-ticket.ts`
 **Why:** the browser uploads photos directly to Storage, so the server must be sure a
 later "register this path" call refers to a file *it* authorized. Each ticket is an
@@ -81,6 +93,19 @@ internals out of user-facing errors. `lib/supabase/admin.ts` and the security mo
 `import "server-only"`. `guarded`/`reportError` return a generic message + reference id;
 the real error and stack are logged server-side only. Only `NEXT_PUBLIC_*` values reach
 the browser.
+
+### ✓ Consent-gated preference cookies — `lib/cookies/`
+**Why:** cookies remember search filters, recently viewed listings, dismissed notices, and
+UI prefs — never anything sensitive. Auth cookies are managed entirely by Supabase
+`@supabase/ssr` and this module never touches them. The consent banner offers Accept All,
+Reject Non-Essential, and Customize (per-category: Preferences vs Activity); every optional
+cookie write checks `hasCategoryConsent()` for its category first (rejecting or unchecking a
+category clears its cookies immediately). On **read**, values are re-validated (Zod for
+filters, allowlisted tokens for theme/language/map style, filtered typed arrays for lists) so
+a tampered cookie can never inject an unexpected shape into app state — same "never trust
+client input" rule as server actions, just applied client-side. Values are size-capped before
+writing (well under the ~4KB browser limit) and set with `SameSite=Lax` plus `Secure` on
+HTTPS.
 
 ## Authorization model
 
