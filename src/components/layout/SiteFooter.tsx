@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Logo } from "@/components/brand/Logo";
 
 const LEGAL_LINKS = [
@@ -18,6 +21,13 @@ const COMPANY_LINKS = [
 // Global footer with every legal/policy link the roadmap calls for. Rendered once in
 // the root layout so every page gets it without each page wiring it in separately.
 export function SiteFooter() {
+  const pathname = usePathname();
+
+  // Signup is a focused conversion flow. The global legal/company footer adds a
+  // second navigation surface and unnecessary vertical space to both account
+  // creation pages; legal links remain available from the consent and policy flows.
+  if (pathname === "/signup" || pathname === "/list-your-property") return null;
+
   return (
     <footer className="mt-16 border-t border-line bg-white">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:py-10">
