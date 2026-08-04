@@ -82,20 +82,24 @@ export const ensureProfileForCurrentUser = cache(async (
 });
 
 // Used only after a failed password login. If the email belongs to an existing
-// Profile whose Supabase identity is OAuth-backed, the user should be told to use
+// Supabase user whose identity is OAuth-backed, the user should be told to use
 // that provider instead of being misled by a generic password error. Missing
 // service-role configuration or lookup failures intentionally fall back to false.
 export async function hasNonEmailIdentity(email: string): Promise<boolean> {
   try {
-    const profile = await resilientRead(() =>
-      prisma.profile.findUnique({ where: { email }, select: { id: true } }),
-    );
-    if (!profile) return false;
-
     const admin = createSupabaseAdminClient();
-    const { data, error } = await admin.auth.admin.getUserById(profile.id);
-    if (error || !data.user) return false;
-    const providers = data.user.identities?.map((identity) => identity.provider) ?? [];
+    // Do not depend on a Profile row: first-time Google users may have an Auth
+    // record before onboarding creates their application profile.
+    const { data, error } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    if (error) return false;
+    const authUser = data.users.find(
+      (candidate) => candidate.email?.toLowerCase() === email.toLowerCase(),
+    );
+    if (!authUser) return false;
+    const providers = authUser.identities?.map((identity) => identity.provider) ?? [];
     return providers.some((provider) => provider !== "email");
   } catch {
     return false;
