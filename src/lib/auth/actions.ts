@@ -5,8 +5,8 @@ import { OAUTH_CALLBACK_PATH } from "@/config/auth";
 import { serverSiteUrl } from "@/config/site";
 import {
   ensureProfileForCurrentUser,
+  getAuthProviderForEmail,
   getCurrentProfile,
-  hasNonEmailIdentity,
 } from "@/lib/auth/profile";
 import { resolveSiteOrigin } from "@/lib/auth/site-origin";
 import { logSecurityEvent } from "@/lib/security/events";
@@ -119,6 +119,22 @@ export async function signInAction(
     };
   }
 
+  // Check the identity provider before asking Supabase to validate a password.
+  // This lets a Google/OAuth account receive the actionable provider message
+  // instead of the misleading generic credential error.
+  const authProvider = await getAuthProviderForEmail(parsed.data.email);
+  if (authProvider && authProvider !== "email") {
+    await logSecurityEvent({
+      action: "auth.signin",
+      outcome: "denied",
+      detail: "identity_conflict",
+    });
+    return {
+      error:
+        "This email is already connected to another Meino sign-in method. Use that provider or link this account first.",
+    };
+  }
+
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
@@ -131,17 +147,6 @@ export async function signInAction(
       return {
         error:
         "Please confirm your email address from the latest confirmation email before signing in.",
-      };
-    }
-    if (await hasNonEmailIdentity(parsed.data.email)) {
-      await logSecurityEvent({
-        action: "auth.signin",
-        outcome: "denied",
-        detail: "identity_conflict",
-      });
-      return {
-        error:
-          "This email is already connected to another Meino sign-in method. Use that provider or link this account first.",
       };
     }
     const state = await recordFailedLogin(parsed.data.email);

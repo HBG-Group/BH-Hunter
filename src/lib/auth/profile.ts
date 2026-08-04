@@ -81,11 +81,10 @@ export const ensureProfileForCurrentUser = cache(async (
   return { profile, created: true };
 });
 
-// Used only after a failed password login. If the email belongs to an existing
-// Supabase user whose identity is OAuth-backed, the user should be told to use
-// that provider instead of being misled by a generic password error. Missing
-// service-role configuration or lookup failures intentionally fall back to false.
-export async function hasNonEmailIdentity(email: string): Promise<boolean> {
+// Looks up the provider before a password attempt. Missing service-role
+// configuration or lookup failures intentionally return null so normal auth can
+// still proceed and provide its standard credential error.
+export async function getAuthProviderForEmail(email: string): Promise<string | null> {
   try {
     const admin = createSupabaseAdminClient();
     // Do not depend on a Profile row: first-time Google users may have an Auth
@@ -94,15 +93,15 @@ export async function hasNonEmailIdentity(email: string): Promise<boolean> {
       page: 1,
       perPage: 1000,
     });
-    if (error) return false;
+    if (error) return null;
     const authUser = data.users.find(
       (candidate) => candidate.email?.toLowerCase() === email.toLowerCase(),
     );
-    if (!authUser) return false;
+    if (!authUser) return null;
     const providers = authUser.identities?.map((identity) => identity.provider) ?? [];
-    return providers.some((provider) => provider !== "email");
+    return providers.find((provider) => provider !== "email") ?? providers[0] ?? null;
   } catch {
-    return false;
+    return null;
   }
 }
 
