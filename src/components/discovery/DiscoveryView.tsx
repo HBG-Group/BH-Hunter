@@ -46,7 +46,6 @@ export function DiscoveryView({
   const [filters, setFilters] = useState<ListingFilters>({});
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mapExpanded, setMapExpanded] = useState(false);
   const [sort, setSort] = useState<SortOption>(DEFAULT_SORT);
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const loadedRemembered = useRef(false);
@@ -154,23 +153,16 @@ export function DiscoveryView({
 
       {/* Full-width map at the bottom — scroll here to see every BH on the map. */}
       <div id="map" className="scroll-mt-20 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-ink">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">
               All boarding houses on the map
             </h2>
             <p className="mt-1 text-muted">
               Green means available, amber almost full, red fully occupied.
             </p>
           </div>
-          {/* Mobile-only: full map is one tap away */}
-          <div className="flex shrink-0 gap-2">
-            <button
-              onClick={() => setMapExpanded((v) => !v)}
-              className="min-h-11 rounded-lg px-3 text-sm font-medium text-primary ring-1 ring-inset ring-line hover:ring-neutral-300 lg:hidden"
-            >
-              {mapExpanded ? "Collapse" : "Expand map"}
-            </button>
+          <div className="flex w-full shrink-0 justify-end gap-2 sm:w-auto">
             <Link
               href="/map"
               className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-primary ring-1 ring-inset ring-line hover:ring-neutral-300"
@@ -180,9 +172,7 @@ export function DiscoveryView({
           </div>
         </div>
         <div
-          className={`relative overflow-hidden rounded-2xl ring-1 ring-neutral-200 transition-[height] duration-300 lg:h-[70vh] ${
-            mapExpanded ? "h-[80vh]" : "h-[42vh]"
-          }`}
+          className="relative h-[42vh] min-h-72 overflow-hidden rounded-2xl ring-1 ring-neutral-200 lg:h-[70vh]"
         >
           <MapView
             listings={visibleListings}
