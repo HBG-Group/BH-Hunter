@@ -118,6 +118,17 @@ export async function signInAction(
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
+    if (error.message.toLowerCase().includes("email not confirmed")) {
+      await logSecurityEvent({
+        action: "auth.signin",
+        outcome: "denied",
+        detail: "email_not_confirmed",
+      });
+      return {
+        error:
+          "Please confirm your email address from the latest confirmation email before signing in.",
+      };
+    }
     const state = await recordFailedLogin(parsed.data.email);
     await logSecurityEvent({
       action: "auth.signin",
