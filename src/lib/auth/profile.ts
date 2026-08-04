@@ -99,7 +99,15 @@ export async function getAuthProviderForEmail(email: string): Promise<string | n
     );
     if (!authUser) return null;
     const providers = authUser.identities?.map((identity) => identity.provider) ?? [];
-    return providers.find((provider) => provider !== "email") ?? providers[0] ?? null;
+    // Hosted Supabase users may have only app_metadata.provider (without an
+    // identities array), particularly for older Google accounts.
+    const metadataProvider = authUser.app_metadata?.provider;
+    return (
+      providers.find((provider) => provider !== "email") ??
+      metadataProvider ??
+      providers[0] ??
+      null
+    );
   } catch {
     return null;
   }
