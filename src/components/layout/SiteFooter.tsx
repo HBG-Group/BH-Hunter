@@ -6,7 +6,6 @@ const LEGAL_LINKS = [
   { href: "/terms", label: "Terms of Service" },
   { href: "/community-guidelines", label: "Community Guidelines" },
   { href: "/cookies", label: "Cookie Policy" },
-  { href: "/cookies#manage", label: "Privacy & cookie settings" },
   { href: "/copyright", label: "Copyright Policy" },
 ];
 

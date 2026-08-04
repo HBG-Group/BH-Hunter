@@ -25,7 +25,6 @@ const studentLinks: MenuLink[] = [
   { href: "/account", label: "My profile" },
   { href: "/account#favorites", label: "Favorites" },
   { href: "/settings", label: "Settings" },
-  { href: "/cookies#manage", label: "Cookie settings" },
 ];
 
 // The signed-in avatar with a dropdown. Closes on outside click.
