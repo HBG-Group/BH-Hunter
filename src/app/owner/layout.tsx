@@ -26,7 +26,7 @@ export default async function OwnerLayout({
               { href: "/", label: "Back to site" },
               { href: "/owner", label: "My listings" },
               { href: "/owner/requests", label: "Viewing requests" },
-              { href: "/settings", label: "Account settings" },
+              { href: "/settings", label: "Settings" },
             ]}
           />
         </div>

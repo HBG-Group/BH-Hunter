@@ -1,4 +1,5 @@
 import { ManageConsentButton } from "@/components/cookies/ManageConsentButton";
+import Link from "next/link";
 
 export const metadata = {
   title: "Cookie Policy — Meino",
@@ -7,6 +8,11 @@ export const metadata = {
 export default function CookiePolicyPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-16">
+      <p className="mb-3 text-sm text-muted/70">
+        <Link href="/" className="underline hover:text-ink">
+          ← Back to Meino
+        </Link>
+      </p>
       <h1 className="text-2xl font-semibold tracking-tight text-ink">
         Cookie Policy
       </h1>

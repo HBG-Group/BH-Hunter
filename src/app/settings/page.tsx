@@ -25,7 +25,7 @@ export default async function SettingsPage() {
         </Link>
         <div>
           <h1 className="text-2xl font-semibold text-ink">
-            Account &amp; settings
+            Settings
           </h1>
           <p className="mt-1 text-sm text-muted">
             Manage your profile, security, privacy, and support options.
@@ -103,7 +103,7 @@ export default async function SettingsPage() {
             }
             className="rounded-2xl border border-line bg-white p-5 hover:border-neutral-300"
           >
-            <span className="font-semibold text-ink">Role preferences</span>
+            <span className="font-semibold text-ink">Viewing requests</span>
             <span className="mt-1 block text-sm text-muted">
               Manage requests and notifications.
             </span>

@@ -166,7 +166,7 @@ export default async function AccountPage() {
               href="/settings"
               className="mr-4 underline hover:text-neutral-900"
             >
-              Account settings
+              Settings
             </Link>
             <Link
               href="/account/privacy"

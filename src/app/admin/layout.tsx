@@ -6,6 +6,7 @@ import { AdminLogin } from "@/components/admin/AdminLogin";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
 import { findAdminNotifications } from "@/lib/db/admin-notifications";
+import { PUBLIC_SITE_HOMEPAGE } from "@/config/site";
 
 // Keep the admin area out of search engines.
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -41,7 +42,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               name={profile.fullName}
               avatarUrl={profile.avatarUrl}
               links={[
-                { href: "/", label: "Back to site" },
+                { href: PUBLIC_SITE_HOMEPAGE, label: "Back to site" },
                 { href: "/admin", label: "Overview" },
               ]}
             />
