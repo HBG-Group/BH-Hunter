@@ -3,7 +3,10 @@
 import { redirect } from "next/navigation";
 import { OAUTH_CALLBACK_PATH } from "@/config/auth";
 import { serverSiteUrl } from "@/config/site";
-import { getCurrentProfile } from "@/lib/auth/profile";
+import {
+  ensureProfileForCurrentUser,
+  getCurrentProfile,
+} from "@/lib/auth/profile";
 import { resolveSiteOrigin } from "@/lib/auth/site-origin";
 import { logSecurityEvent } from "@/lib/security/events";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
@@ -144,17 +147,43 @@ export async function signInAction(
   }
 
   await clearFailedLogins(parsed.data.email);
-  const profile = await getCurrentProfile();
+  const profileResult = await ensureProfileForCurrentUser();
+  if (!profileResult) {
+    await logSecurityEvent({
+      action: "auth.signin",
+      outcome: "error",
+      detail: "profile_missing_after_authentication",
+    });
+    return { error: "We couldn’t finish signing you in. Please try again." };
+  }
+  if ("conflict" in profileResult && profileResult.conflict) {
+    // Do not leave a valid Supabase session attached when the email belongs to a
+    // different provider identity. The user must explicitly link providers first.
+    await supabase.auth.signOut();
+    await logSecurityEvent({
+      action: "auth.signin",
+      outcome: "denied",
+      detail: "identity_conflict",
+    });
+    return {
+      error:
+        "This email is already connected to another Meino sign-in method. Use that provider or link this account first.",
+    };
+  }
+  if (!("profile" in profileResult)) {
+    return { error: "We couldn’t finish signing you in. Please try again." };
+  }
+  const profile = profileResult.profile;
   await logSecurityEvent({
     action: "auth.signin",
     outcome: "allowed",
-    actorId: profile?.id,
-    actorRole: profile?.role,
+    actorId: profile.id,
+    actorRole: profile.role,
   });
 
   if (next) redirect(next);
-  if (profile?.role === "ADMIN") redirect("/admin");
-  redirect(profile?.role === "OWNER" ? "/owner" : "/account");
+  if (profile.role === "ADMIN") redirect("/admin");
+  redirect(profile.role === "OWNER" ? "/owner" : "/account");
 }
 
 export async function signUpAction(
