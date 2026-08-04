@@ -4,14 +4,15 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { PLANS } from "@/config/pricing";
 
-test("plan limits come from one increasing entitlement matrix", () => {
+test("plan limits come from one entitlement matrix with a fixed room allowance", () => {
   const [basic, advance, premium] = PLANS;
   assert.deepEqual(
     PLANS.map((plan) => plan.id),
     ["basic", "advance", "premium"],
   );
-  assert.ok(basic.roomsPerListing < advance.roomsPerListing);
-  assert.ok(advance.roomsPerListing < premium.roomsPerListing);
+  assert.equal(basic.roomsPerListing, 2);
+  assert.equal(advance.roomsPerListing, 2);
+  assert.equal(premium.roomsPerListing, 2);
   assert.ok(basic.freeListings < advance.freeListings);
   assert.ok(advance.freeListings < premium.freeListings);
   assert.ok(basic.maxPhotosPerListing < advance.maxPhotosPerListing);

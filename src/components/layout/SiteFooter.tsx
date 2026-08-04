@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/brand/Logo";
+import { PUBLIC_SITE_HOMEPAGE } from "@/config/site";
 
 const LEGAL_LINKS = [
   { href: "/privacy", label: "Privacy Policy" },
@@ -22,6 +22,7 @@ const COMPANY_LINKS = [
 // the root layout so every page gets it without each page wiring it in separately.
 export function SiteFooter() {
   const pathname = usePathname();
+  const publicUrl = (path: string) => `${PUBLIC_SITE_HOMEPAGE}${path}`;
 
   // Signup is a focused conversion flow. The global legal/company footer adds a
   // second navigation surface and unnecessary vertical space to both account
@@ -33,7 +34,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-7xl px-4 py-6 sm:py-10">
         <div className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 sm:gap-8">
           <div className="col-span-2 sm:col-span-1">
-            <Logo />
+            <Logo href={PUBLIC_SITE_HOMEPAGE} />
             <p className="mt-2 max-w-xs text-xs leading-5 text-muted sm:mt-3 sm:text-sm">
               Helping VSU students find a boarding house that feels like home.
             </p>
@@ -44,12 +45,12 @@ export function SiteFooter() {
             <ul className="mt-2 space-y-1.5 sm:mt-3 sm:space-y-2">
               {LEGAL_LINKS.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    href={link.href}
+                  <a
+                    href={publicUrl(link.href)}
                     className="text-xs leading-5 text-muted hover:text-ink sm:text-sm"
                   >
                     {link.label}
-                  </Link>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -60,12 +61,12 @@ export function SiteFooter() {
             <ul className="mt-2 space-y-1.5 sm:mt-3 sm:space-y-2">
               {COMPANY_LINKS.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    href={link.href}
+                  <a
+                    href={publicUrl(link.href)}
                     className="text-xs leading-5 text-muted hover:text-ink sm:text-sm"
                   >
                     {link.label}
-                  </Link>
+                  </a>
                 </li>
               ))}
             </ul>
