@@ -45,7 +45,17 @@ export const ensureProfileForCurrentUser = cache(async (
   // new subject and require explicit Supabase identity linking instead of sharing data.
   if (user.email) {
     const byEmail = await resilientRead(() => prisma.profile.findUnique({ where: { email: user.email } }));
-    if (byEmail && byEmail.id !== user.id) return { conflict: true };
+    if (byEmail && byEmail.id !== user.id) {
+      // Supabase can retain a Profile row when an email-password auth user is
+      // recreated. Email/password is proof of control of the address, so keep the
+      // existing logical Meino profile for that flow. A Google (or other OAuth)
+      // identity must still be explicitly linked and is rejected as a conflict.
+      const provider =
+        (user.app_metadata?.provider as string | undefined) ??
+        user.identities?.[0]?.provider;
+      if (provider === "email") return { profile: byEmail, created: false };
+      return { conflict: true };
+    }
   }
 
   // Metadata differs between email sign-up and Google (name / avatar live here).

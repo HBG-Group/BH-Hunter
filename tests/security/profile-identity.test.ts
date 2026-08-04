@@ -6,8 +6,9 @@ import { resolve } from "node:path";
 test("profile creation never merges unlinked provider identities by email", async () => {
   const source = await readFile(resolve("src/lib/auth/profile.ts"), "utf8");
   assert.match(source, /byEmail\.id !== user\.id/);
+  assert.match(source, /provider === "email"/);
   assert.match(source, /return \{ conflict: true \}/);
-  assert.doesNotMatch(source, /if \(byEmail\) return \{ profile: byEmail/);
+  assert.match(source, /return \{ profile: byEmail, created: false \}/);
 });
 
 test("OAuth callback signs out and explains an identity conflict", async () => {
