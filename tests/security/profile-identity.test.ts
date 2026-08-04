@@ -9,6 +9,7 @@ test("profile creation never merges unlinked provider identities by email", asyn
   assert.match(source, /provider === "email"/);
   assert.match(source, /return \{ conflict: true \}/);
   assert.match(source, /return \{ profile: byEmail, created: false \}/);
+  assert.match(source, /hasNonEmailIdentity/);
 });
 
 test("OAuth callback signs out and explains an identity conflict", async () => {

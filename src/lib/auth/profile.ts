@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { Profile } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { hasRole } from "@/lib/auth/authorization-core";
 import { resilientRead } from "@/lib/async/resilient-read";
@@ -79,6 +80,27 @@ export const ensureProfileForCurrentUser = cache(async (
   });
   return { profile, created: true };
 });
+
+// Used only after a failed password login. If the email belongs to an existing
+// Profile whose Supabase identity is OAuth-backed, the user should be told to use
+// that provider instead of being misled by a generic password error. Missing
+// service-role configuration or lookup failures intentionally fall back to false.
+export async function hasNonEmailIdentity(email: string): Promise<boolean> {
+  try {
+    const profile = await resilientRead(() =>
+      prisma.profile.findUnique({ where: { email }, select: { id: true } }),
+    );
+    if (!profile) return false;
+
+    const admin = createSupabaseAdminClient();
+    const { data, error } = await admin.auth.admin.getUserById(profile.id);
+    if (error || !data.user) return false;
+    const providers = data.user.identities?.map((identity) => identity.provider) ?? [];
+    return providers.some((provider) => provider !== "email");
+  } catch {
+    return false;
+  }
+}
 
 // Shown to a frozen owner across the dashboard and returned from blocked write actions.
 export const FROZEN_OWNER_MESSAGE =

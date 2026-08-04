@@ -6,6 +6,7 @@ import { serverSiteUrl } from "@/config/site";
 import {
   ensureProfileForCurrentUser,
   getCurrentProfile,
+  hasNonEmailIdentity,
 } from "@/lib/auth/profile";
 import { resolveSiteOrigin } from "@/lib/auth/site-origin";
 import { logSecurityEvent } from "@/lib/security/events";
@@ -129,7 +130,18 @@ export async function signInAction(
       });
       return {
         error:
-          "Please confirm your email address from the latest confirmation email before signing in.",
+        "Please confirm your email address from the latest confirmation email before signing in.",
+      };
+    }
+    if (await hasNonEmailIdentity(parsed.data.email)) {
+      await logSecurityEvent({
+        action: "auth.signin",
+        outcome: "denied",
+        detail: "identity_conflict",
+      });
+      return {
+        error:
+          "This email is already connected to another Meino sign-in method. Use that provider or link this account first.",
       };
     }
     const state = await recordFailedLogin(parsed.data.email);
