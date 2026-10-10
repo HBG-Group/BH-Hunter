@@ -5,8 +5,8 @@ import { markAllAdminNotificationsReadAction } from "@/lib/admin/actions";
 
 function notificationHref(type: string) {
   if (type.includes("PAYMENT")) return "/admin/owners";
-  if (type.includes("REVIEW")) return "/admin/reviews";
   if (type.includes("LISTING")) return "/admin/listings";
+  if (type.includes("REVIEW")) return "/admin/reviews";
   if (type.includes("OWNER")) return "/admin/owners";
   return "/admin/audit-log";
 }

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { reportError } from "@/lib/security/errors";
 
 const NOTIFICATION_RETENTION_DAYS = 90;
 const DEDUPE_WINDOW_MINUTES = 5;
@@ -17,6 +18,7 @@ export async function notifyAdmins(input: {
   title: string;
   body?: string;
 }) {
+  try {
   const retentionCutoff = new Date(
     Date.now() - NOTIFICATION_RETENTION_DAYS * 24 * 60 * 60 * 1000,
   );
@@ -53,6 +55,9 @@ export async function notifyAdmins(input: {
       body: input.body,
     })),
   });
+  } catch (error) {
+    reportError("notifyAdmins", error);
+  }
 }
 
 export function findAdminNotifications(

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
-import { EXTRA_LISTING_PRICE, FREE_LISTING_LIMIT } from "@/config/billing";
+import { BILLING_ENABLED, EXTRA_LISTING_PRICE, FREE_LISTING_LIMIT } from "@/config/billing";
 import { getOwnerRoomEntitlement } from "@/lib/owner/entitlements";
 
 // How many listings an owner already has — the basis for the free-tier check.
@@ -24,13 +24,15 @@ export async function getListingQuota(ownerId: string): Promise<ListingQuota> {
     countOwnerListings(ownerId),
     getOwnerRoomEntitlement(ownerId),
   ]);
-  const limit = entitlement.listingLimit || FREE_LISTING_LIMIT;
+  const limit = BILLING_ENABLED
+    ? entitlement.listingLimit || FREE_LISTING_LIMIT
+    : FREE_LISTING_LIMIT;
   return {
     used,
     freeLimit: limit,
     freeLeft: Math.max(0, limit - used),
     nextNeedsPayment: used + 1 > limit,
-    atLimit: used >= limit,
+    atLimit: BILLING_ENABLED && used >= limit,
     extraPrice: EXTRA_LISTING_PRICE,
   };
 }

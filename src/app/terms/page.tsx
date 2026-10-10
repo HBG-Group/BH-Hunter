@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { ADMIN_CONTACT } from "@/config/support";
+import { safeRedirectPath } from "@/lib/security/redirect";
 
 export const metadata: Metadata = {
   title: "Terms & Conditions — Meino",
@@ -54,9 +55,7 @@ const SECTIONS: { heading: string; body: string }[] = [
 
 function safeReturnPath(value: string | string[] | undefined): string {
   const candidate = Array.isArray(value) ? value[0] : value;
-  return candidate?.startsWith("/") && !candidate.startsWith("//")
-    ? candidate
-    : "/";
+  return safeRedirectPath(candidate, "/");
 }
 
 export default async function TermsPage({

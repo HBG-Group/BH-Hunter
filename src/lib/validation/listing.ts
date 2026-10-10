@@ -70,10 +70,10 @@ export const listingSchema = z
       .max(MAX_MONTHLY_PRICE, "That rent looks too high"),
     advanceMonths: z.coerce.number().int().min(0).max(12).default(1),
     depositMonths: z.coerce.number().int().min(0).max(12).default(1),
-    utilitiesIncluded: z.coerce.boolean().default(false),
-    internetIncluded: z.coerce.boolean().default(false),
+    utilitiesIncluded: z.boolean().default(false),
+    internetIncluded: z.boolean().default(false),
 
-    curfew: z.string().trim().max(40).optional(),
+    curfew: z.preprocess(normalizeTextInput, z.string().trim().max(40)).optional(),
     houseRules: z
       .preprocess(
         normalizeTextInput,
