@@ -5,8 +5,6 @@ import { useSyncExternalStore } from "react";
 import { Logo } from "@/components/brand/Logo";
 import { PUBLIC_SITE_HOMEPAGE } from "@/config/site";
 
-const PUBLIC_PREVIEW_HOMEPAGE = "https://meino-git-bugfix-ui-hbg1.vercel.app";
-
 const LEGAL_LINKS = [
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms of Service" },
@@ -36,24 +34,14 @@ export function SiteFooter() {
     },
     () => false,
   );
-  const controlPreview = useSyncExternalStore(
-    () => () => {},
-    () => {
-      const hostname = window.location.hostname;
-      const isControl =
-        hostname === "meinocontrol.vercel.app" ||
-        (hostname.startsWith("meinocontrol-") && hostname.endsWith(".vercel.app"));
-      return isControl && hostname !== "meinocontrol.vercel.app";
-    },
-    () => false,
-  );
-
   // Public pages keep same-origin links so preview deployments resolve their own
   // routes. Control-host pages need an explicit public origin because the control
   // proxy intentionally rejects public routes on that host.
   const publicUrl = (path: string) => {
     if (!controlHost) return path;
-    const origin = controlPreview ? PUBLIC_PREVIEW_HOMEPAGE : PUBLIC_SITE_HOMEPAGE;
+    // Use the configured public origin for control previews instead of a hardcoded
+    // branch deployment that may be removed or renamed.
+    const origin = PUBLIC_SITE_HOMEPAGE;
     return `${origin}${path}`;
   };
 

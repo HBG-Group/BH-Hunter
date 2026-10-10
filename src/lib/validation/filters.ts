@@ -14,7 +14,16 @@ export const listingFiltersSchema = z.object({
   maxWalkingMinutes: z.coerce.number().int().positive().optional(),
 
   gender: z.enum(genderFilterValues).optional(),
-  availableOnly: z.coerce.boolean().optional(),
+  // URL query values arrive as strings. `z.coerce.boolean()` would treat the
+  // string "false" as true because Boolean("false") is true in JavaScript.
+  availableOnly: z.preprocess(
+    (value) => {
+      if (value === "true") return true;
+      if (value === "false") return false;
+      return value;
+    },
+    z.boolean().optional(),
+  ),
 
   // Amenity keys must come from our known catalog — anything else is rejected.
   amenities: z.array(z.enum(AMENITY_KEYS as [string, ...string[]])).optional(),
