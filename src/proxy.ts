@@ -50,7 +50,7 @@ export async function proxy(request: NextRequest) {
   // When an admin domain is configured, the admin panel lives there and nowhere
   // else. This runs before anything else so /admin can't leak on the main site.
   const onAdminHost = isAdminHost(request.headers.get("host"));
-  if (ADMIN_HOST || process.env.VERCEL || onAdminHost) {
+  if (ADMIN_HOST || onAdminHost) {
     // Main site: pretend /admin doesn't exist, so users can't reach it.
     if (path.startsWith("/admin") && !onAdminHost) {
       return applySecurityHeaders(new NextResponse(null, { status: 404 }));

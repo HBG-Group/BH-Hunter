@@ -16,8 +16,7 @@ export async function resolveSiteOrigin(): Promise<string> {
 
   const headerList = await headers();
   const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
-  const proto = headerList.get("x-forwarded-proto") ?? "https";
-  if (host) return `${proto}://${host}`;
+  if (host) return `https://${host}`;
 
   // Local dev fallback.
   return "http://localhost:3000";
