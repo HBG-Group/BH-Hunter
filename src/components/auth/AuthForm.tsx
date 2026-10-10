@@ -22,6 +22,7 @@ interface Props {
   // Sign-up only: whether the Terms & Conditions box is ticked. When defined, the
   // submit button stays disabled until it's true and the value is sent to the server.
   agreed?: boolean;
+  authSurface?: "admin";
 }
 
 const fieldClass =
@@ -34,6 +35,7 @@ export function AuthForm({
   role,
   showFooter = true,
   agreed,
+  authSurface,
 }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   const isSignUp = mode === "signup";
@@ -43,6 +45,7 @@ export function AuthForm({
   return (
     <form action={formAction} className="space-y-3">
       {next && <input type="hidden" name="next" value={next} />}
+      {authSurface && <input type="hidden" name="authSurface" value={authSurface} />}
       {isSignUp && role && <input type="hidden" name="role" value={role} />}
       {isSignUp && agreed !== undefined && (
         <input type="hidden" name="terms" value={agreed ? "on" : ""} />

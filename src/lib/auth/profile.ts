@@ -3,10 +3,10 @@ import { redirect } from "next/navigation";
 import type { Profile } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { hasRole } from "@/lib/auth/authorization-core";
 import { resilientRead } from "@/lib/async/resilient-read";
+import { isUnlinkedProviderConflict } from "@/lib/auth/identity";
 
 // The Supabase auth user for this request, or null if signed out. `cache()` dedupes
 // this within a single request — SiteHeader and the page it wraps both call the auth
@@ -54,8 +54,10 @@ export const ensureProfileForCurrentUser = cache(async (
       const provider =
         (user.app_metadata?.provider as string | undefined) ??
         user.identities?.[0]?.provider;
-      if (provider === "email") return { profile: byEmail, created: false };
-      return { conflict: true };
+      if (isUnlinkedProviderConflict({ authenticatedUserId: user.id, profileId: byEmail.id, provider })) {
+        return { conflict: true };
+      }
+      return { profile: byEmail, created: false };
     }
   }
 
@@ -80,38 +82,6 @@ export const ensureProfileForCurrentUser = cache(async (
   });
   return { profile, created: true };
 });
-
-// Looks up the provider before a password attempt. Missing service-role
-// configuration or lookup failures intentionally return null so normal auth can
-// still proceed and provide its standard credential error.
-export async function getAuthProviderForEmail(email: string): Promise<string | null> {
-  try {
-    const admin = createSupabaseAdminClient();
-    // Do not depend on a Profile row: first-time Google users may have an Auth
-    // record before onboarding creates their application profile.
-    const { data, error } = await admin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    if (error) return null;
-    const authUser = data.users.find(
-      (candidate) => candidate.email?.toLowerCase() === email.toLowerCase(),
-    );
-    if (!authUser) return null;
-    const providers = authUser.identities?.map((identity) => identity.provider) ?? [];
-    // Hosted Supabase users may have only app_metadata.provider (without an
-    // identities array), particularly for older Google accounts.
-    const metadataProvider = authUser.app_metadata?.provider;
-    return (
-      providers.find((provider) => provider !== "email") ??
-      metadataProvider ??
-      providers[0] ??
-      null
-    );
-  } catch {
-    return null;
-  }
-}
 
 // Shown to a frozen owner across the dashboard and returned from blocked write actions.
 export const FROZEN_OWNER_MESSAGE =

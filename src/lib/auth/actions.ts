@@ -2,10 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { OAUTH_CALLBACK_PATH } from "@/config/auth";
-import { serverSiteUrl } from "@/config/site";
 import {
   ensureProfileForCurrentUser,
-  getAuthProviderForEmail,
   getCurrentProfile,
 } from "@/lib/auth/profile";
 import { resolveSiteOrigin } from "@/lib/auth/site-origin";
@@ -20,7 +18,6 @@ import { safeRedirectPath } from "@/lib/security/redirect";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   credentialsSchema,
-  signUpSchema,
   MIN_PASSWORD_LENGTH,
 } from "@/lib/validation/auth";
 
@@ -80,6 +77,11 @@ export async function signInAction(
   _prev: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
+  // Public sign-in is Google-only. The admin form opts into the legacy
+  // password flow with an explicit server-generated purpose field.
+  if (formData.get("authSurface") !== "admin") {
+    return { error: "Please continue with Google to sign in." };
+  }
   if (!(await allow("signin", LIMITS.auth))) {
     await logSecurityEvent({
       action: "auth.signin",
@@ -116,22 +118,6 @@ export async function signInAction(
     });
     return {
       error: `Too many failed attempts. Please wait ${lockout.retryAfterSeconds}s and try again.`,
-    };
-  }
-
-  // Check the identity provider before asking Supabase to validate a password.
-  // This lets a Google/OAuth account receive the actionable provider message
-  // instead of the misleading generic credential error.
-  const authProvider = await getAuthProviderForEmail(parsed.data.email);
-  if (authProvider && authProvider !== "email") {
-    await logSecurityEvent({
-      action: "auth.signin",
-      outcome: "denied",
-      detail: "identity_conflict",
-    });
-    return {
-      error:
-        "This email is already connected to another Meino sign-in method. Use that provider or link this account first.",
     };
   }
 
@@ -207,6 +193,10 @@ export async function signUpAction(
   _prev: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
+  void _prev;
+  void formData;
+  return { error: "Email and password sign-up is disabled. Please use Google." };
+  /*
   if (!(await allow("signup", LIMITS.auth))) {
     await logSecurityEvent({
       action: "auth.signup",
@@ -307,6 +297,7 @@ export async function signUpAction(
     actorRole: profile?.role,
   });
   redirect(role === "OWNER" ? "/owner" : "/account");
+  */
 }
 
 export async function signOutAction() {

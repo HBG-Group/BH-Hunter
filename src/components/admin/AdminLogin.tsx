@@ -24,7 +24,7 @@ export function AdminLogin({ denied }: { denied?: boolean }) {
           )}
 
           {/* On success, sign-in returns to /admin; the gate re-checks the role there. */}
-          <AuthForm mode="signin" action={signInAction} next="/admin" showFooter={false} />
+          <AuthForm mode="signin" action={signInAction} next="/admin" showFooter={false} authSurface="admin" />
         </div>
       </div>
     </div>
