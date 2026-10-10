@@ -8,8 +8,8 @@ export function AvailabilitySummary({ listing }: { listing: ListingDetail }) {
 
   return (
     <div className="rounded-2xl border border-line bg-white p-5">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <p className="text-3xl font-semibold text-ink">
             {listing.remainingVacancies}
             <span className="text-lg font-normal text-muted"> of {listing.totalCapacity} beds open</span>
