@@ -11,6 +11,7 @@ import { Watermark } from "@/components/system/Watermark";
 import { BugReporter } from "@/components/system/BugReporter";
 import { CookieConsentBanner } from "@/components/cookies/CookieConsentBanner";
 import { PwaSupport } from "@/components/system/PwaSupport";
+import { PwaLaunchScreen } from "@/components/system/PwaLaunchScreen";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { supabaseUrl } from "@/config/env";
 import { isAdminHost } from "@/config/admin";
@@ -61,6 +62,7 @@ export default async function RootLayout({
         <Watermark />
         <BugReporter />
         <CookieConsentBanner />
+        <PwaLaunchScreen />
         <PwaSupport />
       </body>
     </html>
