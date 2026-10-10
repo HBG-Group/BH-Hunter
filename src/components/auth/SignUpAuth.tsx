@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AuthForm } from "@/components/auth/AuthForm";
 import { GoogleButton } from "@/components/auth/GoogleButton";
-import { AuthDivider } from "@/components/auth/AuthDivider";
-import { signUpAction } from "@/lib/auth/actions";
 
 interface Props {
   role: "OWNER" | "STUDENT";
@@ -36,14 +33,15 @@ export function SignUpAuth({ role, next }: Props) {
         </span>
       </label>
 
-      <p className="text-xs text-neutral-500">
-        Confirmation emails can be requested once every 60 seconds. If you reach
-        the project email limit, wait up to an hour before trying again.
+      <GoogleButton
+        next={next}
+        role={role}
+        disabled={!agreed}
+        label="Continue with Google"
+      />
+      <p className="text-center text-xs text-neutral-500">
+        Your Google account will be used to sign in to Meino.
       </p>
-
-      <GoogleButton next={next} role={role} disabled={!agreed} />
-      <AuthDivider />
-      <AuthForm mode="signup" action={signUpAction} role={role} agreed={agreed} />
     </div>
   );
 }

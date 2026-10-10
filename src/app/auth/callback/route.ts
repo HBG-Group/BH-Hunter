@@ -2,16 +2,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ensureProfileForCurrentUser } from "@/lib/auth/profile";
 import { safeRedirectPath } from "@/lib/security/redirect";
-import { resolveSiteOrigin } from "@/lib/auth/site-origin";
 
 // Google (and the confirmation email) send the user back here with a code. We exchange
-// it for a session and send them on. The final hop uses the canonical origin, so it
-// can't land on an internal Vercel host or on localhost.
+// it for a session and send them back to the origin that initiated the OAuth flow.
+// This preserves standalone/PWA behavior when the app is opened on another
+// allow-listed deployment origin.
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
-  const origin = await resolveSiteOrigin();
+  const origin = request.nextUrl.origin;
 
   // Older/custom Supabase email templates may still point confirmation links at
   // this callback with a token_hash. Send them through the dedicated confirmation
