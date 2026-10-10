@@ -118,8 +118,9 @@ the record of what they contained.
   - Feature a listing → it floats to the top of the homepage.
   - Delete a listing → gone from DB and its photos cleared from Storage.
   - Open a PENDING listing at `/admin/listings/[id]` → full info + photos show.
-- [ ] **Custom SMTP for auth emails.** Supabase's built-in email is ~2/hour (testing
-      only). Configure Resend/SendGrid/SES before real sign-ups. See `docs/SECURITY.md`.
+- [ ] **Custom SMTP for auth emails.** Configure the provider in Supabase Authentication
+      → Emails → SMTP Settings using `docs/AUTH_SMTP_SETUP.md`, then test signup and
+      password reset with a non-team address.
 - [ ] Confirm `NEXT_PUBLIC_SITE_URL` is set in Vercel so OAuth/confirmation links resolve
       to production, not localhost.
 
