@@ -2,16 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { isUnlinkedProviderConflict } from "@/lib/auth/identity";
 
-test("profile creation never merges unlinked provider identities by email", async () => {
-  const source = await readFile(resolve("src/lib/auth/profile.ts"), "utf8");
-  assert.match(source, /byEmail\.id !== user\.id/);
-  assert.match(source, /provider === "email"/);
-  assert.match(source, /return \{ conflict: true \}/);
-  assert.match(source, /return \{ profile: byEmail, created: false \}/);
-  assert.match(source, /getAuthProviderForEmail/);
-  assert.match(source, /admin\.auth\.admin\.listUsers/);
-  assert.match(source, /app_metadata\?\.provider/);
+test("profile creation never merges unlinked provider identities by email", () => {
+  assert.equal(isUnlinkedProviderConflict({ authenticatedUserId: "google-user", profileId: "email-user", provider: "google" }), true);
+  assert.equal(isUnlinkedProviderConflict({ authenticatedUserId: "email-user", profileId: "email-user", provider: "email" }), false);
+  assert.equal(isUnlinkedProviderConflict({ authenticatedUserId: "new-user", profileId: "old-user", provider: "email" }), false);
 });
 
 test("OAuth callback signs out and explains an identity conflict", async () => {
