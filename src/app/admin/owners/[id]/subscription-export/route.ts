@@ -2,7 +2,9 @@ import { requireAdmin } from "@/lib/auth/profile";
 import { prisma } from "@/lib/db/prisma";
 
 function csv(value: unknown) {
-  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const text = String(value ?? "");
+  const safe = /^[=+\-@]/.test(text) ? `'${text}` : text;
+  return `"${safe.replaceAll('"', '""')}"`;
 }
 
 export async function GET(

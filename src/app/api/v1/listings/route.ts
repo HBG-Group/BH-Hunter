@@ -3,9 +3,12 @@ import { listingFiltersSchema } from "@/lib/validation/filters";
 import { filterListings } from "@/services/filter-listings";
 import { toListingCards } from "@/services/listings";
 import type { ListingFilters } from "@/lib/validation/filters";
+import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
 
 // Reads published listings and applies the same filters as the website.
 export async function GET(request: Request) {
+  if (!(await allow("api-listings", LIMITS.analytics)))
+    return Response.json({ error: RATE_LIMITED }, { status: 429 });
   const url = new URL(request.url);
   const filters = readFilters(url.searchParams);
   const rows = await findPublishedBoardingHouses();
@@ -25,5 +28,6 @@ function readFilters(params: URLSearchParams): ListingFilters {
     amenities: params.get("amenities")?.split(",").filter(Boolean),
   };
 
-  return listingFiltersSchema.parse(raw);
+  const parsed = listingFiltersSchema.safeParse(raw);
+  return parsed.success ? parsed.data : {};
 }
