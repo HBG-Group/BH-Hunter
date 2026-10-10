@@ -10,6 +10,7 @@ import { TermsGate } from "@/components/system/TermsGate";
 import { Watermark } from "@/components/system/Watermark";
 import { BugReporter } from "@/components/system/BugReporter";
 import { CookieConsentBanner } from "@/components/cookies/CookieConsentBanner";
+import { PwaSupport } from "@/components/system/PwaSupport";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { supabaseUrl } from "@/config/env";
 import { isAdminHost } from "@/config/admin";
@@ -19,6 +20,13 @@ export const metadata: Metadata = {
   title: "Meino — Find your place near VSU",
   description:
     "Meino helps Visayas State University students find a boarding house that feels like home. Every option on one map, with real vacancies and honest walk times.",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#f7f7f5",
+  appleWebApp: {
+    capable: true,
+    title: "Meino",
+    statusBarStyle: "default",
+  },
 };
 
 export default async function RootLayout({
@@ -53,6 +61,7 @@ export default async function RootLayout({
         <Watermark />
         <BugReporter />
         <CookieConsentBanner />
+        <PwaSupport />
       </body>
     </html>
   );
