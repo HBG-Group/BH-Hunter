@@ -5,6 +5,7 @@ import { OAUTH_CALLBACK_PATH } from "@/config/auth";
 import { serverSiteUrl } from "@/config/site";
 import {
   ensureProfileForCurrentUser,
+  getCurrentUser,
   getAuthProviderForEmail,
   getCurrentProfile,
 } from "@/lib/auth/profile";
@@ -59,11 +60,19 @@ export async function updatePasswordAction(
     return { error: "Open the secure link from your reset email first." };
   const password = String(formData.get("password") ?? "");
   const confirmation = String(formData.get("confirmation") ?? "");
+  const currentPassword = String(formData.get("currentPassword") ?? "");
   if (password.length < MIN_PASSWORD_LENGTH || password.length > 72) {
     return { error: `Use ${MIN_PASSWORD_LENGTH}–72 characters.` };
   }
   if (password !== confirmation) return { error: "Passwords do not match." };
   const supabase = await createSupabaseServerClient();
+  const user = await getCurrentUser();
+  const emailIdentity = user?.identities?.some((identity) => identity.provider === "email");
+  if (emailIdentity) {
+    if (!currentPassword) return { error: "Enter your current password." };
+    const check = await supabase.auth.signInWithPassword({ email: user?.email ?? "", password: currentPassword });
+    if (check.error) return { error: "Your current password is incorrect." };
+  }
   const { error } = await supabase.auth.updateUser({ password });
   if (error)
     return { error: "Could not update the password. Please try again." };

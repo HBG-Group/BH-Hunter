@@ -9,6 +9,11 @@ export function UpdatePasswordForm() {
   return (
     <form action={action} className="space-y-3">
       <PasswordField
+        name="currentPassword"
+        autoComplete="current-password"
+        placeholder="Current password (if applicable)"
+      />
+      <PasswordField
         autoComplete="new-password"
         minLength={8}
         placeholder="New password"

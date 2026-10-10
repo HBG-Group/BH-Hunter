@@ -62,9 +62,12 @@ export async function updateAccountSettingsAction(
 }
 
 export async function revokeOtherSessionsAction(): Promise<void> {
-  await requireProfile("/settings");
+  const profile = await requireProfile("/settings");
+  if (!(await allow("auth-session-revoke", LIMITS.auth, profile.id))) return;
   const supabase = await createSupabaseServerClient();
-  await supabase.auth.signOut({ scope: "others" });
+  const { error } = await supabase.auth.signOut({ scope: "others" });
+  if (error) return;
+  await import("@/lib/security/events").then(({ logSecurityEvent }) => logSecurityEvent({ action: "auth.signout_others", outcome: "allowed", actorId: profile.id, actorRole: profile.role }));
   revalidatePath("/settings");
 }
 

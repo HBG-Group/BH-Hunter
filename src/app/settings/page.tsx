@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireProfile } from "@/lib/auth/profile";
+import { getCurrentUser, requireProfile } from "@/lib/auth/profile";
 import { revokeOtherSessionsAction } from "@/lib/account/actions";
 import { signOutAction } from "@/lib/auth/actions";
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -7,6 +7,8 @@ import { ProfileSettingsForm } from "@/components/account/ProfileSettingsForm";
 
 export default async function SettingsPage() {
   const profile = await requireProfile("/settings");
+  const user = await getCurrentUser();
+  const hasEmailIdentity = user?.identities?.some((identity) => identity.provider === "email") ?? false;
   const backHref =
     profile.role === "OWNER"
       ? "/owner"
@@ -38,12 +40,7 @@ export default async function SettingsPage() {
         <section className="space-y-3 rounded-2xl border border-line bg-white p-5">
           <h2 className="font-semibold text-ink">Sign-in and sessions</h2>
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="/account/password"
-              className="inline-flex min-h-11 items-center rounded-xl px-4 text-sm ring-1 ring-inset ring-line"
-            >
-              Change password
-            </Link>
+            {hasEmailIdentity && <Link href="/account/password" className="inline-flex min-h-11 items-center rounded-xl px-4 text-sm ring-1 ring-inset ring-line">Change password</Link>}
             <form action={revokeOtherSessionsAction}>
               <button className="min-h-11 rounded-xl px-4 text-sm ring-1 ring-inset ring-line">
                 Sign out other sessions
