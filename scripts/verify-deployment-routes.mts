@@ -9,16 +9,12 @@
 const deploymentUrl = process.env.DEPLOY_URL ?? process.env.SECURITY_CHECK_URL;
 
 if (!deploymentUrl) {
-  throw new Error(
-    "Set DEPLOY_URL (or SECURITY_CHECK_URL) to the deployment origin to check",
-  );
+  console.warn("Skipping route smoke test: DEPLOY_URL (or SECURITY_CHECK_URL) is not set.");
+  process.exit(0);
 }
 
 const origin = new URL(deploymentUrl);
-const isAdminSurface =
-  origin.hostname === "meinocontrol.vercel.app" ||
-  (origin.hostname.startsWith("meinocontrol-") &&
-    origin.hostname.endsWith(".vercel.app"));
+const isAdminSurface = isMeinoControlVercelHost(origin.hostname);
 
 // Public routes that must always resolve for a guest.
 const PUBLIC_ROUTES = [
@@ -100,3 +96,5 @@ if (failures.length > 0) {
     `Route smoke test failed: ${failures.map((f) => `${f.path} -> ${f.status}`).join(", ")}`,
   );
 }
+import { isMeinoControlVercelHost } from "../src/config/admin.ts";
+
