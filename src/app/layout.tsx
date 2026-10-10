@@ -50,6 +50,7 @@ export default async function RootLayout({
             the first <Image> request needs it. */}
         <link rel="preconnect" href={supabaseUrl} crossOrigin="anonymous" />
         <link rel="dns-prefetch" href={supabaseUrl} />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </head>
       <body className="flex min-h-full flex-col">
         <div className="pwa-launch-screen" aria-hidden="true">
