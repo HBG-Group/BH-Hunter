@@ -11,7 +11,6 @@ import { Watermark } from "@/components/system/Watermark";
 import { BugReporter } from "@/components/system/BugReporter";
 import { CookieConsentBanner } from "@/components/cookies/CookieConsentBanner";
 import { PwaSupport } from "@/components/system/PwaSupport";
-import { PwaLaunchScreen } from "@/components/system/PwaLaunchScreen";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { supabaseUrl } from "@/config/env";
 import { isAdminHost } from "@/config/admin";
@@ -53,6 +52,20 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href={supabaseUrl} />
       </head>
       <body className="flex min-h-full flex-col">
+        <div className="pwa-launch-screen" aria-hidden="true">
+          <div className="pwa-launch-content">
+            <span className="pwa-launch-logo">
+              <svg viewBox="0 0 192 192" aria-hidden="true">
+                <rect width="192" height="192" fill="#b74726" />
+                <path className="pwa-launch-house" d="M42 127V72l54-44 54 44v55" fill="none" stroke="#fffaf4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="10" />
+                <path className="pwa-launch-door" d="M76 127v-30c0-11 9-20 20-20s20 9 20 20v30" fill="none" stroke="#fffaf4" strokeLinecap="round" strokeWidth="10" />
+                <circle className="pwa-launch-sparkle pwa-launch-sparkle-one" cx="34" cy="51" r="4" fill="#fffaf4" />
+                <circle className="pwa-launch-sparkle pwa-launch-sparkle-two" cx="158" cy="48" r="4" fill="#fffaf4" />
+              </svg>
+            </span>
+            <span className="pwa-launch-wordmark">MEINO</span>
+          </div>
+        </div>
         <RouteProgress />
         <TermsGate />
         <div className="flex-1">
@@ -62,7 +75,6 @@ export default async function RootLayout({
         <Watermark />
         <BugReporter />
         <CookieConsentBanner />
-        <PwaLaunchScreen />
         <PwaSupport />
       </body>
     </html>
