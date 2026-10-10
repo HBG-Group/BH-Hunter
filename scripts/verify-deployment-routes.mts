@@ -96,5 +96,5 @@ if (failures.length > 0) {
     `Route smoke test failed: ${failures.map((f) => `${f.path} -> ${f.status}`).join(", ")}`,
   );
 }
-import { isMeinoControlVercelHost } from "../src/config/admin.ts";
+import { isMeinoControlVercelHost } from "../src/config/admin";
 
