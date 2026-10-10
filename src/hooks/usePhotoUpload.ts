@@ -10,7 +10,7 @@ import {
 } from "@/lib/owner/photo-actions";
 
 interface Result {
-  upload: (files: File[]) => Promise<boolean>;
+  upload: (files: File[]) => Promise<number>;
   uploading: boolean;
   progress: { completed: number; total: number };
   error: string | null;
@@ -41,7 +41,7 @@ export function usePhotoUpload(boardingHouseId: string): Result {
       );
       if (prepared.error || !prepared.tickets) {
         setError(prepared.error ?? "Could not start the upload");
-        return false;
+        return 0;
       }
 
       const supabase = createSupabaseBrowserClient();
@@ -68,14 +68,14 @@ export function usePhotoUpload(boardingHouseId: string): Result {
         const result = await registerPhotosAction(boardingHouseId, uploaded);
         if (result.error) {
           setError(result.error);
-          return false;
+          return 0;
         }
         router.refresh();
       }
-      return uploaded.length === files.length;
+      return uploaded.length;
     } catch {
       setError("The upload failed. Check your connection and try again.");
-      return false;
+      return 0;
     } finally {
       setUploading(false);
     }

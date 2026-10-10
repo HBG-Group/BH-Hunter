@@ -111,8 +111,10 @@ export function PhotoManager({ boardingHouseId, images }: Props) {
 
   const startUpload = async () => {
     const completed = await upload(queued);
-    if (completed) {
-      setQueued([]);
+    if (completed > 0) {
+      setQueued((current) => current.slice(completed));
+    }
+    if (completed === queued.length) {
       if (inputRef.current) inputRef.current.value = "";
     }
   };
