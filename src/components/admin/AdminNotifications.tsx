@@ -19,6 +19,7 @@ export function AdminNotifications({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const unread = notifications.filter(
     (notification) => !notification.readAt,
   ).length;
@@ -59,6 +60,7 @@ export function AdminNotifications({
           className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg"
           aria-label="Notifications panel"
         >
+          {error && <p className="border-b border-rose-100 px-4 py-2 text-xs text-rose-600">{error}</p>}
           <div className="border-b border-neutral-100 px-4 py-3 text-sm font-semibold text-neutral-900">
             <div className="flex items-center justify-between">
               <span>Notifications</span>
@@ -88,8 +90,9 @@ export function AdminNotifications({
                     type="button"
                     disabled={pending}
                     onClick={() =>
-                      startTransition(() => {
-                        void markAdminNotificationReadAction(notification.id);
+                      startTransition(async () => {
+                        const result = await markAdminNotificationReadAction(notification.id);
+                        setError(result.error ?? null);
                       })
                     }
                     className="w-full text-left"

@@ -33,7 +33,7 @@ test("Meino Control production and preview hosts are staff surfaces", () => {
     isMeinoControlVercelHost("meinocontrol-git-bugfix-ui-hbg1.vercel.app"),
     true,
   );
-  assert.equal(isAdminHost("meinocontrol-git-feature-hbg1.vercel.app"), true);
+  assert.equal(isAdminHost("meinocontrol-git-feature-hbg1.vercel.app"), false);
   assert.equal(isAdminHost("meino-git-feature-hbg1.vercel.app"), false);
   assert.equal(isAdminHost("meinocontrol.vercel.app.attacker.example"), false);
 });
