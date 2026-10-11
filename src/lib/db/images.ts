@@ -46,6 +46,48 @@ export async function addImageForOwner(
   return true;
 }
 
+export async function registerImagesForOwner(
+  ownerId: string,
+  boardingHouseId: string,
+  urls: string[],
+  photoLimit: number,
+): Promise<"not-owned" | "limit" | "saved"> {
+  return prisma.$transaction(async (tx) => {
+    const listing = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "boarding_houses"
+      WHERE id = ${boardingHouseId} AND "ownerId" = ${ownerId}
+      FOR UPDATE
+    `;
+    if (listing.length === 0) return "not-owned";
+
+    const uniqueUrls = [...new Set(urls)];
+    const existing = await tx.image.findMany({
+      where: { boardingHouseId, url: { in: uniqueUrls } },
+      select: { url: true },
+    });
+    const knownUrls = new Set(existing.map((image) => image.url));
+    const newUrls = uniqueUrls.filter((url) => !knownUrls.has(url));
+    const count = await tx.image.count({ where: { boardingHouseId } });
+    if (count + newUrls.length > photoLimit) return "limit";
+
+    if (newUrls.length > 0) {
+      const last = await tx.image.findFirst({
+        where: { boardingHouseId },
+        orderBy: { sortOrder: "desc" },
+        select: { sortOrder: true },
+      });
+      await tx.image.createMany({
+        data: newUrls.map((url, index) => ({
+          boardingHouseId,
+          url,
+          sortOrder: (last?.sortOrder ?? -1) + index + 1,
+        })),
+      });
+    }
+    return "saved";
+  });
+}
+
 // True when this exact object has already been registered — blocks ticket replay.
 export async function imageUrlExists(url: string): Promise<boolean> {
   const existing = await prisma.image.findFirst({

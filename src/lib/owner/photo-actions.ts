@@ -9,10 +9,9 @@ import {
 } from "@/config/storage";
 import { requireWritableOwner } from "@/lib/auth/profile";
 import {
-  addImageForOwner,
   countImages,
   deleteImagesForOwner,
-  imageUrlExists,
+  registerImagesForOwner,
   reorderImagesForOwner,
   updateImageAltForOwner,
 } from "@/lib/db/images";
@@ -122,7 +121,7 @@ export async function registerPhotosAction(
   return guarded<PhotoFormState>(
     "registerPhotos",
     async () => {
-      let saved = 0;
+      const urls: string[] = [];
 
       for (const ticket of tickets) {
         const path = verifyTicket(
@@ -148,19 +147,24 @@ export async function registerPhotosAction(
           return { error: PHOTO_SIZE_HINT };
         }
 
-        const url = publicPhotoUrl(path);
-        if (await imageUrlExists(url)) continue;
+        urls.push(publicPhotoUrl(path));
+      }
 
-        const ok = await addImageForOwner(owner.id, boardingHouseId, url);
-        if (!ok) return { error: "You don't own this listing" };
-        saved += 1;
+      const entitlement = await getOwnerRoomEntitlement(owner.id);
+      const registered = await registerImagesForOwner(
+        owner.id,
+        boardingHouseId,
+        urls,
+        entitlement.photoLimit,
+      );
+      if (registered === "not-owned") return { error: "You don't own this listing" };
+      if (registered === "limit") {
+        return { error: `${entitlement.planName} allows up to ${entitlement.photoLimit} photos per listing.` };
       }
 
       revalidatePath(`/owner/listings/${boardingHouseId}/photos`);
       revalidatePath("/owner");
-      return saved > 0
-        ? { success: true }
-        : { error: "Those photos were already saved." };
+      return { success: true };
     },
     (message) => ({ error: message }),
   );

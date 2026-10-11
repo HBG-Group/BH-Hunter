@@ -10,7 +10,7 @@ import {
 } from "@/lib/owner/photo-actions";
 
 interface Result {
-  upload: (files: File[]) => Promise<boolean>;
+  upload: (files: File[]) => Promise<{ retryFiles: File[] }>;
   uploading: boolean;
   progress: { completed: number; total: number };
   error: string | null;
@@ -41,7 +41,11 @@ export function usePhotoUpload(boardingHouseId: string): Result {
       );
       if (prepared.error || !prepared.tickets) {
         setError(prepared.error ?? "Could not start the upload");
-        return false;
+        return { retryFiles: files };
+      }
+      if (prepared.tickets.length !== files.length) {
+        setError("The upload could not be prepared completely. Please try again.");
+        return { retryFiles: files };
       }
 
       const supabase = createSupabaseBrowserClient();
@@ -50,6 +54,7 @@ export function usePhotoUpload(boardingHouseId: string): Result {
         signature: string;
       }[] = [];
 
+      let failedAt = files.length;
       for (const [index, ticket] of prepared.tickets.entries()) {
         const { error: uploadError } = await supabase.storage
           .from(PHOTO_BUCKET)
@@ -57,6 +62,7 @@ export function usePhotoUpload(boardingHouseId: string): Result {
 
         if (uploadError) {
           setError(`"${ticket.fileName}" was rejected: ${uploadError.message}`);
+          failedAt = index;
           break;
         }
         uploaded.push({ claims: ticket.claims, signature: ticket.signature });
@@ -68,14 +74,14 @@ export function usePhotoUpload(boardingHouseId: string): Result {
         const result = await registerPhotosAction(boardingHouseId, uploaded);
         if (result.error) {
           setError(result.error);
-          return false;
+          return { retryFiles: files };
         }
         router.refresh();
       }
-      return uploaded.length === files.length;
+      return { retryFiles: files.slice(failedAt) };
     } catch {
       setError("The upload failed. Check your connection and try again.");
-      return false;
+      return { retryFiles: files };
     } finally {
       setUploading(false);
     }
