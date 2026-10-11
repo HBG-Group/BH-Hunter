@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { signInWithGoogle } from "@/lib/auth/oauth";
+import { recordTermsConsent } from "@/lib/auth/terms-actions";
 import { Spinner } from "@/components/ui/Spinner";
 
 interface Props {
@@ -11,16 +12,22 @@ interface Props {
   role?: "OWNER" | "STUDENT";
   // Sign-up pages pass this to block Google until the Terms box is ticked.
   disabled?: boolean;
+  termsAccepted?: boolean;
 }
 
 // Google sign-in — handles the cancelled-login / network error cases.
-export function GoogleButton({ next = "/", label = "Continue with Google", role, disabled = false }: Props) {
+export function GoogleButton({ next = "/", label = "Continue with Google", role, disabled = false, termsAccepted = false }: Props) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const start = async () => {
     setPending(true);
     setError(null);
+    if (role && !(await recordTermsConsent(termsAccepted))) {
+      setError("Please accept the Terms & Conditions to continue.");
+      setPending(false);
+      return;
+    }
     const message = await signInWithGoogle(next, role);
     // A message means it failed; otherwise the browser is redirecting to Google.
     if (message) {

@@ -10,6 +10,7 @@ import { deleteAccountCompletely } from "@/lib/account/deletion";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
 import { reportError } from "@/lib/security/errors";
+import { logSecurityEvent } from "@/lib/security/events";
 
 export interface OnboardingState {
   error?: string;
@@ -61,11 +62,25 @@ export async function updateAccountSettingsAction(
   return { success: "Profile updated." };
 }
 
-export async function revokeOtherSessionsAction(): Promise<void> {
-  await requireProfile("/settings");
+export async function revokeOtherSessionsAction(): Promise<{ error?: string; success?: string }> {
+  const profile = await requireProfile("/settings");
+  if (!(await allow("auth-session-revoke", LIMITS.auth, profile.id)))
+    return { error: RATE_LIMITED };
   const supabase = await createSupabaseServerClient();
-  await supabase.auth.signOut({ scope: "others" });
+  const { error } = await supabase.auth.signOut({ scope: "others" });
+  if (error) return { error: "Could not sign out other sessions. Please try again." };
+  try {
+    await logSecurityEvent({
+      action: "auth.signout_others",
+      outcome: "allowed",
+      actorId: profile.id,
+      actorRole: profile.role,
+    });
+  } catch (logError) {
+    reportError("revokeOtherSessions.logSecurityEvent", logError);
+  }
   revalidatePath("/settings");
+  return { success: "Other sessions have been signed out." };
 }
 
 // First-time users pick a display name here, then continue into the app. Existing users

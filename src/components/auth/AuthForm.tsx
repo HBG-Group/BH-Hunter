@@ -39,7 +39,7 @@ export function AuthForm({
 }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   const isSignUp = mode === "signup";
-  // Only gate on the terms box when the parent actually passes it (sign-up pages).
+  // Client-side terms gating is UX only; sign-up acceptance is also verified server-side.
   const blockedByTerms = isSignUp && agreed !== undefined && !agreed;
 
   return (

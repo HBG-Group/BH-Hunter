@@ -29,9 +29,15 @@ export function isAdminHost(host: string | null | undefined): boolean {
   if (!host) return false;
   // Compare host without the port (localhost:3000 → localhost).
   const hostname = hostnameOnly(host);
+  const deploymentHost = process.env.VERCEL_URL;
+  const isTrustedControlDeployment =
+    Boolean(process.env.VERCEL) &&
+    deploymentHost !== undefined &&
+    hostnameOnly(deploymentHost) === hostname &&
+    isMeinoControlVercelHost(hostname);
   return (
     (ADMIN_HOST !== null && hostname === hostnameOnly(ADMIN_HOST)) ||
-    isMeinoControlVercelHost(hostname)
+    isTrustedControlDeployment
   );
 }
 

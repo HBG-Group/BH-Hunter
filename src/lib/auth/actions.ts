@@ -77,8 +77,8 @@ export async function signInAction(
   _prev: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
-  // Public sign-in is Google-only. The admin form opts into the legacy
-  // password flow with an explicit server-generated purpose field.
+  // This marker keeps the legacy password form out of public sign-in UX. It is
+  // not an authorization check; the authenticated role is enforced after login.
   if (formData.get("authSurface") !== "admin") {
     return { error: "Please continue with Google to sign in." };
   }

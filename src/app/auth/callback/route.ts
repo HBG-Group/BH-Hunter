@@ -3,6 +3,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ensureProfileForCurrentUser } from "@/lib/auth/profile";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { resolveSiteOrigin } from "@/lib/auth/site-origin";
+import { prisma } from "@/lib/db/prisma";
+import { cookies } from "next/headers";
+import {
+  TERMS_CONSENT_COOKIE,
+  TERMS_VERSION,
+  verifyTermsConsentValue,
+} from "@/lib/security/terms-consent";
 
 // Google (and the confirmation email) send the user back here with a code. We exchange
 // it for a session and send them back to the origin that initiated the OAuth flow.
@@ -32,6 +39,23 @@ export async function GET(request: NextRequest) {
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const existingProfile = user
+        ? await prisma.profile.findUnique({ where: { id: user.id } })
+        : null;
+      const cookieStore = await cookies();
+      const acceptedAt = verifyTermsConsentValue(
+        cookieStore.get(TERMS_CONSENT_COOKIE)?.value,
+      );
+      const needsConsent = !existingProfile || existingProfile.termsVersion !== TERMS_VERSION;
+      if (needsConsent && acceptedAt === null) {
+        await supabase.auth.signOut();
+        const signupPath = searchParams.get("role") === "OWNER"
+          ? "/list-your-property?error=terms"
+          : "/signup?error=terms";
+        return NextResponse.redirect(new URL(signupPath, origin));
+      }
+
       // Make sure a Profile row exists (creates one on first Google sign-in).
       const result = await ensureProfileForCurrentUser(
         searchParams.get("role") === "OWNER" ? "OWNER" : undefined,
@@ -43,6 +67,13 @@ export async function GET(request: NextRequest) {
         await supabase.auth.signOut();
         return NextResponse.redirect(new URL("/login?error=identity-conflict", origin));
       }
+      if (result && "profile" in result && acceptedAt !== null) {
+        await prisma.profile.update({
+          where: { id: result.profile.id },
+          data: { termsAcceptedAt: new Date(acceptedAt), termsVersion: TERMS_VERSION },
+        });
+      }
+      cookieStore.delete(TERMS_CONSENT_COOKIE);
       // First-time users set a display name before entering the app; existing users
       // (created === false) skip onboarding entirely and go straight to `next`.
       if (result && "profile" in result && result.created) {

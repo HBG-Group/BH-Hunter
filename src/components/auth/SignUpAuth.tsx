@@ -37,6 +37,7 @@ export function SignUpAuth({ role, next }: Props) {
         next={next}
         role={role}
         disabled={!agreed}
+        termsAccepted={agreed}
         label="Continue with Google"
       />
       <p className="text-center text-xs text-neutral-500">

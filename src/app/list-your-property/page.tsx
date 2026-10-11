@@ -3,11 +3,16 @@ import { SignUpLayout } from "@/components/auth/SignUpLayout";
 import { SignUpAuth } from "@/components/auth/SignUpAuth";
 import { getCurrentProfile } from "@/lib/auth/profile";
 
-export default async function OwnerSignUpPage() {
+export default async function OwnerSignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   // A logged-in owner clicking "List your property" should land on their listings,
   // not the sign-up form. Students/guests continue to the sign-up flow.
   const profile = await getCurrentProfile();
   if (profile?.role === "OWNER") redirect("/owner");
+  const { error } = await searchParams;
 
   return (
     <SignUpLayout
@@ -23,6 +28,7 @@ export default async function OwnerSignUpPage() {
       formTitle="Create your owner account"
       formSubtitle="Put your boarding house in front of students looking for a home near VSU."
     >
+      {error === "terms" && <p role="alert" className="text-sm text-rose-600">Please accept the current Terms &amp; Conditions before creating an account.</p>}
       <SignUpAuth role="OWNER" next="/owner" />
     </SignUpLayout>
   );
