@@ -36,6 +36,11 @@ export function SignUpAuth({ role, next }: Props) {
         </span>
       </label>
 
+      <p className="text-xs text-neutral-500">
+        Confirmation emails can be requested once every 60 seconds. If you reach
+        the project email limit, wait up to an hour before trying again.
+      </p>
+
       <GoogleButton next={next} role={role} disabled={!agreed} />
       <AuthDivider />
       <AuthForm mode="signup" action={signUpAction} role={role} agreed={agreed} />

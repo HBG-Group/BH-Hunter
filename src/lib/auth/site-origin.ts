@@ -1,12 +1,17 @@
 import "server-only";
 import { headers } from "next/headers";
-import { productionSiteUrl, serverSiteUrl } from "@/config/site";
+import { serverSiteUrl } from "@/config/site";
 
 // The public origin to build absolute auth URLs from (OAuth callback, confirmation
 // email). Prefers the configured canonical URL; otherwise reconstructs it from the
 // forwarded headers Vercel sets, so it never resolves to an internal host.
 export async function resolveSiteOrigin(): Promise<string> {
-  const configured = productionSiteUrl() ?? serverSiteUrl();
+  // A missing canonical public URL is a deployment configuration issue, but it must
+  // not turn a submitted email/password form into the global error boundary. Prefer
+  // the configured public/production URL and otherwise safely use the request host.
+  // This also keeps protected preview QA usable while the production canonical URL is
+  // being configured in Vercel and Supabase.
+  const configured = serverSiteUrl();
   if (configured) return configured;
 
   const headerList = await headers();

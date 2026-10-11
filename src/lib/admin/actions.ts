@@ -24,9 +24,16 @@ import { listingExists } from "@/lib/db/listing-guards";
 import { guarded } from "@/lib/security/errors";
 import { logSecurityEvent } from "@/lib/security/events";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
-import { RECENT_AUTH_REQUIRED, requireRecentAuth } from "@/lib/security/recent-auth";
+import {
+  RECENT_AUTH_REQUIRED,
+  requireRecentAuth,
+} from "@/lib/security/recent-auth";
 import { removeListingPhoto } from "@/lib/storage/photos";
 import { checkListingPhotos } from "@/services/photo-requirements";
+import {
+  markAdminNotificationRead,
+  markAllAdminNotificationsRead,
+} from "@/lib/db/admin-notifications";
 
 type Result = { error?: string };
 
@@ -36,11 +43,38 @@ function revalidateAdmin() {
   revalidatePath("/admin/owners");
 }
 
+export async function markAdminNotificationReadAction(
+  notificationId: string,
+): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!(await allow("write", LIMITS.write, admin.id)))
+    return { error: RATE_LIMITED };
+  try {
+    await markAdminNotificationRead(admin.id, notificationId);
+    revalidatePath("/admin", "layout");
+    return {};
+  } catch {
+    return { error: "Could not update that notification. Please try again." };
+  }
+}
+
+export async function markAllAdminNotificationsReadAction(): Promise<void> {
+  const admin = await requireAdmin();
+  if (!(await allow("write", LIMITS.write, admin.id))) return;
+  await markAllAdminNotificationsRead(admin.id);
+  revalidatePath("/admin", "layout");
+  revalidatePath("/admin/notifications");
+}
+
 // Admin verify/publish/feature/delete all change what the public sees for a listing —
 // clear its cached entry plus the published-listings set (docs/CACHING.md). Call with
 // the slug/ownerId looked up *before* the mutation (deletion makes it unreachable after).
 async function invalidateListingCaches(slug: string, ownerId: string) {
-  await invalidate("listings:published", `listing:${slug}`, `metrics:owner:${ownerId}`);
+  await invalidate(
+    "listings:published",
+    `listing:${slug}`,
+    `metrics:owner:${ownerId}`,
+  );
 }
 
 async function ensureRecentAdminAuth(
@@ -63,10 +97,19 @@ async function ensureRecentAdminAuth(
   return { error: RECENT_AUTH_REQUIRED };
 }
 
-export async function setVerifiedAction(id: string, verified: boolean): Promise<Result> {
+export async function setVerifiedAction(
+  id: string,
+  verified: boolean,
+): Promise<Result> {
   const admin = await requireAdmin();
-  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
-  const recent = await ensureRecentAdminAuth(admin.id, "listing", id, "admin.setVerified");
+  if (!(await allow("write", LIMITS.write, admin.id)))
+    return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(
+    admin.id,
+    "listing",
+    id,
+    "admin.setVerified",
+  );
   if (recent) return recent;
 
   return guarded<Result>(
@@ -105,9 +148,16 @@ export async function moderateStatusAction(
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
 ): Promise<Result> {
   const admin = await requireAdmin();
-  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
-  if (!(await listingExists(id))) return { error: "That listing no longer exists." };
-  const recent = await ensureRecentAdminAuth(admin.id, "listing", id, "admin.moderateStatus");
+  if (!(await allow("write", LIMITS.write, admin.id)))
+    return { error: RATE_LIMITED };
+  if (!(await listingExists(id)))
+    return { error: "That listing no longer exists." };
+  const recent = await ensureRecentAdminAuth(
+    admin.id,
+    "listing",
+    id,
+    "admin.moderateStatus",
+  );
   if (recent) return recent;
 
   return guarded<Result>(
@@ -155,8 +205,14 @@ export async function moderateStatusAction(
 
 export async function deleteListingAction(id: string): Promise<Result> {
   const admin = await requireAdmin();
-  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
-  const recent = await ensureRecentAdminAuth(admin.id, "listing", id, "admin.deleteListing");
+  if (!(await allow("write", LIMITS.write, admin.id)))
+    return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(
+    admin.id,
+    "listing",
+    id,
+    "admin.deleteListing",
+  );
   if (recent) return recent;
 
   return guarded<Result>(
@@ -192,10 +248,19 @@ export async function deleteListingAction(id: string): Promise<Result> {
   );
 }
 
-export async function setFeaturedAction(id: string, featured: boolean): Promise<Result> {
+export async function setFeaturedAction(
+  id: string,
+  featured: boolean,
+): Promise<Result> {
   const admin = await requireAdmin();
-  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
-  const recent = await ensureRecentAdminAuth(admin.id, "listing", id, "admin.setFeatured");
+  if (!(await allow("write", LIMITS.write, admin.id)))
+    return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(
+    admin.id,
+    "listing",
+    id,
+    "admin.setFeatured",
+  );
   if (recent) return recent;
 
   return guarded<Result>(
@@ -230,10 +295,19 @@ export async function setFeaturedAction(id: string, featured: boolean): Promise<
   );
 }
 
-export async function setOwnerVerifiedAction(ownerId: string, verified: boolean): Promise<Result> {
+export async function setOwnerVerifiedAction(
+  ownerId: string,
+  verified: boolean,
+): Promise<Result> {
   const admin = await requireAdmin();
-  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
-  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.setOwnerVerified");
+  if (!(await allow("write", LIMITS.write, admin.id)))
+    return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(
+    admin.id,
+    "owner",
+    ownerId,
+    "admin.setOwnerVerified",
+  );
   if (recent) return recent;
 
   return guarded<Result>(
@@ -266,10 +340,18 @@ export async function setOwnerVerifiedAction(ownerId: string, verified: boolean)
 }
 
 // Decline a pending verification request without granting the badge.
-export async function rejectOwnerVerificationAction(ownerId: string): Promise<Result> {
+export async function rejectOwnerVerificationAction(
+  ownerId: string,
+): Promise<Result> {
   const admin = await requireAdmin();
-  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
-  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.rejectOwnerVerification");
+  if (!(await allow("write", LIMITS.write, admin.id)))
+    return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(
+    admin.id,
+    "owner",
+    ownerId,
+    "admin.rejectOwnerVerification",
+  );
   if (recent) return recent;
 
   return guarded<Result>(
@@ -303,10 +385,19 @@ export async function rejectOwnerVerificationAction(ownerId: string): Promise<Re
 
 // Assign a pricing plan to an owner. This automatically applies the plan's perks
 // (Verified badge for Advance/Premium, Featured listings for Premium). Admin-only.
-export async function setOwnerPlanAction(ownerId: string, plan: string): Promise<Result> {
+export async function setOwnerPlanAction(
+  ownerId: string,
+  plan: string,
+): Promise<Result> {
   const admin = await requireAdmin();
-  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
-  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.setOwnerPlan");
+  if (!(await allow("write", LIMITS.write, admin.id)))
+    return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(
+    admin.id,
+    "owner",
+    ownerId,
+    "admin.setOwnerPlan",
+  );
   if (recent) return recent;
 
   if (plan !== "BASIC" && plan !== "ADVANCE" && plan !== "PREMIUM") {
@@ -316,7 +407,7 @@ export async function setOwnerPlanAction(ownerId: string, plan: string): Promise
   return guarded<Result>(
     "setOwnerPlan",
     async () => {
-      const ok = await setOwnerPlan(ownerId, plan as OwnerPlanId);
+      const ok = await setOwnerPlan(ownerId, plan as OwnerPlanId, admin.id);
       if (!ok) return { error: "That owner no longer exists." };
       await logSecurityEvent({
         action: "admin.setOwnerPlan",
@@ -336,10 +427,19 @@ export async function setOwnerPlanAction(ownerId: string, plan: string): Promise
 
 // Freeze or unfreeze an owner. Frozen owners keep their listings live but lose write
 // access to the dashboard until an admin unfreezes them.
-export async function setOwnerFrozenAction(ownerId: string, frozen: boolean): Promise<Result> {
+export async function setOwnerFrozenAction(
+  ownerId: string,
+  frozen: boolean,
+): Promise<Result> {
   const admin = await requireAdmin();
-  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
-  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.setOwnerFrozen");
+  if (!(await allow("write", LIMITS.write, admin.id)))
+    return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(
+    admin.id,
+    "owner",
+    ownerId,
+    "admin.setOwnerFrozen",
+  );
   if (recent) return recent;
 
   return guarded<Result>(
@@ -374,10 +474,17 @@ export async function setOwnerFrozenAction(ownerId: string, frozen: boolean): Pr
 // favorites, reviews, notifications, storage files, and the auth user).
 export async function deleteOwnerAction(ownerId: string): Promise<Result> {
   const admin = await requireAdmin();
-  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
+  if (!(await allow("write", LIMITS.write, admin.id)))
+    return { error: RATE_LIMITED };
   // An admin can't delete their own account from here.
-  if (ownerId === admin.id) return { error: "You can't delete your own account here." };
-  const recent = await ensureRecentAdminAuth(admin.id, "owner", ownerId, "admin.deleteOwner");
+  if (ownerId === admin.id)
+    return { error: "You can't delete your own account here." };
+  const recent = await ensureRecentAdminAuth(
+    admin.id,
+    "owner",
+    ownerId,
+    "admin.deleteOwner",
+  );
   if (recent) return recent;
 
   return guarded<Result>(
@@ -408,8 +515,14 @@ export async function deleteOwnerAction(ownerId: string): Promise<Result> {
 // Remove an inappropriate review.
 export async function deleteReviewAction(id: string): Promise<Result> {
   const admin = await requireAdmin();
-  if (!(await allow("write", LIMITS.write, admin.id))) return { error: RATE_LIMITED };
-  const recent = await ensureRecentAdminAuth(admin.id, "review", id, "admin.deleteReview");
+  if (!(await allow("write", LIMITS.write, admin.id)))
+    return { error: RATE_LIMITED };
+  const recent = await ensureRecentAdminAuth(
+    admin.id,
+    "review",
+    id,
+    "admin.deleteReview",
+  );
   if (recent) return recent;
 
   return guarded<Result>(

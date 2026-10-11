@@ -8,7 +8,9 @@ const serviceRoleKey = process.env.SECURITY_TEST_SUPABASE_SERVICE_ROLE_KEY;
 const enabled =
   process.env.SECURITY_TEST_ENVIRONMENT === "staging" &&
   Boolean(baseURL && supabaseUrl && serviceRoleKey) &&
-  !new URL(baseURL ?? "https://invalid.local").hostname.endsWith("meino.vercel.app");
+  !new URL(baseURL ?? "https://invalid.local").hostname.endsWith(
+    "meino.vercel.app",
+  );
 
 interface TestUser {
   email: string;
@@ -31,7 +33,10 @@ function requireStaging() {
   }
 }
 
-async function createUser(key: string, role: "STUDENT" | "OWNER" | "ADMIN"): Promise<TestUser> {
+async function createUser(
+  key: string,
+  role: "STUDENT" | "OWNER" | "ADMIN",
+): Promise<TestUser> {
   const email = `${runId}-${key}@example.invalid`;
   const password = `Security-${runId}-A1!`;
   const { data, error } = await admin.auth.admin.createUser({
@@ -39,7 +44,8 @@ async function createUser(key: string, role: "STUDENT" | "OWNER" | "ADMIN"): Pro
     password,
     email_confirm: true,
   });
-  if (error || !data.user) throw error ?? new Error("Could not create staging test user");
+  if (error || !data.user)
+    throw error ?? new Error("Could not create staging test user");
 
   const { error: profileError } = await admin.from("profiles").upsert({
     id: data.user.id,
@@ -61,56 +67,119 @@ async function signIn(page: Page, user: TestUser) {
   await page.getByRole("button", { name: /sign in/i }).click();
 }
 
-async function createListing(ownerId: string, suffix: string, status: "DRAFT" | "PUBLISHED") {
-  const { data, error } = await admin.from("boarding_houses").insert({
-    ownerId,
-    slug: `${runId}-${suffix}`,
-    name: `Security fixture ${suffix}`,
-    addressLine: "Staging only",
-    latitude: 11.78,
-    longitude: 124.88,
-    genderPolicy: "MIXED",
-    priceMonthly: 1000,
-    contactPhone: "09123456789",
-    status,
-  }).select("id, slug").single();
-  if (error || !data) throw error ?? new Error("Could not create listing fixture");
+async function createListing(
+  ownerId: string,
+  suffix: string,
+  status: "DRAFT" | "PUBLISHED",
+) {
+  const { data, error } = await admin
+    .from("boarding_houses")
+    .insert({
+      ownerId,
+      slug: `${runId}-${suffix}`,
+      name: `Security fixture ${suffix}`,
+      addressLine: "Staging only",
+      latitude: 11.78,
+      longitude: 124.88,
+      genderPolicy: "MIXED",
+      priceMonthly: 1000,
+      contactPhone: "09123456789",
+      status,
+    })
+    .select("id, slug")
+    .single();
+  if (error || !data)
+    throw error ?? new Error("Could not create listing fixture");
   return data;
 }
 
 function actionReplayHeaders(headers: Record<string, string>) {
-  const allowed = new Set(["accept", "content-type", "next-action", "next-router-state-tree", "next-url", "origin", "rsc"]);
-  return Object.fromEntries(Object.entries(headers).filter(([name]) => allowed.has(name)));
+  const allowed = new Set([
+    "accept",
+    "content-type",
+    "next-action",
+    "next-router-state-tree",
+    "next-url",
+    "origin",
+    "rsc",
+  ]);
+  return Object.fromEntries(
+    Object.entries(headers).filter(([name]) => allowed.has(name)),
+  );
 }
 
 test.describe("staging authorization boundaries", () => {
-  test.skip(!enabled, "Set staging-only SECURITY_TEST_* variables to run this suite.");
+  test.skip(
+    !enabled,
+    "Set staging-only SECURITY_TEST_* variables to run this suite.",
+  );
 
   test.beforeAll(async () => {
     requireStaging();
-    admin = createClient(supabaseUrl!, serviceRoleKey!, { auth: { persistSession: false } });
+    admin = createClient(supabaseUrl!, serviceRoleKey!, {
+      auth: { persistSession: false },
+    });
     await createUser("student", "STUDENT");
     const ownerA = await createUser("owner-a", "OWNER");
     const ownerB = await createUser("owner-b", "OWNER");
     await createUser("admin", "ADMIN");
     const ownerAListing = await createListing(ownerA.id, "owner-a", "DRAFT");
     ownerAListingId = ownerAListing.id;
-    const ownerBListing = await createListing(ownerB.id, "owner-b", "PUBLISHED");
+    const ownerBListing = await createListing(
+      ownerB.id,
+      "owner-b",
+      "PUBLISHED",
+    );
     ownerBListingId = ownerBListing.id;
     ownerBListingSlug = ownerBListing.slug;
   });
 
   test.afterAll(async () => {
     if (!enabled) return;
-    await admin.from("boarding_houses").delete().in("id", [ownerAListingId, ownerBListingId]);
-    await Promise.all([...users.values()].map((user) => admin.auth.admin.deleteUser(user.id)));
+    await admin
+      .from("boarding_houses")
+      .delete()
+      .in("id", [ownerAListingId, ownerBListingId]);
+    await Promise.all(
+      [...users.values()].map((user) => admin.auth.admin.deleteUser(user.id)),
+    );
   });
 
-  test("anonymous callers cannot reach protected owner or admin pages", async ({ page }) => {
+  test("anonymous callers cannot reach protected owner or admin pages", async ({
+    page,
+  }) => {
     await page.goto("/owner");
     await expect(page).toHaveURL(/\/login/);
     await page.goto("/admin");
     await expect(page.getByText("Overview")).toHaveCount(0);
+  });
+
+  test("the staff gate never exposes public account or owner entry points", async ({
+    page,
+  }) => {
+    await page.goto("/admin");
+    await expect(
+      page.getByRole("heading", { name: "Staff sign in" }),
+    ).toBeVisible();
+    await expect(page.getByText("Administrator access only.")).toBeVisible();
+    await expect(
+      page.getByRole("link", {
+        name: /create an account|sign up|list your property/i,
+      }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /continue with google/i }),
+    ).toHaveCount(0);
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(
+      page.getByRole("link", {
+        name: /create an account|sign up|list your property/i,
+      }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /continue with google/i }),
+    ).toHaveCount(0);
   });
 
   test("a student cannot reach owner or admin data", async ({ page }) => {
@@ -121,17 +190,25 @@ test.describe("staging authorization boundaries", () => {
     await expect(page.getByText("Overview")).toHaveCount(0);
   });
 
-  test("an owner cannot read another account's listing through the owner route", async ({ page }) => {
+  test("an owner cannot read another account's listing through the owner route", async ({
+    page,
+  }) => {
     await signIn(page, users.get("owner-a")!);
     await page.goto(`/owner/listings/${ownerBListingId}/edit`);
-    await expect(page.getByRole("heading", { name: /not found|couldn't load/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /not found|couldn't load/i }),
+    ).toBeVisible();
   });
 
-  test("a student mutation reaches the deployed Server Action transport", async ({ page }) => {
+  test("a student mutation reaches the deployed Server Action transport", async ({
+    page,
+  }) => {
     await signIn(page, users.get("student")!);
     await page.goto(`/listings/${ownerBListingSlug}`);
-    const actionRequest = page.waitForRequest((request) =>
-      request.method() === "POST" && Boolean(request.headers()["next-action"]),
+    const actionRequest = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        Boolean(request.headers()["next-action"]),
     );
     await page.getByLabel("Save to favorites").click();
     const request = await actionRequest;
@@ -139,11 +216,16 @@ test.describe("staging authorization boundaries", () => {
     expect(request.headers()["origin"]).toBe(new URL(baseURL!).origin);
   });
 
-  test("replaying Owner A's Server Action as Owner B cannot mutate Owner A data", async ({ browser, page }) => {
+  test("replaying Owner A's Server Action as Owner B cannot mutate Owner A data", async ({
+    browser,
+    page,
+  }) => {
     await signIn(page, users.get("owner-a")!);
     await page.goto("/owner");
-    const actionRequest = page.waitForRequest((request) =>
-      request.method() === "POST" && Boolean(request.headers()["next-action"]),
+    const actionRequest = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        Boolean(request.headers()["next-action"]),
     );
     await page.getByRole("button", { name: "Confirm vacancies" }).click();
     const request = await actionRequest;
@@ -152,7 +234,8 @@ test.describe("staging authorization boundaries", () => {
       .select("lastConfirmedAt")
       .eq("id", ownerAListingId)
       .single();
-    if (beforeError || !before) throw beforeError ?? new Error("Could not read Owner A fixture");
+    if (beforeError || !before)
+      throw beforeError ?? new Error("Could not read Owner A fixture");
 
     const ownerBContext = await browser.newContext({ baseURL });
     const ownerBPage = await ownerBContext.newPage();
@@ -169,11 +252,14 @@ test.describe("staging authorization boundaries", () => {
       .eq("id", ownerAListingId)
       .single();
     await ownerBContext.close();
-    if (afterError || !after) throw afterError ?? new Error("Could not read Owner A fixture");
+    if (afterError || !after)
+      throw afterError ?? new Error("Could not read Owner A fixture");
     expect(after.lastConfirmedAt).toBe(before.lastConfirmedAt);
   });
 
-  test("an administrator can reach the protected moderation area", async ({ page }) => {
+  test("an administrator can reach the protected moderation area", async ({
+    page,
+  }) => {
     await signIn(page, users.get("admin")!);
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();

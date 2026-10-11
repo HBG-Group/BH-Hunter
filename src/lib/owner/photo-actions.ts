@@ -1,16 +1,41 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ALLOWED_PHOTO_EXTENSIONS, MAX_PHOTO_BYTES, PHOTO_SIZE_HINT, isAllowedPhotoMime } from "@/config/storage";
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db/prisma";
+import {
+  ALLOWED_PHOTO_EXTENSIONS,
+  MAX_PHOTO_BYTES,
+  PHOTO_SIZE_HINT,
+  isAllowedPhotoMime,
+} from "@/config/storage";
 import { requireWritableOwner } from "@/lib/auth/profile";
-import { addImageForOwner, deleteImagesForOwner, imageUrlExists } from "@/lib/db/images";
+import {
+  countImages,
+  deleteImagesForOwner,
+  reorderImagesForOwner,
+  updateImageAltForOwner,
+} from "@/lib/db/images";
 import { findOwnerListing } from "@/lib/db/owner";
 import { guarded } from "@/lib/security/errors";
 import { logSecurityEvent } from "@/lib/security/events";
 import { allow, LIMITS, RATE_LIMITED } from "@/lib/security/rate-limit";
-import { RECENT_AUTH_REQUIRED, requireRecentAuth } from "@/lib/security/recent-auth";
-import { MAX_PHOTO_BATCH, validatePendingPhotos, type PendingPhoto } from "@/lib/security/photo-validation";
-import { buildStoragePath, issueTicket, verifyTicket, type TicketClaims } from "@/lib/security/upload-ticket";
+import {
+  RECENT_AUTH_REQUIRED,
+  requireRecentAuth,
+} from "@/lib/security/recent-auth";
+import {
+  MAX_PHOTO_BATCH,
+  validatePendingPhotos,
+  type PendingPhoto,
+} from "@/lib/security/photo-validation";
+import { getOwnerRoomEntitlement } from "@/lib/owner/entitlements";
+import {
+  buildStoragePath,
+  issueTicket,
+  verifyTicket,
+  type TicketClaims,
+} from "@/lib/security/upload-ticket";
 import {
   createSignedPhotoUpload,
   describeStoredPhoto,
@@ -18,11 +43,14 @@ import {
   publicPhotoUrl,
   removeListingPhoto,
 } from "@/lib/storage/photos";
+import { normalizeUserText } from "@/lib/validation/text";
 
 export interface PhotoFormState {
   error?: string;
   success?: boolean;
 }
+
+const MAX_ALT_LENGTH = 160;
 
 export interface UploadTicket {
   fileName: string;
@@ -37,7 +65,8 @@ export async function prepareUploadsAction(
   files: PendingPhoto[],
 ): Promise<{ tickets?: UploadTicket[]; error?: string }> {
   const owner = await requireWritableOwner();
-  if (!(await allow("upload", LIMITS.upload, owner.id))) return { error: RATE_LIMITED };
+  if (!(await allow("upload", LIMITS.upload, owner.id)))
+    return { error: RATE_LIMITED };
 
   if (!(await findOwnerListing(owner.id, boardingHouseId))) {
     return { error: "You don't own this listing" };
@@ -45,15 +74,31 @@ export async function prepareUploadsAction(
 
   const validationError = validatePendingPhotos(files);
   if (validationError) return { error: validationError };
+  const [entitlement, existingCount] = await Promise.all([
+    getOwnerRoomEntitlement(owner.id),
+    countImages(boardingHouseId),
+  ]);
+  if (existingCount + files.length > entitlement.photoLimit) {
+    return {
+      error: `${entitlement.planName} allows up to ${entitlement.photoLimit} photos per listing.`,
+    };
+  }
 
   return guarded<{ tickets?: UploadTicket[]; error?: string }>(
     "prepareUploads",
     async () => {
       const tickets: UploadTicket[] = [];
       for (const file of files) {
-        const path = buildStoragePath(boardingHouseId, ALLOWED_PHOTO_EXTENSIONS[file.type]);
+        const path = buildStoragePath(
+          boardingHouseId,
+          ALLOWED_PHOTO_EXTENSIONS[file.type],
+        );
         const token = await createSignedPhotoUpload(path);
-        const { claims, signature } = issueTicket(path, owner.id, boardingHouseId);
+        const { claims, signature } = issueTicket(
+          path,
+          owner.id,
+          boardingHouseId,
+        );
         tickets.push({ fileName: file.name, path, token, claims, signature });
       }
       return { tickets };
@@ -67,9 +112,12 @@ export async function registerPhotosAction(
   tickets: { claims: TicketClaims; signature: string }[],
 ): Promise<PhotoFormState> {
   const owner = await requireWritableOwner();
-  if (!(await allow("upload", LIMITS.upload, owner.id))) return { error: RATE_LIMITED };
-  if (!Array.isArray(tickets) || tickets.length === 0) return { error: "Nothing to save" };
-  if (tickets.length > MAX_PHOTO_BATCH) return { error: "Too many photos in one batch." };
+  if (!(await allow("upload", LIMITS.upload, owner.id)))
+    return { error: RATE_LIMITED };
+  if (!Array.isArray(tickets) || tickets.length === 0)
+    return { error: "Nothing to save" };
+  if (tickets.length > MAX_PHOTO_BATCH)
+    return { error: "Too many photos in one batch." };
 
   return guarded<PhotoFormState>(
     "registerPhotos",
@@ -77,28 +125,56 @@ export async function registerPhotosAction(
       let saved = 0;
 
       for (const ticket of tickets) {
-        const path = verifyTicket(ticket?.claims, ticket?.signature, owner.id, boardingHouseId);
-        if (!path) return { error: "That upload could not be verified. Please try again." };
+        const path = verifyTicket(
+          ticket?.claims,
+          ticket?.signature,
+          owner.id,
+          boardingHouseId,
+        );
+        if (!path)
+          return {
+            error: "That upload could not be verified. Please try again.",
+          };
 
         const stored = await describeStoredPhoto(path);
-        if (!stored) return { error: "The upload did not complete. Please try again." };
+        if (!stored)
+          return { error: "The upload did not complete. Please try again." };
 
-        if (!isAllowedPhotoMime(stored.mimeType) || stored.size > MAX_PHOTO_BYTES) {
+        if (
+          !isAllowedPhotoMime(stored.mimeType) ||
+          stored.size > MAX_PHOTO_BYTES
+        ) {
           await discardStoredPhoto(path);
           return { error: PHOTO_SIZE_HINT };
         }
 
         const url = publicPhotoUrl(path);
-        if (await imageUrlExists(url)) continue;
-
-        const ok = await addImageForOwner(owner.id, boardingHouseId, url);
-        if (!ok) return { error: "You don't own this listing" };
-        saved += 1;
+        const added = await prisma.$transaction(async (tx) => {
+          const locked = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
+            SELECT id FROM boarding_houses
+            WHERE id = ${boardingHouseId} AND owner_id = ${owner.id}
+            FOR UPDATE
+          `);
+          if (locked.length === 0) return { owned: false, added: false, overLimit: false };
+          const entitlement = await getOwnerRoomEntitlement(owner.id);
+          const currentCount = await tx.image.count({ where: { boardingHouseId } });
+          if (currentCount >= entitlement.photoLimit) return { owned: true, added: false, overLimit: true };
+          const duplicate = await tx.image.findUnique({ where: { url } });
+          if (duplicate) return { owned: true, added: false, overLimit: false };
+          const last = await tx.image.findFirst({ where: { boardingHouseId }, orderBy: { sortOrder: "desc" }, select: { sortOrder: true } });
+          await tx.image.create({ data: { boardingHouseId, url, sortOrder: (last?.sortOrder ?? -1) + 1 } });
+          return { owned: true, added: true, overLimit: false };
+        });
+        if (!added.owned) return { error: "You don't own this listing" };
+        if (added.overLimit) return { error: "This listing has reached its photo limit." };
+        if (added.added) saved += 1;
       }
 
       revalidatePath(`/owner/listings/${boardingHouseId}/photos`);
       revalidatePath("/owner");
-      return saved > 0 ? { success: true } : { error: "Those photos were already saved." };
+      return saved > 0
+        ? { success: true }
+        : { error: "Those photos were already saved." };
     },
     (message) => ({ error: message }),
   );
@@ -109,14 +185,20 @@ export async function deletePhotosAction(
   imageIds: string[],
 ): Promise<PhotoFormState> {
   const owner = await requireWritableOwner();
-  if (!(await allow("write", LIMITS.write, owner.id))) return { error: RATE_LIMITED };
-  if (!Array.isArray(imageIds) || imageIds.length === 0) return { error: "Nothing selected" };
+  if (!(await allow("write", LIMITS.write, owner.id)))
+    return { error: RATE_LIMITED };
+  if (!Array.isArray(imageIds) || imageIds.length === 0)
+    return { error: "Nothing selected" };
   if (!(await requireRecentAuth())) return { error: RECENT_AUTH_REQUIRED };
 
   return guarded<PhotoFormState>(
     "deletePhotos",
     async () => {
-      const urls = await deleteImagesForOwner(owner.id, boardingHouseId, imageIds);
+      const urls = await deleteImagesForOwner(
+        owner.id,
+        boardingHouseId,
+        imageIds,
+      );
       for (const url of urls) await removeListingPhoto(url);
 
       await logSecurityEvent({
@@ -134,4 +216,42 @@ export async function deletePhotosAction(
     },
     (message) => ({ error: message }),
   );
+}
+
+export async function updatePhotoAltAction(
+  boardingHouseId: string,
+  imageId: string,
+  formData: FormData,
+): Promise<void> {
+  const owner = await requireWritableOwner();
+  if (!(await allow("write", LIMITS.write, owner.id))) return;
+  const raw = normalizeUserText(String(formData.get("alt") ?? "")).trim();
+  const alt = raw.length === 0 ? null : raw;
+  if (alt && alt.length > MAX_ALT_LENGTH) return;
+
+  await updateImageAltForOwner(owner.id, boardingHouseId, imageId, alt);
+  revalidatePath(`/owner/listings/${boardingHouseId}/photos`);
+}
+
+export async function reorderPhotosAction(
+  boardingHouseId: string,
+  imageIds: string[],
+): Promise<PhotoFormState> {
+  const owner = await requireWritableOwner();
+  if (!(await allow("write", LIMITS.write, owner.id)))
+    return { error: RATE_LIMITED };
+  if (
+    !Array.isArray(imageIds) ||
+    imageIds.length === 0 ||
+    imageIds.length > 50 ||
+    imageIds.some((id) => typeof id !== "string" || id.length > 64)
+  ) {
+    return { error: "That photo order could not be saved." };
+  }
+
+  const ok = await reorderImagesForOwner(owner.id, boardingHouseId, imageIds);
+  if (!ok) return { error: "That photo order could not be saved." };
+  revalidatePath(`/owner/listings/${boardingHouseId}/photos`);
+  revalidatePath("/owner");
+  return { success: true };
 }

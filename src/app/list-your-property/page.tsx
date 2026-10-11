@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignUpLayout } from "@/components/auth/SignUpLayout";
 import { SignUpAuth } from "@/components/auth/SignUpAuth";
@@ -23,14 +22,6 @@ export default async function OwnerSignUpPage() {
       ]}
       formTitle="Create your owner account"
       formSubtitle="Put your boarding house in front of students looking for a home near VSU."
-      footer={
-        <>
-          Looking for a place to stay?{" "}
-          <Link href="/signup" className="underline hover:text-neutral-800">
-            Create a student account instead
-          </Link>
-        </>
-      }
     >
       <SignUpAuth role="OWNER" next="/owner" />
     </SignUpLayout>

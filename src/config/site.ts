@@ -23,6 +23,10 @@ function isHttpsUrl(value: string): boolean {
 // Available in the browser too (inlined at build time).
 export const PUBLIC_SITE_URL = normalize(process.env.NEXT_PUBLIC_SITE_URL);
 
+// The control panel is deployed on a separate host, where a relative `/` link
+// resolves back to the admin overview. Keep the public homepage explicit there.
+export const PUBLIC_SITE_HOMEPAGE = PUBLIC_SITE_URL ?? "https://meino.vercel.app";
+
 // Server-only fallback: Vercel injects the production domain here.
 export function serverSiteUrl(): string | null {
   return PUBLIC_SITE_URL ?? normalize(process.env.VERCEL_PROJECT_PRODUCTION_URL);

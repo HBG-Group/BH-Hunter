@@ -10,6 +10,7 @@ export interface RoomValue {
 interface Props {
   rooms: RoomValue[];
   onChange: (rooms: RoomValue[]) => void;
+  roomLimit: number;
 }
 
 const cell =
@@ -17,11 +18,13 @@ const cell =
 
 // Add, edit, and remove rooms. Vacancy on the public site is derived from these, so
 // this is the single most important thing an owner keeps accurate.
-export function RoomsEditor({ rooms, onChange }: Props) {
+export function RoomsEditor({ rooms, onChange, roomLimit }: Props) {
   const update = (index: number, patch: Partial<RoomValue>) =>
     onChange(rooms.map((room, i) => (i === index ? { ...room, ...patch } : room)));
 
-  const add = () => onChange([...rooms, { label: "", capacity: 1, occupied: 0 }]);
+  const add = () => {
+    if (rooms.length < roomLimit) onChange([...rooms, { label: "", capacity: 1, occupied: 0 }]);
+  };
   const remove = (index: number) => onChange(rooms.filter((_, i) => i !== index));
 
   return (
@@ -104,10 +107,15 @@ export function RoomsEditor({ rooms, onChange }: Props) {
       <button
         type="button"
         onClick={add}
-        className="text-sm font-medium text-neutral-600 underline hover:text-neutral-900"
+        disabled={rooms.length >= roomLimit}
+        aria-describedby="room-limit"
+        className="text-sm font-medium text-neutral-600 underline hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
       >
         + Add room
       </button>
+      <p id="room-limit" className="text-xs text-neutral-500">
+        {rooms.length} of {roomLimit} rooms used for this listing.
+      </p>
     </div>
   );
 }

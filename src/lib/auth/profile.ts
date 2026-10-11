@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { Profile } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { hasRole } from "@/lib/auth/authorization-core";
 import { resilientRead } from "@/lib/async/resilient-read";
@@ -24,28 +25,38 @@ export const getCurrentUser = cache(async () => {
 // account always has a matching profile without needing a database trigger.
 export async function getCurrentProfile(roleHint?: "OWNER" | "STUDENT"): Promise<Profile | null> {
   const result = await ensureProfileForCurrentUser(roleHint);
-  return result?.profile ?? null;
+  return result && "profile" in result ? result.profile : null;
 }
 
 // Like getCurrentProfile, but reports whether the row was created just now — the signal
-// the OAuth callback uses to send genuinely first-time users through onboarding. Dedupes
-// by id then email, so the same person signing in a second way never gets a duplicate.
+// the OAuth callback uses to send genuinely first-time users through onboarding. It
+// only resolves an existing profile by the authenticated Supabase user ID.
 // Cached per request+roleHint so repeated calls (page + header + nested components)
 // share one lookup instead of re-querying Supabase Auth and Prisma each time.
 export const ensureProfileForCurrentUser = cache(async (
   roleHint?: "OWNER" | "STUDENT",
-): Promise<{ profile: Profile; created: boolean } | null> => {
+): Promise<{ profile: Profile; created: boolean } | { conflict: true } | null> => {
   const user = await getCurrentUser();
   if (!user) return null;
 
   const existing = await resilientRead(() => prisma.profile.findUnique({ where: { id: user.id } }));
   if (existing) return { profile: existing, created: false };
 
-  // The same email may already have a profile from a different sign-in method
-  // (e.g. email/password first, then Google). Reuse it — it's the same person.
+  // A matching email does not prove that two provider identities are linked. Block the
+  // new subject and require explicit Supabase identity linking instead of sharing data.
   if (user.email) {
     const byEmail = await resilientRead(() => prisma.profile.findUnique({ where: { email: user.email } }));
-    if (byEmail) return { profile: byEmail, created: false };
+    if (byEmail && byEmail.id !== user.id) {
+      // Supabase can retain a Profile row when an email-password auth user is
+      // recreated. Email/password is proof of control of the address, so keep the
+      // existing logical Meino profile for that flow. A Google (or other OAuth)
+      // identity must still be explicitly linked and is rejected as a conflict.
+      const provider =
+        (user.app_metadata?.provider as string | undefined) ??
+        user.identities?.[0]?.provider;
+      if (provider === "email") return { profile: byEmail, created: false };
+      return { conflict: true };
+    }
   }
 
   // Metadata differs between email sign-up and Google (name / avatar live here).
@@ -69,6 +80,59 @@ export const ensureProfileForCurrentUser = cache(async (
   });
   return { profile, created: true };
 });
+
+// Looks up the provider before a password attempt. Missing service-role
+// configuration or lookup failures intentionally return null so normal auth can
+// still proceed and provide its standard credential error.
+const AUTH_PROVIDER_CACHE_TTL_MS = 60_000;
+const AUTH_PROVIDER_CACHE_MAX_ENTRIES = 1_000;
+const authProviderCache = new Map<string, { provider: string | null; expiresAt: number }>();
+
+function cacheAuthProvider(email: string, provider: string | null) {
+  if (authProviderCache.size >= AUTH_PROVIDER_CACHE_MAX_ENTRIES) {
+    const oldestKey = authProviderCache.keys().next().value;
+    if (oldestKey) authProviderCache.delete(oldestKey);
+  }
+  authProviderCache.set(email, { provider, expiresAt: Date.now() + AUTH_PROVIDER_CACHE_TTL_MS });
+}
+
+export async function getAuthProviderForEmail(email: string): Promise<string | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const cached = authProviderCache.get(normalizedEmail);
+  if (cached && cached.expiresAt > Date.now()) return cached.provider;
+  if (cached) authProviderCache.delete(normalizedEmail);
+  try {
+    const admin = createSupabaseAdminClient();
+    // Do not depend on a Profile row: first-time Google users may have an Auth
+    // record before onboarding creates their application profile.
+    const { data, error } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    if (error) return null;
+    const authUser = data.users.find(
+      (candidate) => candidate.email?.toLowerCase() === normalizedEmail,
+    );
+    if (!authUser) {
+      cacheAuthProvider(normalizedEmail, null);
+      return null;
+    }
+    const providers = authUser.identities?.map((identity) => identity.provider) ?? [];
+    // Hosted Supabase users may have only app_metadata.provider (without an
+    // identities array), particularly for older Google accounts.
+    const metadataProvider = authUser.app_metadata?.provider;
+    const provider = (
+      providers.find((provider) => provider !== "email") ??
+      metadataProvider ??
+      providers[0] ??
+      null
+    );
+    cacheAuthProvider(normalizedEmail, provider);
+    return provider;
+  } catch {
+    return null;
+  }
+}
 
 // Shown to a frozen owner across the dashboard and returned from blocked write actions.
 export const FROZEN_OWNER_MESSAGE =

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { SignUpLayout } from "@/components/auth/SignUpLayout";
 import { SignUpAuth } from "@/components/auth/SignUpAuth";
 
@@ -16,14 +15,6 @@ export default function SignUpPage() {
       ]}
       formTitle="Create your student account"
       formSubtitle="Join Meino and find your place near campus. It's free to browse and save."
-      footer={
-        <>
-          Own a boarding house?{" "}
-          <Link href="/list-your-property" className="underline hover:text-neutral-800">
-            Create an owner account instead
-          </Link>
-        </>
-      }
     >
       <SignUpAuth role="STUDENT" next="/account" />
     </SignUpLayout>

@@ -119,6 +119,8 @@ model Profile {
   recentlyViewed         RecentlyViewed[]
   notificationPreference NotificationPreference?
   subscription           Subscription?
+  subscriptionEvents     SubscriptionEvent[] @relation("SubscriptionEventsOwner")
+  reviewedSubscriptionEvents SubscriptionEvent[] @relation("SubscriptionEventsReviewer")
   moderationEvents       ModerationEvent[]       @relation("ModerationActor")
 
   @@map("profiles")
@@ -142,6 +144,32 @@ model Subscription {
   updatedAt DateTime @updatedAt
 
   @@map("subscriptions")
+}
+
+// Immutable payment and plan-change ledger. The Subscription row is the current
+// entitlement; this table preserves the evidence and review history behind it.
+model SubscriptionEvent {
+  id      String  @id @default(cuid())
+  ownerId String
+  owner   Profile @relation("SubscriptionEventsOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  eventType        String // PAYMENT_SUBMITTED | PLAN_ASSIGNED
+  plan             String
+  status           String // PENDING | ACTIVE | REJECTED | CANCELLED
+  amount           Int?
+  paymentReference String?
+  receiptUrl       String?
+  payerName        String?
+  phoneLast4       String?
+
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   Profile? @relation("SubscriptionEventsReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  @@index([ownerId, createdAt])
+  @@index([status, createdAt])
+  @@map("subscription_events")
 }
 
 // Scaffolding for local business ads (Part 6). Admin-managed; not rendered yet.

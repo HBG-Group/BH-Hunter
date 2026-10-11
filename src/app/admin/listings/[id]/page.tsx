@@ -19,9 +19,9 @@ const genderLabels: Record<string, string> = { MALE: "Male", FEMALE: "Female", M
 
 function Fact({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs text-neutral-500">{label}</dt>
-      <dd className="text-sm text-neutral-900">{value}</dd>
+      <dd className="break-words text-sm text-neutral-900">{value}</dd>
     </div>
   );
 }

@@ -232,6 +232,11 @@ export function findOwnerForAdmin(ownerId: string) {
       plan: true,
       createdAt: true,
       subscription: { select: { status: true, expiresAt: true } },
+      subscriptionEvents: {
+        select: { id: true, eventType: true, plan: true, status: true, amount: true, receiptUrl: true, createdAt: true, reviewedAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      },
       boardingHouses: {
         select: { id: true, name: true, slug: true, status: true, createdAt: true },
         orderBy: { createdAt: "desc" },
@@ -245,7 +250,7 @@ export function findOwnerForAdmin(ownerId: string) {
 // one transaction, so there's no separate manual verify/feature step. Activating a plan
 // also (re)starts a 5-month subscription — after that it expires and the owner is
 // prompted to re-subscribe.
-export async function setOwnerPlan(ownerId: string, plan: OwnerPlanId): Promise<boolean> {
+export async function setOwnerPlan(ownerId: string, plan: OwnerPlanId, reviewedById: string): Promise<boolean> {
   const { verified, featured } = planPerks(plan);
   const now = new Date();
   const expiresAt = subscriptionExpiry(now);
@@ -267,6 +272,9 @@ export async function setOwnerPlan(ownerId: string, plan: OwnerPlanId): Promise<
       where: { ownerId },
       create: { ownerId, plan, status: "ACTIVE", startedAt: now, expiresAt, renewalDate: expiresAt },
       update: { plan, status: "ACTIVE", startedAt: now, expiresAt, renewalDate: expiresAt },
+    }),
+    prisma.subscriptionEvent.create({
+      data: { ownerId, eventType: "PLAN_ASSIGNED", plan, status: "ACTIVE", reviewedAt: now, reviewedById },
     }),
   ]);
   return profileResult.count > 0;

@@ -5,8 +5,14 @@ import { ADMIN_HOST, isAdminHost } from "@/config/admin";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { securityHeaders } from "@/lib/security/headers";
 
-function applySecurityHeaders(response: NextResponse, nonce?: string): NextResponse {
-  for (const header of securityHeaders(process.env.NODE_ENV === "production", nonce)) {
+function applySecurityHeaders(
+  response: NextResponse,
+  nonce?: string,
+): NextResponse {
+  for (const header of securityHeaders(
+    process.env.NODE_ENV === "production",
+    nonce,
+  )) {
     response.headers.set(header.key, header.value);
   }
   return response;
@@ -14,9 +20,10 @@ function applySecurityHeaders(response: NextResponse, nonce?: string): NextRespo
 
 function requestHeadersWithNonce(request: NextRequest, nonce: string): Headers {
   const requestHeaders = new Headers(request.headers);
-  const policy = securityHeaders(process.env.NODE_ENV === "production", nonce).find(
-    (header) => header.key === "Content-Security-Policy",
-  )?.value;
+  const policy = securityHeaders(
+    process.env.NODE_ENV === "production",
+    nonce,
+  ).find((header) => header.key === "Content-Security-Policy")?.value;
 
   requestHeaders.set("x-nonce", nonce);
   if (policy) requestHeaders.set("Content-Security-Policy", policy);
@@ -24,8 +31,13 @@ function requestHeadersWithNonce(request: NextRequest, nonce: string): Headers {
   return requestHeaders;
 }
 
-function nextResponseWithNonce(request: NextRequest, nonce: string): NextResponse {
-  return NextResponse.next({ request: { headers: requestHeadersWithNonce(request, nonce) } });
+function nextResponseWithNonce(
+  request: NextRequest,
+  nonce: string,
+): NextResponse {
+  return NextResponse.next({
+    request: { headers: requestHeadersWithNonce(request, nonce) },
+  });
 }
 
 // Next 16's replacement for middleware. Runs before a route renders: it refreshes the
@@ -37,9 +49,8 @@ export async function proxy(request: NextRequest) {
   // ── Domain separation ──────────────────────────────────────────────────────
   // When an admin domain is configured, the admin panel lives there and nowhere
   // else. This runs before anything else so /admin can't leak on the main site.
-  if (ADMIN_HOST) {
-    const onAdminHost = isAdminHost(request.headers.get("host"));
-
+  const onAdminHost = isAdminHost(request.headers.get("host"));
+  if (ADMIN_HOST || process.env.VERCEL || onAdminHost) {
     // Main site: pretend /admin doesn't exist, so users can't reach it.
     if (path.startsWith("/admin") && !onAdminHost) {
       return applySecurityHeaders(new NextResponse(null, { status: 404 }));
@@ -51,6 +62,12 @@ export async function proxy(request: NextRequest) {
         request: { headers: requestHeadersWithNonce(request, nonce) },
       });
       return applySecurityHeaders(response, nonce);
+    }
+
+    // Never expose public signup, OAuth, owner, listing, or marketing routes on
+    // the operational control host.
+    if (onAdminHost && !path.startsWith("/admin")) {
+      return applySecurityHeaders(new NextResponse(null, { status: 404 }));
     }
   }
 
@@ -115,5 +132,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Skip Next internals and static assets; run on everything else.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

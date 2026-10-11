@@ -7,6 +7,7 @@ import { ContactAdminNotice } from "@/components/owner/ContactAdminNotice";
 import { ListingFormTour } from "@/components/tutorial/ListingFormTour";
 import { createListingAction } from "@/lib/owner/actions";
 import { resilientRead } from "@/lib/async/resilient-read";
+import { getOwnerRoomEntitlement } from "@/lib/owner/entitlements";
 
 interface PageProps {
   searchParams: Promise<{ tutorial?: string }>;
@@ -34,7 +35,10 @@ export default async function NewListingPage({ searchParams }: PageProps) {
     );
   }
 
-  const quota = await resilientRead(() => getListingQuota(owner.id));
+  const [quota, entitlement] = await resilientRead(() => Promise.all([
+    getListingQuota(owner.id),
+    getOwnerRoomEntitlement(owner.id),
+  ]));
 
   return (
     <div className="space-y-4">
@@ -52,7 +56,7 @@ export default async function NewListingPage({ searchParams }: PageProps) {
           message={`To add more listings (₱${quota.extraPrice} each), contact the admin to arrange it.`}
         />
       ) : (
-        <ListingForm action={createListingAction} submitLabel="Create listing" />
+        <ListingForm action={createListingAction} submitLabel="Create listing" roomLimit={entitlement.roomLimit} planName={entitlement.planName} />
       )}
     </div>
   );

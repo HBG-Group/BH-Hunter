@@ -1,5 +1,9 @@
-import Link from "next/link";
+"use client";
+
+import { usePathname } from "next/navigation";
+import { useSyncExternalStore } from "react";
 import { Logo } from "@/components/brand/Logo";
+import { PUBLIC_SITE_HOMEPAGE } from "@/config/site";
 
 const LEGAL_LINKS = [
   { href: "/privacy", label: "Privacy Policy" },
@@ -18,46 +22,81 @@ const COMPANY_LINKS = [
 // Global footer with every legal/policy link the roadmap calls for. Rendered once in
 // the root layout so every page gets it without each page wiring it in separately.
 export function SiteFooter() {
+  const pathname = usePathname();
+  const controlHost = useSyncExternalStore(
+    () => () => {},
+    () => {
+      const hostname = window.location.hostname;
+      return (
+        hostname === "meinocontrol.vercel.app" ||
+        (hostname.startsWith("meinocontrol-") && hostname.endsWith(".vercel.app"))
+      );
+    },
+    () => false,
+  );
+  // Public pages keep same-origin links so preview deployments resolve their own
+  // routes. Control-host pages need an explicit public origin because the control
+  // proxy intentionally rejects public routes on that host.
+  const publicUrl = (path: string) => {
+    if (!controlHost) return path;
+    // Use the configured public origin for control previews instead of a hardcoded
+    // branch deployment that may be removed or renamed.
+    const origin = PUBLIC_SITE_HOMEPAGE;
+    return `${origin}${path}`;
+  };
+
+  // Signup is a focused conversion flow. The global legal/company footer adds a
+  // second navigation surface and unnecessary vertical space to both account
+  // creation pages; legal links remain available from the consent and policy flows.
+  if (pathname === "/signup" || pathname === "/list-your-property") return null;
+
   return (
     <footer className="mt-16 border-t border-line bg-white">
-      <div className="mx-auto max-w-7xl px-4 py-10">
-        <div className="grid gap-8 sm:grid-cols-3">
-          <div>
-            <Logo />
-            <p className="mt-3 max-w-xs text-sm text-muted">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:py-10">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 sm:gap-8">
+          <div className="col-span-2 sm:col-span-1">
+            <Logo href={publicUrl("/")} />
+            <p className="mt-2 max-w-xs text-xs leading-5 text-muted sm:mt-3 sm:text-sm">
               Helping VSU students find a boarding house that feels like home.
             </p>
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-ink">Legal</p>
-            <ul className="mt-3 space-y-2">
+            <p className="text-xs font-semibold text-ink sm:text-sm">Legal</p>
+            <ul className="mt-2 space-y-1.5 sm:mt-3 sm:space-y-2">
               {LEGAL_LINKS.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-sm text-muted hover:text-ink">
+                  <a
+                    href={publicUrl(link.href)}
+                    className="text-xs leading-5 text-muted hover:text-ink sm:text-sm"
+                  >
                     {link.label}
-                  </Link>
+                  </a>
                 </li>
               ))}
             </ul>
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-ink">Company</p>
-            <ul className="mt-3 space-y-2">
+            <p className="text-xs font-semibold text-ink sm:text-sm">Company</p>
+            <ul className="mt-2 space-y-1.5 sm:mt-3 sm:space-y-2">
               {COMPANY_LINKS.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-sm text-muted hover:text-ink">
+                  <a
+                    href={publicUrl(link.href)}
+                    className="text-xs leading-5 text-muted hover:text-ink sm:text-sm"
+                  >
                     {link.label}
-                  </Link>
+                  </a>
                 </li>
               ))}
             </ul>
           </div>
         </div>
 
-        <p className="mt-10 text-xs text-neutral-400">
-          © {new Date().getFullYear()} Meino by HBG Production. All rights reserved.
+        <p className="mt-6 text-xs text-neutral-400 sm:mt-10">
+          © {new Date().getFullYear()} Meino by HBG Production. All rights
+          reserved.
         </p>
       </div>
     </footer>
