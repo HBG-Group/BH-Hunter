@@ -11,6 +11,7 @@ interface DetailTab {
 export function ListingDetailTabs({ tabs }: { tabs: DetailTab[] }) {
   const [activeId, setActiveId] = useState(tabs[0]?.id ?? "");
   const touchStartX = useRef<number | null>(null);
+  const shouldScrollRef = useRef(false);
   const activeIndex = Math.max(0, tabs.findIndex((tab) => tab.id === activeId));
 
   useEffect(() => {
@@ -23,6 +24,7 @@ export function ListingDetailTabs({ tabs }: { tabs: DetailTab[] }) {
       }
       if (tabs.some((tab) => tab.id === id)) {
         // The hash is external browser state and must be reflected when it changes.
+        shouldScrollRef.current = true;
         setActiveId(id);
       }
     };
@@ -32,6 +34,8 @@ export function ListingDetailTabs({ tabs }: { tabs: DetailTab[] }) {
   }, [tabs]);
 
   useEffect(() => {
+    if (!shouldScrollRef.current) return;
+    shouldScrollRef.current = false;
     const frame = window.requestAnimationFrame(() => {
       document.getElementById(activeId)?.scrollIntoView({ block: "start" });
     });
@@ -39,6 +43,7 @@ export function ListingDetailTabs({ tabs }: { tabs: DetailTab[] }) {
   }, [activeId]);
 
   function select(id: string) {
+    shouldScrollRef.current = true;
     setActiveId(id);
     if (window.location.hash !== `#${id}`) {
       window.history.replaceState(null, "", `#${id}`);
