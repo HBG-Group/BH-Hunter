@@ -4,6 +4,21 @@ Newest first. This captures work done after the knowledge base was first written
 other `/context` docs may still describe older behavior — **this file wins on conflicts**
 for anything listed here. Keep it updated as you ship.
 
+## Google-only admin authentication (2026-10-11)
+
+- Replaced the admin email/password form with Google OAuth and removed the forgotten-
+  password and staff password-reset routes/actions.
+- The control-host OAuth callback now requires the same Supabase user ID to have an
+  existing `Profile` with `role = ADMIN` and a linked Google identity. It never creates
+  or promotes an admin profile. A signed, host-only proof cookie gates admin pages and
+  actions after that Google callback, invalidating old password-only admin sessions.
+- Allowed only the auth callback and terms pages through the control-host route filter so
+  OAuth can complete and stale-terms consent can be collected on the same host.
+- Supabase Auth Redirect URLs still need `https://meinocontrol.vercel.app/auth/callback`
+  (or the configured admin host's equivalent) for production admin sign-in.
+
+Verified: `npm run lint`, `npm run typecheck`, and `npm test`.
+
 ## Sign-in lockout + clearer signup errors (2026-08-03)
 
 - **Account lockout**: 5 wrong-password attempts for an email locks it out for 30s,

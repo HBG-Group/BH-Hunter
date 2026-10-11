@@ -72,7 +72,8 @@ gate, and self-serve account deletion (Danger Zone). See `CHANGELOG.md`.
 
 - Supabase Auth via `@supabase/ssr`. A `Profile` row (our table) shares its id with the
   Supabase `auth.users` id and is created on first access.
-- Methods: email/password and Google OAuth. Any email is accepted (freshmen).
+- Method: Google OAuth. Admin access requires an existing matching Profile row with
+  `role = ADMIN` and a linked Google identity; OAuth never provisions admins.
 - `proxy.ts` (Next 16's middleware replacement) refreshes the session cookie and guards
   `/owner`. The `/admin` area guards itself (renders its own sign-in form).
 - Redirect targets are always validated (`safeRedirectPath`) to prevent open redirects.

@@ -26,6 +26,8 @@ test("proxy isolates public and staff-only Vercel surfaces", async () => {
   const source = await readFile(resolve("src/proxy.ts"), "utf8");
   assert.match(source, /ADMIN_HOST \|\| process\.env\.VERCEL \|\| onAdminHost/);
   assert.match(source, /onAdminHost && path === "\/"/);
-  assert.match(source, /onAdminHost && !path\.startsWith\("\/admin"\)/);
+  assert.match(source, /const adminAuthPaths = new Set\(\[/);
+  assert.match(source, /OAUTH_CALLBACK_PATH/);
+  assert.match(source, /!adminAuthPaths\.has\(path\)/);
   assert.match(source, /path\.startsWith\("\/admin"\) && !onAdminHost/);
 });

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   let error: unknown = null;
   if (code) {
     ({ error } = await supabase.auth.exchangeCodeForSession(code));
-  } else if (tokenHash && (type === "signup" || type === "email" || type === "recovery" || type === "magiclink")) {
+  } else if (tokenHash && (type === "signup" || type === "email")) {
     ({ error } = await supabase.auth.verifyOtp({
       type,
       token_hash: tokenHash,
@@ -27,10 +27,6 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(new URL("/login?error=confirmation", origin));
-  }
-
-  if (type === "recovery" || type === "magiclink") {
-    return NextResponse.redirect(new URL("/staff/password", origin));
   }
 
   // Confirmation is deliberately not a silent sign-in. The user sees a success

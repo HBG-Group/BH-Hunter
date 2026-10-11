@@ -7,6 +7,12 @@ import { safeRedirectPath } from "@/lib/security/redirect";
 import { hasRole } from "@/lib/auth/authorization-core";
 import { resilientRead } from "@/lib/async/resilient-read";
 import { isUnlinkedProviderConflict } from "@/lib/auth/identity";
+import { cookies } from "next/headers";
+import {
+  ADMIN_GOOGLE_SESSION_COOKIE,
+  verifyAdminGoogleSessionProof,
+} from "@/lib/security/admin-google-session";
+import { adminHref } from "@/config/admin";
 
 // The Supabase auth user for this request, or null if signed out. `cache()` dedupes
 // this within a single request — SiteHeader and the page it wraps both call the auth
@@ -117,8 +123,17 @@ export async function requireProfile(next?: string): Promise<Profile> {
 // Admin-only pages/actions. Admins are promoted manually (see scripts/make-admin.ts).
 export async function requireAdmin(): Promise<Profile> {
   const profile = await getCurrentProfile();
-  if (!profile) redirect("/login");
-  if (!hasRole(profile.role, "ADMIN")) redirect("/");
+  if (!profile) redirect(adminHref());
+  if (!hasRole(profile.role, "ADMIN")) redirect(adminHref());
+  const cookieStore = await cookies();
+  if (
+    !verifyAdminGoogleSessionProof(
+      cookieStore.get(ADMIN_GOOGLE_SESSION_COOKIE)?.value,
+      profile.id,
+    )
+  ) {
+    redirect(adminHref());
+  }
   return profile;
 }
 
@@ -126,5 +141,12 @@ export async function requireAdmin(): Promise<Profile> {
 // in place of the dashboard instead of redirecting away.
 export async function getAdminOrNull(): Promise<Profile | null> {
   const profile = await getCurrentProfile();
-  return profile && hasRole(profile.role, "ADMIN") ? profile : null;
+  if (!profile || !hasRole(profile.role, "ADMIN")) return null;
+  const cookieStore = await cookies();
+  return verifyAdminGoogleSessionProof(
+    cookieStore.get(ADMIN_GOOGLE_SESSION_COOKIE)?.value,
+    profile.id,
+  )
+    ? profile
+    : null;
 }

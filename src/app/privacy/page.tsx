@@ -25,7 +25,7 @@ const SECTIONS: { heading: string; body: string }[] = [
   },
   {
     heading: "Authentication",
-    body: "Sign-in is handled by Supabase Auth (email/password or Google). We never see or store your password — Supabase does, using industry-standard hashing. A session cookie keeps you signed in; it is essential and cannot be turned off without signing out.",
+    body: "Sign-in is handled by Supabase Auth using Google. Google verifies your identity, and an essential session cookie keeps you signed in; it cannot be turned off without signing out.",
   },
   {
     heading: "Cookies",

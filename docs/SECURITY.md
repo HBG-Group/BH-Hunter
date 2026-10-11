@@ -144,9 +144,9 @@ removed.
 
 Actions return a generic message plus a short reference; the real error, including the
 stack, is logged server-side only. Prisma codes, Supabase messages and connection
-strings never reach the browser. `signInAction` deliberately returns "Incorrect email or
-password" for every failure so it can't be used to enumerate accounts. There are no
-`console.log` calls in `src/`; nothing logs passwords, tokens or cookies.
+strings never reach the browser. Authentication uses Google OAuth; the admin callback
+requires an existing database profile with the ADMIN role and a linked Google identity.
+There are no `console.log` calls in `src/`; nothing logs tokens or cookies.
 
 ### Secrets
 

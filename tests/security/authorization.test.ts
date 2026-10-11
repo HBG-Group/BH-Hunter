@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   canInvokeAction,
+  hasGoogleAdminAccess,
   hasRole,
   ownerScope,
 } from "../../src/lib/auth/authorization-core";
@@ -14,6 +15,15 @@ test("role checks do not grant cross-role access", () => {
   assert.equal(hasRole("STUDENT", "ADMIN"), false);
   assert.equal(hasRole("OWNER", "ADMIN"), false);
   assert.equal(hasRole("ADMIN", "OWNER"), false);
+});
+
+test("admin OAuth requires both an ADMIN profile and a linked Google identity", () => {
+  assert.equal(hasGoogleAdminAccess("ADMIN", ["google"]), true);
+  assert.equal(hasGoogleAdminAccess("ADMIN", ["email", "google"]), true);
+  assert.equal(hasGoogleAdminAccess("ADMIN", ["email"]), false);
+  assert.equal(hasGoogleAdminAccess("STUDENT", ["google"]), false);
+  assert.equal(hasGoogleAdminAccess("OWNER", ["google"]), false);
+  assert.equal(hasGoogleAdminAccess(null, ["google"]), false);
 });
 
 test("owner-scoped filters bind the requested record to the authenticated owner", () => {

@@ -1,5 +1,7 @@
 // Promote an existing user to ADMIN by email.
-// The person must have signed in at least once (so their profile exists).
+// The person must have signed in with Google at least once (so their profile exists).
+// For legacy accounts, link Google to the existing Supabase user first; admin OAuth
+// requires the authenticated Google user's ID to match this profile's ID.
 //
 // Usage: npm run make-admin -- someone@example.com
 

@@ -1,6 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { credentialsSchema, signUpSchema } from "@/lib/validation/auth";
 import { listingSchema } from "@/lib/validation/listing";
 import { reviewSchema } from "@/lib/validation/review";
 import { viewingRequestSchema } from "@/lib/validation/viewing";
@@ -17,27 +16,6 @@ const validListing = {
   amenityKeys: [],
   rooms: [{ label: "Room A", capacity: 2, occupied: 1 }],
 };
-
-test("authentication payloads reject unknown fields and oversized values", () => {
-  assert.equal(
-    credentialsSchema.safeParse({
-      email: "a@example.com",
-      password: "x",
-      role: "ADMIN",
-    }).success,
-    false,
-  );
-  assert.equal(
-    signUpSchema.safeParse({
-      fullName: "A".repeat(81),
-      email: "a@example.com",
-      password: "password1",
-      role: "STUDENT",
-      terms: "on",
-    }).success,
-    false,
-  );
-});
 
 test("listing payloads reject unexpected fields, oversized content, and unsafe URLs", () => {
   assert.equal(
@@ -101,16 +79,6 @@ test("text boundaries normalize pasted Unicode and reject oversized or whitespac
       message: "x".repeat(501),
     }).success,
     false,
-  );
-  assert.equal(
-    signUpSchema.safeParse({
-      fullName: "Valid\u200B Name",
-      email: "USER@example.com",
-      password: "long password",
-      role: "STUDENT",
-      terms: "on",
-    }).success,
-    true,
   );
 });
 
