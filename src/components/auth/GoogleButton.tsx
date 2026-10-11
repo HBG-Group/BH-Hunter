@@ -13,17 +13,19 @@ interface Props {
   // Sign-up pages pass this to block Google until the Terms box is ticked.
   disabled?: boolean;
   termsAccepted?: boolean;
+  // Returning users must explicitly accept the current terms before re-authenticating.
+  requireTermsConsent?: boolean;
 }
 
 // Google sign-in — handles the cancelled-login / network error cases.
-export function GoogleButton({ next = "/", label = "Continue with Google", role, disabled = false, termsAccepted = false }: Props) {
+export function GoogleButton({ next = "/", label = "Continue with Google", role, disabled = false, termsAccepted = false, requireTermsConsent = false }: Props) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const start = async () => {
     setPending(true);
     setError(null);
-    if (role && !(await recordTermsConsent(termsAccepted))) {
+    if ((role || requireTermsConsent) && !(await recordTermsConsent(termsAccepted))) {
       setError("Please accept the Terms & Conditions to continue.");
       setPending(false);
       return;

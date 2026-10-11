@@ -50,10 +50,12 @@ export async function GET(request: NextRequest) {
       const needsConsent = !existingProfile || existingProfile.termsVersion !== TERMS_VERSION;
       if (needsConsent && acceptedAt === null) {
         await supabase.auth.signOut();
-        const signupPath = searchParams.get("role") === "OWNER"
-          ? "/list-your-property?error=terms"
-          : "/signup?error=terms";
-        return NextResponse.redirect(new URL(signupPath, origin));
+        const consentPath = existingProfile
+          ? `/terms/accept?next=${encodeURIComponent(next)}`
+          : searchParams.get("role") === "OWNER"
+            ? "/list-your-property?error=terms"
+            : "/signup?error=terms";
+        return NextResponse.redirect(new URL(consentPath, origin));
       }
 
       // Make sure a Profile row exists (creates one on first Google sign-in).
