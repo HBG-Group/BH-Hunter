@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (type === "recovery" || type === "magiclink") {
-    return NextResponse.redirect(new URL("/admin/password", origin));
+    return NextResponse.redirect(new URL("/staff/password", origin));
   }
 
   // Confirmation is deliberately not a silent sign-in. The user sees a success

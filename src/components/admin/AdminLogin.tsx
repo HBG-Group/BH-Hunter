@@ -1,6 +1,7 @@
 import { AuthForm } from "@/components/auth/AuthForm";
 import { signInAction } from "@/lib/auth/actions";
 import { LogoMark } from "@/components/brand/Logo";
+import { PUBLIC_SITE_HOMEPAGE } from "@/config/site";
 
 // Shown in place of the dashboard when the visitor isn't a signed-in admin. Sign-in
 // returns to /admin, where the same gate then renders the dashboard for real admins.
@@ -24,7 +25,14 @@ export function AdminLogin({ denied }: { denied?: boolean }) {
           )}
 
           {/* On success, sign-in returns to /admin; the gate re-checks the role there. */}
-          <AuthForm mode="signin" action={signInAction} next="/admin" showFooter={false} authSurface="admin" />
+          <AuthForm
+            mode="signin"
+            action={signInAction}
+            next="/admin"
+            showFooter={false}
+            authSurface="admin"
+            forgotPasswordHref={`${PUBLIC_SITE_HOMEPAGE}/forgot-password`}
+          />
         </div>
       </div>
     </div>

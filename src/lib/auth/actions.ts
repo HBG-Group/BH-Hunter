@@ -16,6 +16,7 @@ import {
 } from "@/lib/security/login-lockout";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createStaffPasswordRecoveryProof } from "@/lib/security/staff-password-recovery";
 import {
   credentialsSchema,
   MIN_PASSWORD_LENGTH,
@@ -37,8 +38,11 @@ export async function requestPasswordResetAction(
     return { error: parsed.error.issues[0]?.message ?? "Enter a valid email." };
   const origin = await resolveSiteOrigin();
   const supabase = await createSupabaseServerClient();
+  const callback = new URL(OAUTH_CALLBACK_PATH, origin);
+  callback.searchParams.set("next", "/staff/password");
+  callback.searchParams.set("recovery", createStaffPasswordRecoveryProof());
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${origin}${OAUTH_CALLBACK_PATH}?next=/admin/password`,
+    redirectTo: callback.toString(),
   });
   if (error)
     return { error: "Could not send the reset email. Please try again." };
@@ -70,6 +74,7 @@ export async function updatePasswordAction(
     actorId: profile.id,
     actorRole: profile.role,
   });
+  await supabase.auth.signOut();
   return { notice: "Password updated." };
 }
 

@@ -23,6 +23,7 @@ interface Props {
   // submit button stays disabled until it's true and the value is sent to the server.
   agreed?: boolean;
   authSurface?: "admin";
+  forgotPasswordHref?: string;
 }
 
 const fieldClass =
@@ -36,6 +37,7 @@ export function AuthForm({
   showFooter = true,
   agreed,
   authSurface,
+  forgotPasswordHref = "/forgot-password",
 }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   const isSignUp = mode === "signup";
@@ -83,7 +85,7 @@ export function AuthForm({
         <p className="text-xs text-neutral-500">
           After 5 incorrect attempts you&apos;ll be locked out briefly.{" "}
           <Link
-            href="/forgot-password"
+            href={forgotPasswordHref}
             className="underline hover:text-neutral-800"
           >
             Forgot password?

@@ -10,6 +10,7 @@ import {
   TERMS_VERSION,
   verifyTermsConsentValue,
 } from "@/lib/security/terms-consent";
+import { verifyStaffPasswordRecoveryProof } from "@/lib/security/staff-password-recovery";
 
 // Google (and the confirmation email) send the user back here with a code. We exchange
 // it for a session and send them back to the origin that initiated the OAuth flow.
@@ -47,8 +48,15 @@ export async function GET(request: NextRequest) {
       const acceptedAt = verifyTermsConsentValue(
         cookieStore.get(TERMS_CONSENT_COOKIE)?.value,
       );
+      // A signed recovery proof is issued only when the staff recovery form sends
+      // the reset email. Recovery grants access to the isolated password page, not
+      // the admin dashboard, so a stale terms version must not force Google login.
+      const isStaffPasswordRecovery =
+        next === "/staff/password" &&
+        existingProfile?.role === "ADMIN" &&
+        verifyStaffPasswordRecoveryProof(searchParams.get("recovery"));
       const needsConsent = !existingProfile || existingProfile.termsVersion !== TERMS_VERSION;
-      if (needsConsent && acceptedAt === null) {
+      if (needsConsent && acceptedAt === null && !isStaffPasswordRecovery) {
         await supabase.auth.signOut();
         const consentPath = existingProfile
           ? `/terms/accept?next=${encodeURIComponent(next)}`
