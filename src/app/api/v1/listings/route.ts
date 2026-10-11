@@ -11,6 +11,7 @@ export async function GET(request: Request) {
     return Response.json({ error: RATE_LIMITED }, { status: 429 });
   const url = new URL(request.url);
   const filters = readFilters(url.searchParams);
+  if (filters instanceof Response) return filters;
   const rows = await findPublishedBoardingHouses();
   const listings = filterListings(toListingCards(rows), filters);
 
@@ -18,7 +19,19 @@ export async function GET(request: Request) {
 }
 
 // Converts URL query values into the shared listing filter shape.
-function readFilters(params: URLSearchParams): ListingFilters {
+function readFilters(params: URLSearchParams): ListingFilters | Response {
+  const allowedKeys = new Set([
+    "query",
+    "maxPrice",
+    "maxWalkingMinutes",
+    "gender",
+    "availableOnly",
+    "amenities",
+  ]);
+  if ([...params.keys()].some((key) => !allowedKeys.has(key))) {
+    return Response.json({ error: "Unknown listing filter." }, { status: 400 });
+  }
+
   const raw = {
     query: params.get("query") ?? undefined,
     maxPrice: params.get("maxPrice") ?? undefined,
@@ -29,5 +42,8 @@ function readFilters(params: URLSearchParams): ListingFilters {
   };
 
   const parsed = listingFiltersSchema.safeParse(raw);
-  return parsed.success ? parsed.data : {};
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid listing filters." }, { status: 400 });
+  }
+  return parsed.data;
 }

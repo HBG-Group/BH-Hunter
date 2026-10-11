@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 
 function csv(value: unknown) {
   const text = String(value ?? "");
-  const safe = /^[=+\-@]/.test(text) ? `'${text}` : text;
+  const safe = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
   return `"${safe.replaceAll('"', '""')}"`;
 }
 

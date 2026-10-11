@@ -19,8 +19,10 @@ export function AdminNotifications({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
   const unread = notifications.filter(
-    (notification) => !notification.readAt,
+    (notification) => !notification.readAt && !readIds.has(notification.id),
   ).length;
 
   return (
@@ -59,6 +61,7 @@ export function AdminNotifications({
           className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg"
           aria-label="Notifications panel"
         >
+          {error && <p role="alert" className="border-b border-rose-100 px-4 py-2 text-xs text-rose-600">{error}</p>}
           <div className="border-b border-neutral-100 px-4 py-3 text-sm font-semibold text-neutral-900">
             <div className="flex items-center justify-between">
               <span>Notifications</span>
@@ -81,15 +84,23 @@ export function AdminNotifications({
                 <li
                   key={notification.id}
                   className={
-                    notification.readAt ? "px-4 py-3" : "bg-sky-50 px-4 py-3"
+                    notification.readAt || readIds.has(notification.id) ? "px-4 py-3" : "bg-sky-50 px-4 py-3"
                   }
                 >
                   <button
                     type="button"
                     disabled={pending}
                     onClick={() =>
-                      startTransition(() => {
-                        void markAdminNotificationReadAction(notification.id);
+                      startTransition(async () => {
+                        try {
+                          const result = await markAdminNotificationReadAction(notification.id);
+                          setError(result.error ?? null);
+                          if (!result.error) {
+                            setReadIds((current) => new Set(current).add(notification.id));
+                          }
+                        } catch {
+                          setError("Could not update that notification. Please try again.");
+                        }
                       })
                     }
                     className="w-full text-left"

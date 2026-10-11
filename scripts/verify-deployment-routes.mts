@@ -9,8 +9,7 @@
 const deploymentUrl = process.env.DEPLOY_URL ?? process.env.SECURITY_CHECK_URL;
 
 if (!deploymentUrl) {
-  console.warn("Skipping route smoke test: DEPLOY_URL (or SECURITY_CHECK_URL) is not set.");
-  process.exit(0);
+  throw new Error("Route smoke test requires DEPLOY_URL or SECURITY_CHECK_URL.");
 }
 
 const origin = new URL(deploymentUrl);
