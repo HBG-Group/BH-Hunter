@@ -10,6 +10,7 @@ import { logSecurityEvent } from "@/lib/security/events";
 import { hasGoogleAdminAccess } from "@/lib/auth/authorization-core";
 import {
   ADMIN_GOOGLE_SESSION_COOKIE,
+  ADMIN_GOOGLE_SESSION_COOKIE_MAX_AGE,
   createAdminGoogleSessionProof,
 } from "@/lib/security/admin-google-session";
 import {
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             path: "/admin",
-            maxAge: 7 * 24 * 60 * 60,
+            maxAge: ADMIN_GOOGLE_SESSION_COOKIE_MAX_AGE,
           },
         );
         await logSecurityEvent({

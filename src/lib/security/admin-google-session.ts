@@ -3,7 +3,9 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { uploadTicketSigningKey } from "@/lib/security/upload-ticket-core";
 
 export const ADMIN_GOOGLE_SESSION_COOKIE = "meino-admin-google-session";
-const ADMIN_GOOGLE_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const ADMIN_GOOGLE_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const ADMIN_GOOGLE_SESSION_COOKIE_MAX_AGE =
+  ADMIN_GOOGLE_SESSION_TTL_MS / 1000;
 
 function signature(userId: string, issuedAt: string): string {
   return createHmac("sha256", uploadTicketSigningKey(process.env))
