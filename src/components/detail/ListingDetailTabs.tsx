@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode, type TouchEvent } from "react";
+import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 
 interface DetailTab {
   id: string;
@@ -13,8 +13,36 @@ export function ListingDetailTabs({ tabs }: { tabs: DetailTab[] }) {
   const touchStartX = useRef<number | null>(null);
   const activeIndex = Math.max(0, tabs.findIndex((tab) => tab.id === activeId));
 
+  useEffect(() => {
+    const syncHash = () => {
+      let id: string;
+      try {
+        id = decodeURIComponent(window.location.hash.slice(1));
+      } catch {
+        return;
+      }
+      if (tabs.some((tab) => tab.id === id)) {
+        // The hash is external browser state and must be reflected when it changes.
+        setActiveId(id);
+      }
+    };
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, [tabs]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(activeId)?.scrollIntoView({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeId]);
+
   function select(id: string) {
     setActiveId(id);
+    if (window.location.hash !== `#${id}`) {
+      window.history.replaceState(null, "", `#${id}`);
+    }
   }
 
   function onTouchStart(event: TouchEvent<HTMLDivElement>) {
@@ -36,7 +64,7 @@ export function ListingDetailTabs({ tabs }: { tabs: DetailTab[] }) {
   if (!activeTab) return null;
 
   return (
-    <div className="min-w-0 space-y-6 overflow-hidden">
+    <div className="min-w-0 space-y-6">
       <div className="sticky top-[57px] z-[1000] -mx-4 max-w-[calc(100%+2rem)] border-b border-line bg-white/90 px-4 backdrop-blur">
         <nav className="mx-auto flex max-w-6xl gap-5 overflow-x-auto" aria-label="Listing details">
           {tabs.map((tab) => (
@@ -63,7 +91,7 @@ export function ListingDetailTabs({ tabs }: { tabs: DetailTab[] }) {
         aria-label={activeTab.label}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        className="min-w-0 max-w-full touch-pan-y overflow-hidden"
+        className="min-w-0 max-w-full touch-pan-y"
       >
         {activeTab.content}
       </div>

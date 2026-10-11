@@ -234,13 +234,12 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 </div>
               )}
                 </Section> },
-                { id: "owner", label: "Owner", content: <section className="space-y-4 lg:hidden"><h2 className="text-xl font-semibold tracking-tight text-ink">Owner</h2><ContactPanel listing={listing} /></section> },
+                { id: "owner", label: "Owner", content: <section id="owner" className="scroll-mt-32 space-y-4"><h2 className="text-xl font-semibold tracking-tight text-ink">Owner</h2><ContactPanel listing={listing} /></section> },
               ]}
             />
           </div>
 
           <aside
-            id="owner"
             className="hidden scroll-mt-32 space-y-4 lg:sticky lg:top-24 lg:block lg:self-start"
           >
             <div className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-white px-4 py-3">
