@@ -64,12 +64,18 @@ export async function updateAccountSettingsAction(
 
 export async function revokeOtherSessionsAction(): Promise<{ error?: string; success?: string }> {
   const profile = await requireProfile("/settings");
-  if (!(await allow("auth-session-revoke", LIMITS.auth, profile.id))) return { error: RATE_LIMITED };
+  if (!(await allow("auth-session-revoke", LIMITS.auth, profile.id)))
+    return { error: RATE_LIMITED };
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signOut({ scope: "others" });
   if (error) return { error: "Could not sign out other sessions. Please try again." };
   try {
-    await logSecurityEvent({ action: "auth.signout_others", outcome: "allowed", actorId: profile.id, actorRole: profile.role });
+    await logSecurityEvent({
+      action: "auth.signout_others",
+      outcome: "allowed",
+      actorId: profile.id,
+      actorRole: profile.role,
+    });
   } catch (logError) {
     reportError("revokeOtherSessions.logSecurityEvent", logError);
   }

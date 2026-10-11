@@ -4,6 +4,7 @@ import { supabaseAnonKey, supabaseUrl } from "@/config/env";
 import { ADMIN_HOST, isAdminHost } from "@/config/admin";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { securityHeaders } from "@/lib/security/headers";
+import { OAUTH_CALLBACK_PATH } from "@/config/auth";
 
 function applySecurityHeaders(
   response: NextResponse,
@@ -66,7 +67,16 @@ export async function proxy(request: NextRequest) {
 
     // Never expose public signup, OAuth, owner, listing, or marketing routes on
     // the operational control host.
-    if (onAdminHost && !path.startsWith("/admin")) {
+    const adminAuthPaths = new Set([
+      OAUTH_CALLBACK_PATH,
+      "/terms",
+      "/terms/accept",
+    ]);
+    if (
+      onAdminHost &&
+      !path.startsWith("/admin") &&
+      !adminAuthPaths.has(path)
+    ) {
       return applySecurityHeaders(new NextResponse(null, { status: 404 }));
     }
   }
@@ -133,6 +143,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // Skip Next internals and static assets; run on everything else.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

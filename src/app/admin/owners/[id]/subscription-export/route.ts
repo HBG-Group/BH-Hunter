@@ -3,8 +3,6 @@ import { prisma } from "@/lib/db/prisma";
 
 function csv(value: unknown) {
   const text = String(value ?? "");
-  // Spreadsheet applications may evaluate formula-leading values even inside
-  // a quoted CSV cell. Prefix these values with an apostrophe to keep them inert.
   const safe = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
   return `"${safe.replaceAll('"', '""')}"`;
 }

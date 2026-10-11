@@ -1,8 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db/prisma";
 import {
   ALLOWED_PHOTO_EXTENSIONS,
   MAX_PHOTO_BYTES,
@@ -13,6 +11,7 @@ import { requireWritableOwner } from "@/lib/auth/profile";
 import {
   countImages,
   deleteImagesForOwner,
+  registerImagesForOwner,
   reorderImagesForOwner,
   updateImageAltForOwner,
 } from "@/lib/db/images";
@@ -122,7 +121,7 @@ export async function registerPhotosAction(
   return guarded<PhotoFormState>(
     "registerPhotos",
     async () => {
-      let saved = 0;
+      const urls: string[] = [];
 
       for (const ticket of tickets) {
         const path = verifyTicket(
@@ -148,33 +147,24 @@ export async function registerPhotosAction(
           return { error: PHOTO_SIZE_HINT };
         }
 
-        const url = publicPhotoUrl(path);
-        const added = await prisma.$transaction(async (tx) => {
-          const locked = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
-            SELECT id FROM boarding_houses
-            WHERE id = ${boardingHouseId} AND owner_id = ${owner.id}
-            FOR UPDATE
-          `);
-          if (locked.length === 0) return { owned: false, added: false, overLimit: false };
-          const entitlement = await getOwnerRoomEntitlement(owner.id);
-          const currentCount = await tx.image.count({ where: { boardingHouseId } });
-          if (currentCount >= entitlement.photoLimit) return { owned: true, added: false, overLimit: true };
-          const duplicate = await tx.image.findUnique({ where: { url } });
-          if (duplicate) return { owned: true, added: false, overLimit: false };
-          const last = await tx.image.findFirst({ where: { boardingHouseId }, orderBy: { sortOrder: "desc" }, select: { sortOrder: true } });
-          await tx.image.create({ data: { boardingHouseId, url, sortOrder: (last?.sortOrder ?? -1) + 1 } });
-          return { owned: true, added: true, overLimit: false };
-        });
-        if (!added.owned) return { error: "You don't own this listing" };
-        if (added.overLimit) return { error: "This listing has reached its photo limit." };
-        if (added.added) saved += 1;
+        urls.push(publicPhotoUrl(path));
+      }
+
+      const entitlement = await getOwnerRoomEntitlement(owner.id);
+      const registered = await registerImagesForOwner(
+        owner.id,
+        boardingHouseId,
+        urls,
+        entitlement.photoLimit,
+      );
+      if (registered === "not-owned") return { error: "You don't own this listing" };
+      if (registered === "limit") {
+        return { error: `${entitlement.planName} allows up to ${entitlement.photoLimit} photos per listing.` };
       }
 
       revalidatePath(`/owner/listings/${boardingHouseId}/photos`);
       revalidatePath("/owner");
-      return saved > 0
-        ? { success: true }
-        : { error: "Those photos were already saved." };
+      return { success: true };
     },
     (message) => ({ error: message }),
   );

@@ -2,19 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AuthForm } from "@/components/auth/AuthForm";
 import { GoogleButton } from "@/components/auth/GoogleButton";
-import { AuthDivider } from "@/components/auth/AuthDivider";
-import { signUpAction } from "@/lib/auth/actions";
 
 interface Props {
   role: "OWNER" | "STUDENT";
   next: string;
 }
 
-// The full sign-up block (Google + email). One Terms & Conditions checkbox governs
-// both paths: until it's ticked, neither can create an account. The server also
-// re-checks, so this is UX, not the only gate.
+// Google sign-up is blocked until the user checks the Terms & Conditions box;
+// the server also verifies the resulting signed consent before creating a profile.
 export function SignUpAuth({ role, next }: Props) {
   const [agreed, setAgreed] = useState(false);
 
@@ -23,6 +19,7 @@ export function SignUpAuth({ role, next }: Props) {
       <label className="flex items-start gap-2.5 text-sm text-neutral-600">
         <input
           type="checkbox"
+          required
           checked={agreed}
           onChange={(e) => setAgreed(e.target.checked)}
           className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
@@ -36,14 +33,16 @@ export function SignUpAuth({ role, next }: Props) {
         </span>
       </label>
 
-      <p className="text-xs text-neutral-500">
-        Confirmation emails can be requested once every 60 seconds. If you reach
-        the project email limit, wait up to an hour before trying again.
+      <GoogleButton
+        next={next}
+        role={role}
+        disabled={!agreed}
+        termsAccepted={agreed}
+        label="Continue with Google"
+      />
+      <p className="text-center text-xs text-neutral-500">
+        Your Google account will be used to sign in to Meino.
       </p>
-
-      <GoogleButton next={next} role={role} disabled={!agreed} />
-      <AuthDivider />
-      <AuthForm mode="signup" action={signUpAction} role={role} agreed={agreed} />
     </div>
   );
 }

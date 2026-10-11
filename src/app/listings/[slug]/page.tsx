@@ -12,7 +12,7 @@ import { ReviewList } from "@/components/detail/ReviewList";
 import { ReviewForm } from "@/components/detail/ReviewForm";
 import { ViewingRequestForm } from "@/components/detail/ViewingRequestForm";
 import { ViewingCalendar } from "@/components/detail/ViewingCalendar";
-import { SectionTabs } from "@/components/detail/SectionTabs";
+import { ListingDetailTabs } from "@/components/detail/ListingDetailTabs";
 import { AvailabilitySummary } from "@/components/detail/AvailabilitySummary";
 import { AmenityChips } from "@/components/ui/AmenityChips";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
@@ -67,15 +67,6 @@ function SignInPrompt({ slug }: { slug: string }) {
   );
 }
 
-const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "amenities", label: "Amenities" },
-  { id: "availability", label: "Availability" },
-  { id: "reviews", label: "Reviews" },
-  { id: "location", label: "Location" },
-  { id: "owner", label: "Owner" },
-];
-
 // Consistent section heading + scroll offset for the sticky header + tabs.
 function Section({
   id,
@@ -99,7 +90,10 @@ export default async function ListingDetailPage({ params }: PageProps) {
   // The listing lookup and the current session are independent — run them together
   // instead of waiting on one before starting the other.
   const [row, profile] = await Promise.all([
-    resilientRead(() => findBoardingHouseBySlug(slug)),
+    resilientRead(() => findBoardingHouseBySlug(slug), {
+      timeoutMs: 8_000,
+      timeoutMessage: "Listing data did not respond in time",
+    }),
     getCurrentProfile(),
   ]);
   if (!row) notFound();
@@ -125,6 +119,10 @@ export default async function ListingDetailPage({ params }: PageProps) {
         : Promise.resolve(null),
       findConfirmedViewingDates(row.id),
     ]),
+    {
+      timeoutMs: 8_000,
+      timeoutMessage: "Listing details did not respond in time",
+    },
   );
 
   // Local yyyy-mm-dd keys so the calendar marks the right day regardless of timezone.
@@ -148,7 +146,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
     <div className="min-h-screen bg-canvas">
       <ViewTracker boardingHouseId={listing.id} />
       <SiteHeader />
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto max-w-6xl overflow-x-clip px-4 py-6">
         <Link href="/" className="text-sm text-muted hover:text-ink">
           ← Back to map
         </Link>
@@ -186,13 +184,11 @@ export default async function ListingDetailPage({ params }: PageProps) {
           />
         </div>
 
-        <div className="mt-5">
-          <SectionTabs tabs={TABS} />
-        </div>
-
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="space-y-10">
-            <Section id="overview" title="Overview">
+          <div className="mt-5 min-w-0">
+            <ListingDetailTabs
+              tabs={[
+                { id: "overview", label: "Overview", content: <Section id="overview" title="Overview">
               <FactList listing={listing} />
               {listing.houseRules && (
                 <div className="rounded-2xl border border-line bg-white p-4">
@@ -202,17 +198,14 @@ export default async function ListingDetailPage({ params }: PageProps) {
                   </p>
                 </div>
               )}
-            </Section>
-
-            <Section id="amenities" title="Amenities">
-              <AmenityChips amenityKeys={listing.amenityKeys} />
-            </Section>
-
-            <Section id="availability" title="Availability">
+                </Section> },
+                { id: "amenities", label: "Amenities", content: <Section id="amenities" title="Amenities">
+              <AmenityChips amenityKeys={listing.amenityKeys} variant="detail" />
+                </Section> },
+                { id: "availability", label: "Availability", content: <Section id="availability" title="Availability">
               <AvailabilitySummary listing={listing} />
-            </Section>
-
-            <Section id="reviews" title="Reviews">
+                </Section> },
+                { id: "reviews", label: "Reviews", content: <Section id="reviews" title="Reviews">
               <ReviewList summary={summary} reviews={reviews} />
               {profile ? (
                 <ReviewForm
@@ -224,9 +217,8 @@ export default async function ListingDetailPage({ params }: PageProps) {
               ) : (
                 <SignInPrompt slug={slug} />
               )}
-            </Section>
-
-            <Section id="location" title="Location">
+                </Section> },
+                { id: "location", label: "Location", content: <Section id="location" title="Location">
               <ListingLocation
                 latitude={listing.latitude}
                 longitude={listing.longitude}
@@ -241,12 +233,14 @@ export default async function ListingDetailPage({ params }: PageProps) {
                   <NearbyList places={listing.nearbyPlaces} />
                 </div>
               )}
-            </Section>
+                </Section> },
+                { id: "owner", label: "Owner", content: <section id="owner" className="scroll-mt-32 space-y-4"><h2 className="text-xl font-semibold tracking-tight text-ink">Owner</h2><div className="lg:hidden"><ContactPanel listing={listing} /></div></section> },
+              ]}
+            />
           </div>
 
           <aside
-            id="owner"
-            className="scroll-mt-32 space-y-4 lg:sticky lg:top-24 lg:self-start"
+            className="hidden scroll-mt-32 space-y-4 lg:sticky lg:top-24 lg:block lg:self-start"
           >
             <div className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-white px-4 py-3">
               <span className="text-sm text-muted">

@@ -3,10 +3,16 @@ import { redirect } from "next/navigation";
 import type { Profile } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { safeRedirectPath } from "@/lib/security/redirect";
 import { hasRole } from "@/lib/auth/authorization-core";
 import { resilientRead } from "@/lib/async/resilient-read";
+import { isUnlinkedProviderConflict } from "@/lib/auth/identity";
+import { cookies } from "next/headers";
+import {
+  ADMIN_GOOGLE_SESSION_COOKIE,
+  verifyAdminGoogleSessionProof,
+} from "@/lib/security/admin-google-session";
+import { adminHref } from "@/config/admin";
 
 // The Supabase auth user for this request, or null if signed out. `cache()` dedupes
 // this within a single request — SiteHeader and the page it wraps both call the auth
@@ -54,8 +60,10 @@ export const ensureProfileForCurrentUser = cache(async (
       const provider =
         (user.app_metadata?.provider as string | undefined) ??
         user.identities?.[0]?.provider;
-      if (provider === "email") return { profile: byEmail, created: false };
-      return { conflict: true };
+      if (isUnlinkedProviderConflict({ authenticatedUserId: user.id, profileId: byEmail.id, provider })) {
+        return { conflict: true };
+      }
+      return { profile: byEmail, created: false };
     }
   }
 
@@ -80,59 +88,6 @@ export const ensureProfileForCurrentUser = cache(async (
   });
   return { profile, created: true };
 });
-
-// Looks up the provider before a password attempt. Missing service-role
-// configuration or lookup failures intentionally return null so normal auth can
-// still proceed and provide its standard credential error.
-const AUTH_PROVIDER_CACHE_TTL_MS = 60_000;
-const AUTH_PROVIDER_CACHE_MAX_ENTRIES = 1_000;
-const authProviderCache = new Map<string, { provider: string | null; expiresAt: number }>();
-
-function cacheAuthProvider(email: string, provider: string | null) {
-  if (authProviderCache.size >= AUTH_PROVIDER_CACHE_MAX_ENTRIES) {
-    const oldestKey = authProviderCache.keys().next().value;
-    if (oldestKey) authProviderCache.delete(oldestKey);
-  }
-  authProviderCache.set(email, { provider, expiresAt: Date.now() + AUTH_PROVIDER_CACHE_TTL_MS });
-}
-
-export async function getAuthProviderForEmail(email: string): Promise<string | null> {
-  const normalizedEmail = email.trim().toLowerCase();
-  const cached = authProviderCache.get(normalizedEmail);
-  if (cached && cached.expiresAt > Date.now()) return cached.provider;
-  if (cached) authProviderCache.delete(normalizedEmail);
-  try {
-    const admin = createSupabaseAdminClient();
-    // Do not depend on a Profile row: first-time Google users may have an Auth
-    // record before onboarding creates their application profile.
-    const { data, error } = await admin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    if (error) return null;
-    const authUser = data.users.find(
-      (candidate) => candidate.email?.toLowerCase() === normalizedEmail,
-    );
-    if (!authUser) {
-      cacheAuthProvider(normalizedEmail, null);
-      return null;
-    }
-    const providers = authUser.identities?.map((identity) => identity.provider) ?? [];
-    // Hosted Supabase users may have only app_metadata.provider (without an
-    // identities array), particularly for older Google accounts.
-    const metadataProvider = authUser.app_metadata?.provider;
-    const provider = (
-      providers.find((provider) => provider !== "email") ??
-      metadataProvider ??
-      providers[0] ??
-      null
-    );
-    cacheAuthProvider(normalizedEmail, provider);
-    return provider;
-  } catch {
-    return null;
-  }
-}
 
 // Shown to a frozen owner across the dashboard and returned from blocked write actions.
 export const FROZEN_OWNER_MESSAGE =
@@ -168,8 +123,17 @@ export async function requireProfile(next?: string): Promise<Profile> {
 // Admin-only pages/actions. Admins are promoted manually (see scripts/make-admin.ts).
 export async function requireAdmin(): Promise<Profile> {
   const profile = await getCurrentProfile();
-  if (!profile) redirect("/login");
-  if (!hasRole(profile.role, "ADMIN")) redirect("/");
+  if (!profile) redirect(adminHref());
+  if (!hasRole(profile.role, "ADMIN")) redirect(adminHref());
+  const cookieStore = await cookies();
+  if (
+    !verifyAdminGoogleSessionProof(
+      cookieStore.get(ADMIN_GOOGLE_SESSION_COOKIE)?.value,
+      profile.id,
+    )
+  ) {
+    redirect(adminHref());
+  }
   return profile;
 }
 
@@ -177,5 +141,12 @@ export async function requireAdmin(): Promise<Profile> {
 // in place of the dashboard instead of redirecting away.
 export async function getAdminOrNull(): Promise<Profile | null> {
   const profile = await getCurrentProfile();
-  return profile && hasRole(profile.role, "ADMIN") ? profile : null;
+  if (!profile || !hasRole(profile.role, "ADMIN")) return null;
+  const cookieStore = await cookies();
+  return verifyAdminGoogleSessionProof(
+    cookieStore.get(ADMIN_GOOGLE_SESSION_COOKIE)?.value,
+    profile.id,
+  )
+    ? profile
+    : null;
 }

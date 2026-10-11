@@ -128,7 +128,10 @@ export async function updateListingAction(
   const entitlement = await getOwnerRoomEntitlement(owner.id);
   const existing = await findOwnerListing(owner.id, id);
   if (!existing) return { error: "Listing not found" };
-  if (result.data.rooms.length > entitlement.roomLimit && result.data.rooms.length > existing.rooms.length) {
+  if (
+    result.data.rooms.length > entitlement.roomLimit &&
+    result.data.rooms.length > existing.rooms.length
+  ) {
     return {
       error: `${entitlement.planName} allows up to ${entitlement.roomLimit} rooms per listing.`,
     };

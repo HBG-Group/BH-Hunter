@@ -1,7 +1,12 @@
 import { SignUpLayout } from "@/components/auth/SignUpLayout";
 import { SignUpAuth } from "@/components/auth/SignUpAuth";
 
-export default function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   return (
     <SignUpLayout
       variant="student"
@@ -16,6 +21,7 @@ export default function SignUpPage() {
       formTitle="Create your student account"
       formSubtitle="Join Meino and find your place near campus. It's free to browse and save."
     >
+      {error === "terms" && <p role="alert" className="text-sm text-rose-600">Please accept the current Terms &amp; Conditions before creating an account.</p>}
       <SignUpAuth role="STUDENT" next="/account" />
     </SignUpLayout>
   );

@@ -9,16 +9,11 @@
 const deploymentUrl = process.env.DEPLOY_URL ?? process.env.SECURITY_CHECK_URL;
 
 if (!deploymentUrl) {
-  throw new Error(
-    "Set DEPLOY_URL (or SECURITY_CHECK_URL) to the deployment origin to check",
-  );
+  throw new Error("Route smoke test requires DEPLOY_URL or SECURITY_CHECK_URL.");
 }
 
 const origin = new URL(deploymentUrl);
-const isAdminSurface =
-  origin.hostname === "meinocontrol.vercel.app" ||
-  (origin.hostname.startsWith("meinocontrol-") &&
-    origin.hostname.endsWith(".vercel.app"));
+const isAdminSurface = isMeinoControlVercelHost(origin.hostname);
 
 // Public routes that must always resolve for a guest.
 const PUBLIC_ROUTES = [
@@ -39,7 +34,7 @@ const PUBLIC_ROUTES = [
   "/robots.txt",
   "/manifest.webmanifest",
   "/map",
-  "/forgot-password",
+  "/auth/callback",
   // These must be protected routes, not missing routes. A redirect to sign-in is
   // accepted by the checker; a 404/5xx blocks release promotion.
   "/onboarding",
@@ -47,12 +42,21 @@ const PUBLIC_ROUTES = [
   "/subscribe/basic",
 ];
 
-const ADMIN_ROUTES = ["/", "/admin", "/admin/owners", "/admin/notifications"];
+const ADMIN_ROUTES = [
+  "/",
+  "/admin",
+  "/admin/owners",
+  "/admin/notifications",
+  "/auth/callback",
+  "/terms",
+  "/terms/accept",
+];
 const ADMIN_FORBIDDEN_PUBLIC_ROUTES = [
   "/signup",
   "/login",
   "/list-your-property",
   "/map",
+  "/forgot-password",
 ];
 
 async function check(
@@ -79,7 +83,11 @@ const results = isAdminSurface
       ...ADMIN_ROUTES.map(check),
       ...ADMIN_FORBIDDEN_PUBLIC_ROUTES.map(checkNotFound),
     ])
-  : await Promise.all([...PUBLIC_ROUTES.map(check), checkNotFound("/admin")]);
+  : await Promise.all([
+      ...PUBLIC_ROUTES.map(check),
+      checkNotFound("/admin"),
+      checkNotFound("/forgot-password"),
+    ]);
 const failures = results.filter((r) => !r.ok);
 
 console.log(
@@ -100,3 +108,5 @@ if (failures.length > 0) {
     `Route smoke test failed: ${failures.map((f) => `${f.path} -> ${f.status}`).join(", ")}`,
   );
 }
+import { isMeinoControlVercelHost } from "../src/config/admin";
+

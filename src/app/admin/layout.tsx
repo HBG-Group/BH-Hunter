@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getCurrentProfile } from "@/lib/auth/profile";
+import { getAdminOrNull, getCurrentProfile } from "@/lib/auth/profile";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { Logo } from "@/components/brand/Logo";
 import { AdminLogin } from "@/components/admin/AdminLogin";
@@ -15,11 +15,15 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
 // the sign-in form in place of the dashboard, never the dashboard itself. Each page
 // re-checks independently, so this is defence in depth, not the only gate.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const profile = await getCurrentProfile();
-  const isAdmin = profile?.role === "ADMIN";
+  const profile = await getAdminOrNull();
 
-  if (!isAdmin) {
-    return <AdminLogin denied={profile !== null} />;
+  if (!profile) {
+    const currentProfile = await getCurrentProfile();
+    return (
+      <AdminLogin
+        denied={currentProfile !== null && currentProfile.role !== "ADMIN"}
+      />
+    );
   }
 
   const notifications = await findAdminNotifications(profile.id);

@@ -27,13 +27,23 @@ test("development headers omit HSTS", () => {
   );
 });
 
-test("Meino Control production and preview hosts are staff surfaces", () => {
+test("only the configured Meino Control deployment host is a staff surface", () => {
   assert.equal(isMeinoControlVercelHost("meinocontrol.vercel.app"), true);
   assert.equal(
     isMeinoControlVercelHost("meinocontrol-git-bugfix-ui-hbg1.vercel.app"),
     true,
   );
-  assert.equal(isAdminHost("meinocontrol-git-feature-hbg1.vercel.app"), false);
+  const previousVercel = process.env.VERCEL;
+  const previousVercelUrl = process.env.VERCEL_URL;
+  process.env.VERCEL = "1";
+  process.env.VERCEL_URL = "meinocontrol-git-feature-hbg1.vercel.app";
+  assert.equal(isAdminHost("meinocontrol-git-feature-hbg1.vercel.app"), true);
+  assert.equal(isAdminHost("meinocontrol-git-other-hbg1.vercel.app"), false);
+  process.env.VERCEL_URL = "meino-git-feature-hbg1.vercel.app";
   assert.equal(isAdminHost("meino-git-feature-hbg1.vercel.app"), false);
   assert.equal(isAdminHost("meinocontrol.vercel.app.attacker.example"), false);
+  if (previousVercel === undefined) delete process.env.VERCEL;
+  else process.env.VERCEL = previousVercel;
+  if (previousVercelUrl === undefined) delete process.env.VERCEL_URL;
+  else process.env.VERCEL_URL = previousVercelUrl;
 });

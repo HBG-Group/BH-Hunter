@@ -10,6 +10,7 @@ import { TermsGate } from "@/components/system/TermsGate";
 import { Watermark } from "@/components/system/Watermark";
 import { BugReporter } from "@/components/system/BugReporter";
 import { CookieConsentBanner } from "@/components/cookies/CookieConsentBanner";
+import { PwaSupport } from "@/components/system/PwaSupport";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { supabaseUrl } from "@/config/env";
 import { isAdminHost } from "@/config/admin";
@@ -19,6 +20,13 @@ export const metadata: Metadata = {
   title: "Meino — Find your place near VSU",
   description:
     "Meino helps Visayas State University students find a boarding house that feels like home. Every option on one map, with real vacancies and honest walk times.",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#f7f7f5",
+  appleWebApp: {
+    capable: true,
+    title: "Meino",
+    statusBarStyle: "default",
+  },
 };
 
 export default async function RootLayout({
@@ -42,8 +50,23 @@ export default async function RootLayout({
             the first <Image> request needs it. */}
         <link rel="preconnect" href={supabaseUrl} crossOrigin="anonymous" />
         <link rel="dns-prefetch" href={supabaseUrl} />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </head>
       <body className="flex min-h-full flex-col">
+        <div className="pwa-launch-screen" aria-hidden="true">
+          <div className="pwa-launch-content">
+            <span className="pwa-launch-logo">
+              <svg viewBox="0 0 192 192" aria-hidden="true">
+                <rect width="192" height="192" fill="#b74726" />
+                <path className="pwa-launch-house" d="M42 127V72l54-44 54 44v55" fill="none" stroke="#fffaf4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="10" />
+                <path className="pwa-launch-door" d="M76 127v-30c0-11 9-20 20-20s20 9 20 20v30" fill="none" stroke="#fffaf4" strokeLinecap="round" strokeWidth="10" />
+                <circle className="pwa-launch-sparkle pwa-launch-sparkle-one" cx="34" cy="51" r="4" fill="#fffaf4" />
+                <circle className="pwa-launch-sparkle pwa-launch-sparkle-two" cx="158" cy="48" r="4" fill="#fffaf4" />
+              </svg>
+            </span>
+            <span className="pwa-launch-wordmark">MEINO</span>
+          </div>
+        </div>
         <RouteProgress />
         <TermsGate />
         <div className="flex-1">
@@ -53,6 +76,7 @@ export default async function RootLayout({
         <Watermark />
         <BugReporter />
         <CookieConsentBanner />
+        <PwaSupport />
       </body>
     </html>
   );

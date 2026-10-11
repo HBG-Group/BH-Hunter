@@ -14,17 +14,12 @@ the app is unaffected because it uses Prisma. Verified: all `public` tables (inc
 `subscriptions` and `advertisements`) have `relrowsecurity = true`.
 **Rule:** every new table must have RLS enabled — `db:push` does not do this.
 
-### ✓ Per-account sign-in lockout — `lib/security/login-lockout.ts`
-**Why:** the IP-based `LIMITS.auth` rate limit (8/min) stops a single client from
-hammering sign-in, but doesn't stop a slow, distributed, or NAT-shared-IP credential
-guess against one specific account. 5 wrong-password attempts for a given email locks
-that email out for 30s, tracked in Postgres (`rate_limit_windows`, same table the shared
-rate limiter uses) — not a cookie or client-side timer, so it survives a refresh, a new
-tab, incognito, or clearing browser storage, and is shared across every serverless
-instance. The check runs before Supabase auth is even called while locked out, so a
-locked account can't be used to probe further. Successful sign-in clears the counter.
-Forgot-password doesn't exist yet, so the sign-in form also carries a reminder to
-double-check credentials before submitting — a lockout is the only recovery path today.
+### ✓ Google-only authentication and database role checks
+**Why:** the PWA uses Google OAuth for sign-in. Admin OAuth callbacks are accepted only
+on the control host and only when the authenticated Supabase user already has a matching
+Profile row with `role = ADMIN` and a linked Google identity. The callback never creates
+or promotes an admin profile. The `/admin` layout and every admin operation independently
+check the database role.
 
 ### ✓ HMAC upload tickets — `lib/security/upload-ticket.ts`
 **Why:** the browser uploads photos directly to Storage, so the server must be sure a
@@ -81,11 +76,11 @@ anonymous): auth 8/min, reviews 5/min, viewings 5/5min, favorites 60/min, analyt
 per-instance on serverless — see "Future" for the Redis upgrade.
 
 ### ✓ Secure authentication
-**Why:** protect accounts and avoid enumeration. Supabase Auth; server-side Zod on
-sign-in/up; `signInAction` returns a uniform "Incorrect email or password" so it can't be
-used to probe which emails exist; role is coerced to STUDENT/OWNER before validation so
-ADMIN is unreachable via sign-up (admins only via `npm run make-admin`); redirects
-validated; `/admin` self-gates with an inline login and no data leak to non-admins.
+**Why:** protect accounts and avoid role escalation. Supabase Auth with Google OAuth;
+new profiles can become STUDENT or OWNER through the public sign-up flow, while ADMIN is
+assigned manually with `npm run make-admin`. The admin callback requires an existing
+database profile and linked Google identity, and `/admin` self-gates before reading
+admin data.
 
 ### ✓ Server-only secrets & safe errors
 **Why:** keep the service-role key and ticket secret off the client, and keep DB/Supabase

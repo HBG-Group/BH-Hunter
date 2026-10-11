@@ -43,6 +43,10 @@ export function usePhotoUpload(boardingHouseId: string): Result {
         setError(prepared.error ?? "Could not start the upload");
         return { retryFiles: files };
       }
+      if (prepared.tickets.length !== files.length) {
+        setError("The upload could not be prepared completely. Please try again.");
+        return { retryFiles: files };
+      }
 
       const supabase = createSupabaseBrowserClient();
       const uploaded: {

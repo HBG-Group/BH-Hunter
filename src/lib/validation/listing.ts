@@ -73,7 +73,10 @@ export const listingSchema = z
     utilitiesIncluded: z.boolean().default(false),
     internetIncluded: z.boolean().default(false),
 
-    curfew: z.preprocess(normalizeTextInput, z.string().trim().max(40)).optional(),
+    curfew: z.preprocess(
+      normalizeTextInput,
+      z.string().trim().max(40).optional(),
+    ),
     houseRules: z
       .preprocess(
         normalizeTextInput,

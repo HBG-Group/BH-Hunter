@@ -1,10 +1,7 @@
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/AuthLayout";
-import { AuthForm } from "@/components/auth/AuthForm";
 import { GoogleButton } from "@/components/auth/GoogleButton";
-import { AuthDivider } from "@/components/auth/AuthDivider";
 import { safeRedirectPath } from "@/lib/security/redirect";
-import { signInAction } from "@/lib/auth/actions";
 
 interface Props {
   searchParams: Promise<{ next?: string; error?: string }>;
@@ -34,9 +31,11 @@ export default async function LoginPage({ searchParams }: Props) {
           wait at least 60 seconds before retrying.
         </p>
       )}
-      <GoogleButton next={next || "/"} />
-      <AuthDivider />
-      <AuthForm mode="signin" action={signInAction} next={next || undefined} />
+      <GoogleButton next={next || "/"} label="Continue with Google" />
+
+      <p className="mt-3 text-center text-xs text-neutral-500">
+        Meino uses Google to keep sign-in simple and secure for students and owners.
+      </p>
 
       <p className="mt-4 text-center text-xs text-neutral-500">
         Renting a room?{" "}

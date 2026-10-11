@@ -39,8 +39,6 @@ export function SiteFooter() {
   // proxy intentionally rejects public routes on that host.
   const publicUrl = (path: string) => {
     if (!controlHost) return path;
-    // Use the configured public origin for control previews instead of a hardcoded
-    // branch deployment that may be removed or renamed.
     const origin = PUBLIC_SITE_HOMEPAGE;
     return `${origin}${path}`;
   };
