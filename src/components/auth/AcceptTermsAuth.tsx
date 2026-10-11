@@ -12,6 +12,7 @@ export function AcceptTermsAuth({ next }: { next: string }) {
       <label className="flex items-start gap-2.5 text-sm text-neutral-600">
         <input
           type="checkbox"
+          required
           checked={agreed}
           onChange={(event) => setAgreed(event.target.checked)}
           className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"

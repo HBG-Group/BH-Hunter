@@ -9,9 +9,8 @@ interface Props {
   next: string;
 }
 
-// The full sign-up block (Google + email). One Terms & Conditions checkbox governs
-// both paths: until it's ticked, neither can create an account. The server also
-// re-checks, so this is UX, not the only gate.
+// Google sign-up is blocked until the user checks the Terms & Conditions box;
+// the server also verifies the resulting signed consent before creating a profile.
 export function SignUpAuth({ role, next }: Props) {
   const [agreed, setAgreed] = useState(false);
 
@@ -20,6 +19,7 @@ export function SignUpAuth({ role, next }: Props) {
       <label className="flex items-start gap-2.5 text-sm text-neutral-600">
         <input
           type="checkbox"
+          required
           checked={agreed}
           onChange={(e) => setAgreed(e.target.checked)}
           className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"

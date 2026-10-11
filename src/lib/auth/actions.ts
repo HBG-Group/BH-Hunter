@@ -38,7 +38,7 @@ export async function requestPasswordResetAction(
   const origin = await resolveSiteOrigin();
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${origin}${OAUTH_CALLBACK_PATH}?next=/account/password`,
+    redirectTo: `${origin}${OAUTH_CALLBACK_PATH}?next=/admin/password`,
   });
   if (error)
     return { error: "Could not send the reset email. Please try again." };
@@ -52,8 +52,8 @@ export async function updatePasswordAction(
   formData: FormData,
 ): Promise<AuthFormState> {
   const profile = await getCurrentProfile();
-  if (!profile)
-    return { error: "Open the secure link from your reset email first." };
+  if (profile?.role !== "ADMIN")
+    return { error: "Password changes are available only to staff accounts." };
   const password = String(formData.get("password") ?? "");
   const confirmation = String(formData.get("confirmation") ?? "");
   if (password.length < MIN_PASSWORD_LENGTH || password.length > 72) {

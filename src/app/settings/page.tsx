@@ -38,12 +38,6 @@ export default async function SettingsPage() {
         <section className="space-y-3 rounded-2xl border border-line bg-white p-5">
           <h2 className="font-semibold text-ink">Sign-in and sessions</h2>
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="/account/password"
-              className="inline-flex min-h-11 items-center rounded-xl px-4 text-sm ring-1 ring-inset ring-line"
-            >
-              Change password
-            </Link>
             <RevokeOtherSessionsForm />
             <form action={signOutAction}>
               <button className="min-h-11 rounded-xl px-4 text-sm ring-1 ring-inset ring-line">

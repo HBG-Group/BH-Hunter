@@ -14,38 +14,6 @@ export function countImages(boardingHouseId: string) {
   return prisma.image.count({ where: { boardingHouseId } });
 }
 
-async function ownsListing(
-  ownerId: string,
-  boardingHouseId: string,
-): Promise<boolean> {
-  const listing = await prisma.boardingHouse.findFirst({
-    where: { id: boardingHouseId, ownerId },
-    select: { id: true },
-  });
-  return listing !== null;
-}
-
-// Appends a photo after the current last one. Returns false if the owner doesn't
-// own the listing.
-export async function addImageForOwner(
-  ownerId: string,
-  boardingHouseId: string,
-  url: string,
-): Promise<boolean> {
-  if (!(await ownsListing(ownerId, boardingHouseId))) return false;
-
-  const last = await prisma.image.findFirst({
-    where: { boardingHouseId },
-    orderBy: { sortOrder: "desc" },
-    select: { sortOrder: true },
-  });
-
-  await prisma.image.create({
-    data: { boardingHouseId, url, sortOrder: (last?.sortOrder ?? -1) + 1 },
-  });
-  return true;
-}
-
 export async function registerImagesForOwner(
   ownerId: string,
   boardingHouseId: string,
@@ -86,15 +54,6 @@ export async function registerImagesForOwner(
     }
     return "saved";
   });
-}
-
-// True when this exact object has already been registered — blocks ticket replay.
-export async function imageUrlExists(url: string): Promise<boolean> {
-  const existing = await prisma.image.findFirst({
-    where: { url },
-    select: { id: true },
-  });
-  return existing !== null;
 }
 
 // Removes photos the owner owns on the given listing, returning their URLs so the

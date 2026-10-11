@@ -89,6 +89,7 @@ export function TermsGate() {
             <label className="mt-5 flex items-start gap-2.5 text-sm text-neutral-700">
               <input
                 type="checkbox"
+                required
                 checked={checked}
                 onChange={(e) => setChecked(e.target.checked)}
                 className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
