@@ -1,0 +1,26 @@
+# Code ownership for HBG-Group/BH-Hunter.
+#
+# Owners are requested for review on pull requests that touch the paths below
+# when "Require review from Code Owners" is enabled in the branch ruleset.
+
+# Default owners for the whole repository.
+*                                   @yei95474 @Francois-Beltran
+
+# Security-sensitive application code.
+/src/lib/security/                  @yei95474 @Francois-Beltran
+/src/lib/auth/                      @yei95474 @Francois-Beltran
+/src/lib/supabase/                  @yei95474 @Francois-Beltran
+/src/lib/storage/                   @yei95474 @Francois-Beltran
+/src/app/auth/                      @yei95474 @Francois-Beltran
+/src/app/admin/                     @yei95474 @Francois-Beltran
+/src/app/api/                       @yei95474 @Francois-Beltran
+/src/app/.well-known/               @yei95474 @Francois-Beltran
+/src/proxy.ts                       @yei95474 @Francois-Beltran
+
+# Data layer, migrations, and tooling.
+/prisma/                            @yei95474 @Francois-Beltran
+/scripts/                           @yei95474 @Francois-Beltran
+
+# CI, security policy, and repository configuration.
+/.github/                           @yei95474 @Francois-Beltran
+/SECURITY.md                        @yei95474 @Francois-Beltran

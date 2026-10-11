@@ -13,6 +13,8 @@ Last updated: July 27, 2026
   - generates and retains a CycloneDX SBOM artifact
 - `.github/workflows/codeql.yml`
   - runs GitHub CodeQL on pushes, pull requests, and a weekly schedule
+- `.github/CODEOWNERS`
+  - requests the maintainers as reviewers for security-sensitive paths
 - `.github/dependabot.yml`
   - opens weekly dependency updates for npm packages and GitHub Actions
 
@@ -26,3 +28,4 @@ Last updated: July 27, 2026
 ## Current limitations
 
 - Branch protection, production-environment protection, collaborator review, and GitHub secret-scanning activation require repository settings and evidence outside the checkout.
+- Dependency review on pull requests requires the repository Dependency Graph to be enabled in **Settings -> Code security**; it is not enabled today, so dependency changes are covered by Dependabot and `npm audit` instead.
