@@ -32,7 +32,7 @@ export async function getListingQuota(ownerId: string): Promise<ListingQuota> {
     freeLimit: limit,
     freeLeft: Math.max(0, limit - used),
     nextNeedsPayment: used + 1 > limit,
-    atLimit: used >= limit,
+    atLimit: BILLING_ENABLED && used >= limit,
     extraPrice: EXTRA_LISTING_PRICE,
   };
 }

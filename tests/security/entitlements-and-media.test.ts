@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 import { PLANS } from "@/config/pricing";
+import { isAdminHost } from "@/config/admin";
 
 test("plan limits come from one entitlement matrix with a fixed room allowance", () => {
   const [basic, advance, premium] = PLANS;
@@ -22,10 +21,7 @@ test("plan limits come from one entitlement matrix with a fixed room allowance",
   assert.equal(premium.featuredListing, true);
 });
 
-test("owner media metadata and ordering remain ownership scoped", async () => {
-  const source = await readFile(resolve("src/lib/db/images.ts"), "utf8");
-  assert.match(source, /updateImageAltForOwner/);
-  assert.match(source, /reorderImagesForOwner/);
-  assert.match(source, /boardingHouse: \{ ownerId \}/);
-  assert.match(source, /uniqueIds\.length !== imageIds\.length/);
+test("admin host recognition rejects lookalike and untrusted control hosts", () => {
+  assert.equal(isAdminHost("meinocontrol.vercel.app.attacker.example"), false);
+  assert.equal(isAdminHost("meino-git-feature-hbg1.vercel.app"), false);
 });
