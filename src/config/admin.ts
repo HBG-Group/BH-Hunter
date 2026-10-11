@@ -31,7 +31,7 @@ export function isAdminHost(host: string | null | undefined): boolean {
   const hostname = hostnameOnly(host);
   return (
     (ADMIN_HOST !== null && hostname === hostnameOnly(ADMIN_HOST)) ||
-    (Boolean(process.env.VERCEL) || process.env.NODE_ENV === "test") &&
+    Boolean(process.env.VERCEL) &&
     isMeinoControlVercelHost(hostname)
   );
 }

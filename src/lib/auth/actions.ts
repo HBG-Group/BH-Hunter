@@ -60,7 +60,9 @@ export async function updatePasswordAction(
     return { error: "Open the secure link from your reset email first." };
   const password = String(formData.get("password") ?? "");
   const confirmation = String(formData.get("confirmation") ?? "");
-  const currentPassword = String(formData.get("currentPassword") ?? "");
+  const nonce = String(formData.get("nonce") ?? "").trim();
+  if (!(await allow("password-change", LIMITS.auth, profile.id)))
+    return { error: RATE_LIMITED };
   if (password.length < MIN_PASSWORD_LENGTH || password.length > 72) {
     return { error: `Use ${MIN_PASSWORD_LENGTH}–72 characters.` };
   }
@@ -68,12 +70,12 @@ export async function updatePasswordAction(
   const supabase = await createSupabaseServerClient();
   const user = await getCurrentUser();
   const emailIdentity = user?.identities?.some((identity) => identity.provider === "email");
-  if (emailIdentity) {
-    if (!currentPassword) return { error: "Enter your current password." };
-    const check = await supabase.auth.signInWithPassword({ email: user?.email ?? "", password: currentPassword });
-    if (check.error) return { error: "Your current password is incorrect." };
+  if (emailIdentity && !nonce) {
+    const { error: reauthError } = await supabase.auth.reauthenticate();
+    if (reauthError) return { error: "Could not send a verification code. Please try again." };
+    return { notice: "A verification code was sent to your email. Enter it below and submit your new password again." };
   }
-  const { error } = await supabase.auth.updateUser({ password });
+  const { error } = await supabase.auth.updateUser({ password, ...(emailIdentity ? { nonce } : {}) });
   if (error)
     return { error: "Could not update the password. Please try again." };
   await logSecurityEvent({

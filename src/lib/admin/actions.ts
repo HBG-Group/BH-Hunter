@@ -49,9 +49,13 @@ export async function markAdminNotificationReadAction(
   const admin = await requireAdmin();
   if (!(await allow("write", LIMITS.write, admin.id)))
     return { error: RATE_LIMITED };
-  await markAdminNotificationRead(admin.id, notificationId);
-  revalidatePath("/admin", "layout");
-  return {};
+  try {
+    await markAdminNotificationRead(admin.id, notificationId);
+    revalidatePath("/admin", "layout");
+    return {};
+  } catch {
+    return { error: "Could not update that notification. Please try again." };
+  }
 }
 
 export async function markAllAdminNotificationsReadAction(): Promise<void> {

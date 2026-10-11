@@ -84,7 +84,23 @@ export const ensureProfileForCurrentUser = cache(async (
 // Looks up the provider before a password attempt. Missing service-role
 // configuration or lookup failures intentionally return null so normal auth can
 // still proceed and provide its standard credential error.
+const AUTH_PROVIDER_CACHE_TTL_MS = 60_000;
+const AUTH_PROVIDER_CACHE_MAX_ENTRIES = 1_000;
+const authProviderCache = new Map<string, { provider: string | null; expiresAt: number }>();
+
+function cacheAuthProvider(email: string, provider: string | null) {
+  if (authProviderCache.size >= AUTH_PROVIDER_CACHE_MAX_ENTRIES) {
+    const oldestKey = authProviderCache.keys().next().value;
+    if (oldestKey) authProviderCache.delete(oldestKey);
+  }
+  authProviderCache.set(email, { provider, expiresAt: Date.now() + AUTH_PROVIDER_CACHE_TTL_MS });
+}
+
 export async function getAuthProviderForEmail(email: string): Promise<string | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const cached = authProviderCache.get(normalizedEmail);
+  if (cached && cached.expiresAt > Date.now()) return cached.provider;
+  if (cached) authProviderCache.delete(normalizedEmail);
   try {
     const admin = createSupabaseAdminClient();
     // Do not depend on a Profile row: first-time Google users may have an Auth
@@ -95,19 +111,24 @@ export async function getAuthProviderForEmail(email: string): Promise<string | n
     });
     if (error) return null;
     const authUser = data.users.find(
-      (candidate) => candidate.email?.toLowerCase() === email.toLowerCase(),
+      (candidate) => candidate.email?.toLowerCase() === normalizedEmail,
     );
-    if (!authUser) return null;
+    if (!authUser) {
+      cacheAuthProvider(normalizedEmail, null);
+      return null;
+    }
     const providers = authUser.identities?.map((identity) => identity.provider) ?? [];
     // Hosted Supabase users may have only app_metadata.provider (without an
     // identities array), particularly for older Google accounts.
     const metadataProvider = authUser.app_metadata?.provider;
-    return (
+    const provider = (
       providers.find((provider) => provider !== "email") ??
       metadataProvider ??
       providers[0] ??
       null
     );
+    cacheAuthProvider(normalizedEmail, provider);
+    return provider;
   } catch {
     return null;
   }

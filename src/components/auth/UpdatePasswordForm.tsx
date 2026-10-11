@@ -8,11 +8,10 @@ export function UpdatePasswordForm() {
   const [state, action, pending] = useActionState(updatePasswordAction, {});
   return (
     <form action={action} className="space-y-3">
-      <PasswordField
-        name="currentPassword"
-        autoComplete="current-password"
-        placeholder="Current password (if applicable)"
-      />
+      <label className="block space-y-1 text-sm">
+        <span>Verification code (for email accounts)</span>
+        <input name="nonce" inputMode="numeric" autoComplete="one-time-code" className="min-h-11 w-full rounded-xl border border-line px-3" />
+      </label>
       <PasswordField
         autoComplete="new-password"
         minLength={8}

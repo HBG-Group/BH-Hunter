@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { getCurrentUser, requireProfile } from "@/lib/auth/profile";
-import { revokeOtherSessionsAction } from "@/lib/account/actions";
 import { signOutAction } from "@/lib/auth/actions";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { ProfileSettingsForm } from "@/components/account/ProfileSettingsForm";
+import { RevokeOtherSessionsForm } from "@/components/account/RevokeOtherSessionsForm";
 
 export default async function SettingsPage() {
   const profile = await requireProfile("/settings");
@@ -41,11 +41,7 @@ export default async function SettingsPage() {
           <h2 className="font-semibold text-ink">Sign-in and sessions</h2>
           <div className="flex flex-wrap gap-3">
             {hasEmailIdentity && <Link href="/account/password" className="inline-flex min-h-11 items-center rounded-xl px-4 text-sm ring-1 ring-inset ring-line">Change password</Link>}
-            <form action={revokeOtherSessionsAction}>
-              <button className="min-h-11 rounded-xl px-4 text-sm ring-1 ring-inset ring-line">
-                Sign out other sessions
-              </button>
-            </form>
+            <RevokeOtherSessionsForm />
             <form action={signOutAction}>
               <button className="min-h-11 rounded-xl px-4 text-sm ring-1 ring-inset ring-line">
                 Sign out this device
