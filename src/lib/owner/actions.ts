@@ -126,14 +126,19 @@ export async function updateListingAction(
   if (!result.ok) return { error: result.error };
 
   const entitlement = await getOwnerRoomEntitlement(owner.id);
-  if (result.data.rooms.length > entitlement.roomLimit) {
+  const existing = await findOwnerListing(owner.id, id);
+  if (!existing) return { error: "Listing not found" };
+  if (
+    result.data.rooms.length > entitlement.roomLimit &&
+    result.data.rooms.length > existing.rooms.length
+  ) {
     return {
       error: `${entitlement.planName} allows up to ${entitlement.roomLimit} rooms per listing.`,
     };
   }
 
   // Compare availability before/after so we can alert students when a room opens up.
-  const before = await findOwnerListing(owner.id, id);
+  const before = existing;
   const beforeState = before
     ? summarizeAvailability(before.rooms).state
     : "FULL";
