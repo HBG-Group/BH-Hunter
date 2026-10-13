@@ -19,6 +19,7 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
+    "db:backup": "tsx scripts/backup-database.mts",
     "make-admin": "tsx scripts/make-admin.ts"
   },
   "prisma": {

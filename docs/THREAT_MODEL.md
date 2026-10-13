@@ -75,3 +75,25 @@ Prisma access, and upload-ticket signing remain server-only.
 | Oversized, unexpected, or malformed input | strict Zod schemas and field limits | validation regression tests |
 | Credential stuffing | auth rate limit and generic login response | auth action and rate-limit review |
 | Admin compromise | recent auth, audit events, branch and platform controls | operational MFA and audit-log verification remain required |
+
+## Review and approval
+
+An accountable owner reviews this threat model, records the outcome below, and
+sets the next review date. Approval for the current revision is _pending_ until a
+named owner signs off.
+
+| Revision | Reviewed by | Review date | Next review | Material changes | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| 1 | _pending_ | _pending_ | _pending_ | Initial version-controlled threat model | _pending_ |
+
+### Change log
+
+- July 27, 2026: initial version-controlled threat model added.
+
+### Review checklist
+
+- [ ] Assets, trust boundaries, and data flows still match the deployed system.
+- [ ] Abuse cases and mitigations reflect the current controls.
+- [ ] Open gaps are tracked as issues or security-register entries.
+- [ ] Reviewer name, date, and next review date are recorded in the table above.
+- [ ] Review outcome linked to the tracking issue.

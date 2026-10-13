@@ -41,5 +41,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# local database backups (never commit dumps)
+/.backups/
+/backups/
+*.dump
+
 # QA seeding script contains live account passwords — keep it local.
 scripts/seed-qa-users.ts
