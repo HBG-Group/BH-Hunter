@@ -29,10 +29,13 @@ plus the alpha rule set (`-a`); it does not authenticate or perform destructive
 actions.
 
 Dispatches are validated before scanning: the target must be an absolute
-`https://` URL, and its host must match the `DAST_ALLOWED_HOSTS` repository
-variable (comma-separated hostnames; a leading `*` matches any suffix). When the
-variable is unset, only `*.vercel.app` preview hosts are accepted. This keeps a
-mis-typed dispatch from scanning an unintended target.
+`https://` URL without credentials and must use the default HTTPS port. Its host
+must match the `DAST_ALLOWED_HOSTS` repository variable (comma-separated exact
+hostnames; a leading `*.` allows subdomains). Configure this in **Settings ->
+Secrets and variables -> Actions -> Variables**. It is required and has no
+default. Use a separate `SECURITY_CHECK_ALLOWED_HOSTS` variable for deployment
+header and route checks, since those checks may include production while DAST
+should remain limited to authorized staging hosts. Prefer exact hostnames.
 
 Retain, for each run, the scanner version and rules file, the target URL, the
 date, and the uploaded `zap-baseline-report` artifact. Triage findings, open a
@@ -50,3 +53,4 @@ retest output.
 
 - Branch protection, production-environment protection, collaborator review, and GitHub secret-scanning activation require repository settings and evidence outside the checkout.
 - Dependency review on pull requests requires the repository Dependency Graph to be enabled in **Settings -> Code security**; it is not enabled today, so dependency changes are covered by Dependabot and `npm audit` instead.
+- The full lockfile audit currently reports five high-severity dependency paths through the development-only `braces@3.0.3` dependency of `eslint-config-next`. The production-only audit is clean. The upstream advisory has no patched release; the item is tracked in `docs/SECURITY_REGISTER.md` for reassessment.

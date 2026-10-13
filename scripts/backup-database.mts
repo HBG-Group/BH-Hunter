@@ -1,71 +1,83 @@
-// Manual logical database backup for the free-plan reliability drill.
-// See docs/BACKUP_RESTORE.md for the full procedure.
-//
-// Uses the direct (non-pooled) connection string because pg_dump cannot run
-// through the pgbouncer transaction pooler. Writes a timestamped custom-format
-// dump to BACKUP_DIR (default ".backups", which is git-ignored) and never logs
-// credentials. The dump is written to a ".partial" file and renamed into place
-// only after pg_dump succeeds, so a failed run never leaves a valid-looking dump.
+import { createCipheriv, randomBytes } from "node:crypto";
+import { spawn } from "node:child_process";
+import { createWriteStream } from "node:fs";
+import { mkdir, open, rename, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { pipeline } from "node:stream/promises";
 
-import { spawnSync } from "node:child_process";
-import { mkdirSync, renameSync, rmSync } from "node:fs";
-import { resolve } from "node:path";
+const magic = Buffer.from("BHBKUP01");
+const ivLength = 12;
 
-const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error(
-    "Set DIRECT_URL (preferred) or DATABASE_URL to the source database before running the backup.",
-  );
-}
-
-function redact(value: string): string {
-  try {
-    const url = new URL(value);
-    return `${url.host}${url.pathname}`;
-  } catch {
-    return "<unparsable-connection-string>";
+function encryptionKey(): Buffer {
+  const encoded = process.env.BACKUP_ENCRYPTION_KEY;
+  if (!encoded || !/^(?:[A-Za-z0-9+/]{4}){10}[A-Za-z0-9+/]{3}=$/.test(encoded)) {
+    throw new Error("BACKUP_ENCRYPTION_KEY must be base64 encoding of exactly 32 random bytes.");
   }
+  const key = Buffer.from(encoded, "base64");
+  if (key.length !== 32 || key.toString("base64") !== encoded) {
+    throw new Error("BACKUP_ENCRYPTION_KEY must be canonical base64 for exactly 32 bytes.");
+  }
+  return key;
 }
 
-const outputDir = resolve(process.env.BACKUP_DIR ?? ".backups");
-mkdirSync(outputDir, { recursive: true });
-
-const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-const outputFile = resolve(outputDir, `meino-${stamp}.dump`);
-const partialFile = `${outputFile}.partial`;
-
-function removePartial(): void {
-  rmSync(partialFile, { force: true });
+function safeConnection(raw: string): { url: string; password?: string } {
+  const parsed = new URL(raw);
+  if (parsed.protocol !== "postgres:" && parsed.protocol !== "postgresql:") {
+    throw new Error("Database connection must use PostgreSQL.");
+  }
+  const password = decodeURIComponent(parsed.password);
+  parsed.password = "";
+  return { url: parsed.href, password: password || undefined };
 }
 
-console.log(`Backing up ${redact(connectionString)} -> ${outputFile}`);
+const directUrl = process.env.DIRECT_URL;
+if (!directUrl) throw new Error("DIRECT_URL is required.");
+const key = encryptionKey();
+const connection = safeConnection(directUrl);
+const outputDir = join(process.cwd(), ".backups");
+await mkdir(outputDir, { recursive: true });
+const timestamp = new Date().toISOString().replaceAll(":", "-");
+const outputPath = join(outputDir, `meino-${timestamp}.dump.enc`);
+const partialPath = `${outputPath}.partial`;
+const iv = randomBytes(ivLength);
+const cipher = createCipheriv("aes-256-gcm", key, iv);
+const file = await open(partialPath, "wx", 0o600);
+await file.writeFile(Buffer.concat([magic, iv]));
+await file.close();
 
-const result = spawnSync(
-  "pg_dump",
-  [
-    "--format=custom",
-    "--no-owner",
-    "--no-privileges",
-    "--file",
-    partialFile,
-    connectionString,
-  ],
-  { stdio: "inherit" },
-);
-
-if (result.error) {
-  removePartial();
-  throw new Error(
-    "Could not run pg_dump. Install the PostgreSQL client tools and ensure pg_dump is on PATH.",
-  );
+const childEnv = { NODE_ENV: process.env.NODE_ENV ?? "production" } as NodeJS.ProcessEnv;
+for (const name of ["PATH", "Path", "SystemRoot", "WINDIR", "TEMP", "TMP", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA"]) {
+  if (process.env[name]) childEnv[name] = process.env[name];
 }
+childEnv.PGAPPNAME = "meino-backup";
+if (connection.password) childEnv.PGPASSWORD = connection.password;
 
-if (result.status !== 0) {
-  removePartial();
-  throw new Error(`pg_dump exited with code ${result.status}.`);
+const dump = spawn("pg_dump", ["--format=custom", "--no-owner", "--no-privileges", "--dbname", connection.url], {
+  env: childEnv,
+  stdio: ["ignore", "pipe", "inherit"],
+});
+const exitCodePromise = new Promise<number | null>((resolve, reject) => {
+  dump.once("error", reject);
+  dump.once("close", resolve);
+});
+
+try {
+  const [, exitCode] = await Promise.all([
+    pipeline(dump.stdout, cipher, createWriteStream(partialPath, { flags: "a", mode: 0o600 })),
+    exitCodePromise,
+  ]);
+  if (exitCode !== 0) throw new Error(`pg_dump exited with status ${exitCode}.`);
+  const tag = cipher.getAuthTag();
+  const handle = await open(partialPath, "a");
+  await handle.write(tag);
+  await handle.close();
+  await rename(partialPath, outputPath);
+  console.log(`Encrypted backup created: ${outputPath}`);
+} catch (error) {
+  dump.kill();
+  await rm(partialPath, { force: true });
+  throw error;
+} finally {
+  key.fill(0);
+  if (connection.password) connection.password = "";
 }
-
-renameSync(partialFile, outputFile);
-
-console.log("Backup complete. Verify and restore using docs/BACKUP_RESTORE.md.");

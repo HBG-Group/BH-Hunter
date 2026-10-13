@@ -64,6 +64,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event_name == 'deployment_status' && github.event.repository.default_branch || github.ref }}
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -74,13 +76,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate deployment URL
+        id: validated-deployment-target
+        env:
+          DEPLOY_URL: ${{ inputs.security_check_url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+          SECURITY_CHECK_ALLOWED_HOSTS: ${{ vars.SECURITY_CHECK_ALLOWED_HOSTS }}
+        shell: bash
+        run: node scripts/validate-deployment-url.mjs "$DEPLOY_URL" "$SECURITY_CHECK_ALLOWED_HOSTS"
+
       - name: Check whether the deployment is publicly testable
         id: deployment-access
         env:
-          DEPLOY_URL: ${{ inputs.security_check_url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+          DEPLOY_URL: ${{ steps.validated-deployment-target.outputs.url }}
         shell: bash
         run: |
-          location="$(curl --silent --show-error --head --max-redirs 0 "$DEPLOY_URL" | tr -d '\r' | awk 'tolower($1) == "location:" { print $2; exit }')"
+          set -euo pipefail
+          location="$(curl --proto '=https' --silent --show-error --head --max-redirs 0 --url "$DEPLOY_URL" | tr -d '\r' | awk 'tolower($1) == "location:" { print $2; exit }')"
           if [[ "$location" == https://vercel.com/* ]]; then
             echo "public=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Deployment is protected by Vercel Authentication. Configure a protection-bypass secret or run this workflow manually against a public alias."
@@ -91,11 +102,11 @@ jobs:
       - name: Verify deployed security headers and source maps
         if: steps.deployment-access.outputs.public == 'true'
         env:
-          SECURITY_CHECK_URL: ${{ inputs.security_check_url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+          SECURITY_CHECK_URL: ${{ steps.validated-deployment-target.outputs.url }}
         run: npm run security:verify-deployment
 
       - name: Verify deployed public and protected route availability
         if: steps.deployment-access.outputs.public == 'true'
         env:
-          DEPLOY_URL: ${{ inputs.security_check_url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+          DEPLOY_URL: ${{ steps.validated-deployment-target.outputs.url }}
         run: npm run verify:routes

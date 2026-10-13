@@ -1,6 +1,6 @@
 # Security Register
 
-Last updated: July 27, 2026
+Last updated: October 13, 2026
 
 | Control | Owner | Status | Evidence | Risk | Due date | Next review |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -11,3 +11,4 @@ Last updated: July 27, 2026
 | Account export and deletion | Engineering | Implemented in repo | `/account/privacy`, export route | Medium until production walkthrough | Before launch | Before launch |
 | Security disclosure policy | Engineering | Implemented in repo | `docs/VULNERABILITY_DISCLOSURE.md`, `/.well-known/security.txt` | Low | 2026-07-27 | Quarterly |
 | Incident response plan | Engineering / Ops | Drafted in repo | `docs/INCIDENT_RESPONSE.md` | Medium until owner assignment and exercise | Before launch | Quarterly |
+| `braces@3.0.3` development dependency advisory | Engineering | Monitoring upstream; no patched release available | `npm audit`; [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) via `eslint-config-next` | Potential CI denial of service if untrusted brace patterns reach glob expansion; not in production dependencies | 2026-10-27 | 2026-10-20 |

@@ -26,58 +26,71 @@ starting points, not approved targets:
 ## Prerequisites
 
 - PostgreSQL client tools (`pg_dump`, `pg_restore`) on `PATH`.
-- The source connection string in the environment only. Use the direct
-  (non-pooled) `DIRECT_URL`; the pooler cannot serve `pg_dump`.
+- The direct (non-pooled) `DIRECT_URL` in the environment only. The backup
+  script rejects `DATABASE_URL` because it may point to the transaction pooler.
+- `BACKUP_ENCRYPTION_KEY`: canonical base64 for 32 cryptographically random
+  bytes. Generate it with a trusted local tool (for example,
+  `openssl rand -base64 32`) and store it in a secret manager. Keep the same key
+  securely available to restore operators; never commit it or paste it into logs.
 - A second free Supabase project available as the restore target.
-- Restore credentials are separate from production and stored in the platform
-  secret manager, not in the repository.
+- `RESTORE_DIRECT_URL`: direct connection string for the disposable restore
+  project. Restore credentials are separate from production and stored in the
+  platform secret manager, not in the repository.
 
-Never commit dump files or connection strings. `.backups/` is git-ignored.
+Never commit dump files, encryption keys, or connection strings. `.backups/` and
+encrypted dump files are git-ignored.
 
 ## Procedure
 
-1. Export the database (writes a timestamped custom-format dump):
+1. Export the database (writes a timestamped authenticated encrypted dump):
 
    ```bash
    npm run db:backup
    ```
 
-   This is equivalent to:
-
-   ```bash
-   pg_dump --format=custom --no-owner --no-privileges \
-     --file ".backups/meino-<timestamp>.dump" "$DIRECT_URL"
-   ```
+   The script streams `pg_dump` output through AES-256-GCM directly to an
+   encrypted file, without writing a plaintext dump. It removes the password
+   from the connection URL before starting `pg_dump` and supplies it through the
+   child process environment. It creates the partial encrypted file with
+   owner-only permissions on POSIX systems. Store backups on a restricted
+   encrypted volume; Windows uses the destination folder's inherited access
+   control list.
 
    The script writes to a `.partial` file first and renames it to the final
-   `.dump` name only after `pg_dump` succeeds. A failed export removes the
-   partial file, so any `.dump` left in `.backups/` is a completed backup.
+   `.dump.enc` name only after `pg_dump` succeeds. A failed export removes the
+   partial file, so any completed `.dump.enc` in `.backups/` is authenticated.
 
 2. Inventory object storage: list bucket objects and note the count and total
    size. Download a small sample set for an archive if storage restore evidence
    is required.
 
-3. Restore into the disposable project using the target's direct connection
-   string:
+3. Restore into the disposable project. Set `RESTORE_DIRECT_URL` and the same
+   `BACKUP_ENCRYPTION_KEY` used for the backup, then run:
 
    ```bash
-   pg_restore --no-owner --no-privileges \
-     --dbname "$RESTORE_DIRECT_URL" ".backups/meino-<timestamp>.dump"
+   npm run db:restore -- .backups/meino-<timestamp>.dump.enc
    ```
+
+   The restore command authenticates and decrypts into a restricted temporary
+   file before starting `pg_restore`, then removes that plaintext file on exit.
+   Ensure the temporary directory is on a protected disk and that the target is
+   disposable; the command cannot determine whether a database contains valuable
+   data.
 
 4. Validate integrity: compare row counts for the core tables
    (`profiles`, `listings`, `reviews`, `favorites`, `viewing_requests`) between
    source and target, and spot-check a few records.
 
-5. Record evidence (redacted): date, operator, source host, target host, dump
-   size, and a SHA-256 checksum of the dump file.
+5. Record evidence (redacted): date, operator, source host, target host, encrypted
+   dump size, and a SHA-256 checksum of the encrypted dump file.
 
 6. Clean up: drop the disposable restore database/schema, remove sample objects,
-   and delete the local dump when it is no longer needed.
+   and delete the local encrypted dump when it is no longer needed.
 
 ## Evidence to attach
 
-- The checksum and size of the produced dump (no connection strings).
+- The checksum and size of the produced encrypted dump (no connection strings
+  or encryption key).
 - Row-count comparison between source and target.
 - The Storage inventory summary.
 - The objective table above once RPO/RTO are approved.
