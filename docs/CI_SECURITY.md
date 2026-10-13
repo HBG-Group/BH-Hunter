@@ -28,6 +28,12 @@ Run workflow** with an authorized staging or Preview URL. The scan is passive
 plus the alpha rule set (`-a`); it does not authenticate or perform destructive
 actions.
 
+Dispatches are validated before scanning: the target must be an absolute
+`https://` URL, and its host must match the `DAST_ALLOWED_HOSTS` repository
+variable (comma-separated hostnames; a leading `*` matches any suffix). When the
+variable is unset, only `*.vercel.app` preview hosts are accepted. This keeps a
+mis-typed dispatch from scanning an unintended target.
+
 Retain, for each run, the scanner version and rules file, the target URL, the
 date, and the uploaded `zap-baseline-report` artifact. Triage findings, open a
 remediation issue for anything real, and re-run after the fix to preserve the
