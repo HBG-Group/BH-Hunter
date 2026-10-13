@@ -49,6 +49,10 @@ Never commit dump files or connection strings. `.backups/` is git-ignored.
      --file ".backups/meino-<timestamp>.dump" "$DIRECT_URL"
    ```
 
+   The script writes to a `.partial` file first and renames it to the final
+   `.dump` name only after `pg_dump` succeeds. A failed export removes the
+   partial file, so any `.dump` left in `.backups/` is a completed backup.
+
 2. Inventory object storage: list bucket objects and note the count and total
    size. Download a small sample set for an archive if storage restore evidence
    is required.
