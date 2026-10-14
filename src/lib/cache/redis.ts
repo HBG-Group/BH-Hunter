@@ -5,6 +5,11 @@
 // is unaffected.
 
 import { Redis } from "@upstash/redis";
+import { withTimeout } from "@/lib/async/timeout";
+
+// Redis is an optimization only. Bound its network calls so a stalled REST
+// request cannot prevent the database fallback from running.
+const REDIS_TIMEOUT_MS = 750;
 
 const url = process.env.UPSTASH_REDIS_REST_URL;
 const token = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -32,7 +37,11 @@ export async function cached<T>(key: string, ttlSeconds: number, fn: () => Promi
   if (!redis) return fn();
 
   try {
-    const hit = await redis.get<string>(key);
+    const hit = await withTimeout(
+      redis.get<string>(key),
+      REDIS_TIMEOUT_MS,
+      "Redis cache read timed out",
+    );
     if (hit !== null && hit !== undefined) {
       return JSON.parse(hit, reviver) as T;
     }
@@ -43,7 +52,11 @@ export async function cached<T>(key: string, ttlSeconds: number, fn: () => Promi
   const value = await fn();
 
   try {
-    await redis.set(key, JSON.stringify(value, replacer), { ex: ttlSeconds });
+    await withTimeout(
+      redis.set(key, JSON.stringify(value, replacer), { ex: ttlSeconds }),
+      REDIS_TIMEOUT_MS,
+      "Redis cache write timed out",
+    );
   } catch {
     // Caching is best-effort; a failed write doesn't fail the read.
   }
@@ -57,7 +70,7 @@ export async function cached<T>(key: string, ttlSeconds: number, fn: () => Promi
 export async function invalidate(...keys: string[]): Promise<void> {
   if (!redis || keys.length === 0) return;
   try {
-    await redis.del(...keys);
+    await withTimeout(redis.del(...keys), REDIS_TIMEOUT_MS, "Redis cache invalidation timed out");
   } catch {
     // Stale-until-TTL is an acceptable degradation; never throw from a cache delete.
   }

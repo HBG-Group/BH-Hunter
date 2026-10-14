@@ -22,8 +22,8 @@ async function loadHomeData() {
     const [rows, profile] = await Promise.all([
       resilientRead(() => findPublishedBoardingHouses(), {
         attempts: 1,
-        timeoutMs: 4_500,
-        timeoutMessage: "Published listings query exceeded five seconds",
+        timeoutMs: 12_000,
+        timeoutMessage: "Published listings query exceeded twelve seconds",
       }),
       resilientRead(() => getCurrentProfile(), {
         attempts: 1,
