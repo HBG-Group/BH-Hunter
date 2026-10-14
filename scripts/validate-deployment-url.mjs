@@ -54,7 +54,7 @@ if (allowedHosts.length === 0) {
 
 for (const entry of allowedHosts) {
   const wildcardCount = [...entry].filter((character) => character === "*").length;
-  const sampleHost = entry.replace("*", "deployment");
+  const sampleHost = entry.replaceAll("*", "deployment");
 
   if (wildcardCount > 1 || !domainPattern.test(sampleHost)) {
     fail("Allowed entries must be hostnames with at most one wildcard label segment.");
