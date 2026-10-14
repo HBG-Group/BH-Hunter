@@ -15,6 +15,10 @@ const STATIC_ROUTES = [
   "/contact",
 ];
 
+// Listing URLs depend on the database. Resolve the sitemap at request time so
+// deployments can build even when the database is temporarily unreachable.
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = serverSiteUrl() ?? "https://meino.vercel.app";
 

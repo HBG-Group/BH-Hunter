@@ -53,23 +53,25 @@ if (allowedHosts.length === 0) {
 }
 
 for (const entry of allowedHosts) {
-  const isWildcard = entry.startsWith("*.");
-  const allowedHost = isWildcard ? entry.slice(2) : entry;
+  const wildcardCount = [...entry].filter((character) => character === "*").length;
+  const sampleHost = entry.replace("*", "deployment");
 
-  if (allowedHost.includes("*") || !domainPattern.test(allowedHost)) {
-    fail("Allowed entries must be hostnames; wildcard entries must start with *.");
+  if (wildcardCount > 1 || !domainPattern.test(sampleHost)) {
+    fail("Allowed entries must be hostnames with at most one wildcard label segment.");
   }
-  if (isWildcard && allowedHost.split(".").length < 2) {
-    fail("Wildcard entries must name a specific domain suffix, such as *.staging.example.com.");
+  if (wildcardCount === 1) {
+    const labels = entry.split(".");
+    const wildcardLabelIndex = labels.findIndex((label) => label.includes("*"));
+    if (labels.length < 3 || wildcardLabelIndex >= labels.length - 2) {
+      fail("Wildcard entries must leave at least two fixed domain suffix labels, such as app-*.vercel.app.");
+    }
   }
 }
 
 const matches = allowedHosts.some((entry) => {
-  if (entry.startsWith("*.")) {
-    const suffix = entry.slice(2);
-    return host !== suffix && host.endsWith(`.${suffix}`);
-  }
-  return host === entry;
+  if (!entry.includes("*")) return host === entry;
+  const [prefix, suffix] = entry.split("*");
+  return host.startsWith(prefix) && host.endsWith(suffix) && host.length > prefix.length + suffix.length;
 });
 
 if (!matches) {
