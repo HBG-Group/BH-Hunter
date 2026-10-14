@@ -16,18 +16,39 @@ export const dynamic = "force-dynamic";
 
 async function loadHomeData() {
   try {
-    return await resilientRead(
-      async () => {
-        // Independent reads — the listings query doesn't depend on who's signed in, so
-        // run them together instead of one after the other.
-        const [rows, profile] = await Promise.all([findPublishedBoardingHouses(), getCurrentProfile()]);
-        const listings = toListingCards(rows);
-        const favoritedIds = profile ? await getFavoriteIds(profile.id) : [];
+    // Public listings must remain available even if the optional auth lookup is
+    // slow. Keep the database read on the request path, and treat auth/favorites
+    // as best-effort personalization with short time limits.
+    const [rows, profile] = await Promise.all([
+      resilientRead(() => findPublishedBoardingHouses(), {
+        attempts: 1,
+        timeoutMs: 4_500,
+        timeoutMessage: "Published listings query exceeded five seconds",
+      }),
+      resilientRead(() => getCurrentProfile(), {
+        attempts: 1,
+        timeoutMs: 1_500,
+        timeoutMessage: "Homepage session lookup timed out",
+      }).catch((error) => {
+        console.error("Unable to load homepage session", error);
+        return null;
+      }),
+    ]);
+    const listings = toListingCards(rows);
+    let favoritedIds: string[] = [];
 
-        return { listings, favoritedIds, isAuthenticated: profile !== null };
-      },
-      { timeoutMessage: "Homepage data load exceeded five seconds" },
-    );
+    if (profile) {
+      favoritedIds = await resilientRead(() => getFavoriteIds(profile.id), {
+        attempts: 1,
+        timeoutMs: 1_000,
+        timeoutMessage: "Homepage favorites lookup timed out",
+      }).catch((error) => {
+        console.error("Unable to load homepage favorites", error);
+        return [];
+      });
+    }
+
+    return { listings, favoritedIds, isAuthenticated: profile !== null };
   } catch (error) {
     // Keep the incident detail in server logs while returning a safe public fallback.
     console.error("Unable to load homepage data", error);
