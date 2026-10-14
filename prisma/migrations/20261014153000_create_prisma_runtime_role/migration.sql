@@ -3,21 +3,23 @@
 -- handling flow. This role is for trusted server-side code only.
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'meino_runtime') THEN
-    RAISE EXCEPTION 'Role meino_runtime already exists; inspect it before applying this migration';
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'meino_runtime') THEN
+    CREATE ROLE meino_runtime
+      NOLOGIN
+      NOSUPERUSER
+      NOCREATEDB
+      NOCREATEROLE
+      NOINHERIT
+      NOREPLICATION
+      NOBYPASSRLS
+      CONNECTION LIMIT 10;
   END IF;
-
-  CREATE ROLE meino_runtime
-    NOLOGIN
-    NOSUPERUSER
-    NOCREATEDB
-    NOCREATEROLE
-    NOINHERIT
-    NOREPLICATION
-    NOBYPASSRLS
-    CONNECTION LIMIT 10;
 END
 $$;
+
+-- Reassert restricted attributes without changing the login/password set by
+-- the secret-handling step.
+ALTER ROLE meino_runtime NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS CONNECTION LIMIT 10;
 
 GRANT USAGE ON SCHEMA public TO meino_runtime;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO meino_runtime;
@@ -33,11 +35,19 @@ BEGIN
     FROM pg_tables
     WHERE schemaname = 'public'
   LOOP
-    EXECUTE format(
-      'CREATE POLICY %I ON public.%I FOR ALL TO meino_runtime USING (true) WITH CHECK (true)',
-      'meino_runtime_access',
-      table_record.tablename
-    );
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_policies
+      WHERE schemaname = 'public'
+        AND tablename = table_record.tablename
+        AND policyname = 'meino_runtime_access'
+    ) THEN
+      EXECUTE format(
+        'CREATE POLICY %I ON public.%I FOR ALL TO meino_runtime USING (true) WITH CHECK (true)',
+        'meino_runtime_access',
+        table_record.tablename
+      );
+    END IF;
   END LOOP;
 END
 $$;
