@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 
@@ -47,24 +48,59 @@ async function createUser(
   if (error || !data.user)
     throw error ?? new Error("Could not create staging test user");
 
+  const user = { email, password, id: data.user.id };
+  // Record the Auth user before creating its profile so afterAll can remove it
+  // even when profile setup fails partway through the fixture bootstrap.
+  users.set(key, user);
+
   const { error: profileError } = await admin.from("profiles").upsert({
     id: data.user.id,
     email,
     fullName: `Security ${role}`,
     role,
+    updatedAt: new Date().toISOString(),
   });
   if (profileError) throw profileError;
 
-  const user = { email, password, id: data.user.id };
-  users.set(key, user);
   return user;
 }
 
 async function signIn(page: Page, user: TestUser) {
-  await page.goto("/login");
-  await page.locator('input[name="email"]').fill(user.email);
-  await page.locator('input[name="password"]').fill(user.password);
-  await page.getByRole("button", { name: /sign in/i }).click();
+  const authClient = createClient(supabaseUrl!, serviceRoleKey!, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data, error } = await authClient.auth.signInWithPassword({
+    email: user.email,
+    password: user.password,
+  });
+  if (error || !data.session)
+    throw error ?? new Error("Could not create a staging test session");
+
+  // Serialize the test account's real Supabase session with the same SSR cookie
+  // format the app reads. This bypasses the Google-only UI, not app authorization.
+  const cookieJar = new Map<string, string>();
+  const sessionClient = createServerClient(supabaseUrl!, serviceRoleKey!, {
+    cookies: {
+      getAll: () =>
+        [...cookieJar].map(([name, value]) => ({ name, value })),
+      setAll: (cookiesToSet) => {
+        for (const { name, value } of cookiesToSet) cookieJar.set(name, value);
+      },
+    },
+  });
+  const { error: sessionError } = await sessionClient.auth.setSession({
+    access_token: data.session.access_token,
+    refresh_token: data.session.refresh_token,
+  });
+  if (sessionError) throw sessionError;
+
+  await page.context().addCookies(
+    [...cookieJar].map(([name, value]) => ({
+      name,
+      value,
+      url: new URL(baseURL!).origin,
+    })),
+  );
 }
 
 async function createListing(
@@ -75,6 +111,7 @@ async function createListing(
   const { data, error } = await admin
     .from("boarding_houses")
     .insert({
+      id: randomUUID(),
       ownerId,
       slug: `${runId}-${suffix}`,
       name: `Security fixture ${suffix}`,
@@ -85,6 +122,7 @@ async function createListing(
       priceMonthly: 1000,
       contactPhone: "09123456789",
       status,
+      updatedAt: new Date().toISOString(),
     })
     .select("id, slug")
     .single();
@@ -116,13 +154,25 @@ test.describe("staging authorization boundaries", () => {
 
   test.beforeAll(async () => {
     requireStaging();
+    const previewResponse = await fetch(baseURL!, { redirect: "follow" });
+    if (!previewResponse.ok)
+      throw new Error(
+        `Could not inspect the staging preview (HTTP ${previewResponse.status}).`,
+      );
+    const previewHtml = await previewResponse.text();
+    const expectedProjectHost = new URL(supabaseUrl!).hostname;
+    if (!previewHtml.includes(expectedProjectHost)) {
+      throw new Error(
+        `The staging preview does not appear to use ${expectedProjectHost}; refusing to create fixtures. Check the Preview environment variables for the develop branch and redeploy.`,
+      );
+    }
+
     admin = createClient(supabaseUrl!, serviceRoleKey!, {
       auth: { persistSession: false },
     });
     await createUser("student", "STUDENT");
     const ownerA = await createUser("owner-a", "OWNER");
     const ownerB = await createUser("owner-b", "OWNER");
-    await createUser("admin", "ADMIN");
     const ownerAListing = await createListing(ownerA.id, "owner-a", "DRAFT");
     ownerAListingId = ownerAListing.id;
     const ownerBListing = await createListing(
@@ -135,7 +185,7 @@ test.describe("staging authorization boundaries", () => {
   });
 
   test.afterAll(async () => {
-    if (!enabled) return;
+    if (!enabled || !admin) return;
     await admin
       .from("boarding_houses")
       .delete()
@@ -154,32 +204,15 @@ test.describe("staging authorization boundaries", () => {
     await expect(page.getByText("Overview")).toHaveCount(0);
   });
 
-  test("the staff gate never exposes public account or owner entry points", async ({
+  test("the public preview hides admin routes on desktop and mobile", async ({
     page,
   }) => {
-    await page.goto("/admin");
-    await expect(
-      page.getByRole("heading", { name: "Staff sign in" }),
-    ).toBeVisible();
-    await expect(page.getByText("Administrator access only.")).toBeVisible();
-    await expect(
-      page.getByRole("link", {
-        name: /create an account|sign up|list your property/i,
-      }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: /continue with google/i }),
-    ).toHaveCount(0);
+    const desktopResponse = await page.goto("/admin");
+    expect(desktopResponse?.status()).toBe(404);
 
     await page.setViewportSize({ width: 375, height: 812 });
-    await expect(
-      page.getByRole("link", {
-        name: /create an account|sign up|list your property/i,
-      }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: /continue with google/i }),
-    ).toHaveCount(0);
+    const mobileResponse = await page.goto("/admin");
+    expect(mobileResponse?.status()).toBe(404);
   });
 
   test("a student cannot reach owner or admin data", async ({ page }) => {
@@ -257,11 +290,44 @@ test.describe("staging authorization boundaries", () => {
     expect(after.lastConfirmedAt).toBe(before.lastConfirmedAt);
   });
 
-  test("an administrator can reach the protected moderation area", async ({
+  test("a student cannot replay an owner Server Action to change owner data", async ({
+    browser,
     page,
   }) => {
-    await signIn(page, users.get("admin")!);
-    await page.goto("/admin");
-    await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+    await signIn(page, users.get("owner-a")!);
+    await page.goto("/owner");
+    const actionRequest = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        Boolean(request.headers()["next-action"]),
+    );
+    await page.getByRole("button", { name: "Confirm vacancies" }).click();
+    const request = await actionRequest;
+    const { data: before, error: beforeError } = await admin
+      .from("boarding_houses")
+      .select("lastConfirmedAt")
+      .eq("id", ownerAListingId)
+      .single();
+    if (beforeError || !before)
+      throw beforeError ?? new Error("Could not read Owner A fixture");
+
+    const studentContext = await browser.newContext({ baseURL });
+    const studentPage = await studentContext.newPage();
+    await signIn(studentPage, users.get("student")!);
+    const replay = await studentContext.request.post(request.url(), {
+      headers: actionReplayHeaders(request.headers()),
+      data: request.postDataBuffer(),
+    });
+    expect(replay.status()).toBeLessThan(500);
+
+    const { data: after, error: afterError } = await admin
+      .from("boarding_houses")
+      .select("lastConfirmedAt")
+      .eq("id", ownerAListingId)
+      .single();
+    await studentContext.close();
+    if (afterError || !after)
+      throw afterError ?? new Error("Could not read Owner A fixture");
+    expect(after.lastConfirmedAt).toBe(before.lastConfirmedAt);
   });
 });
