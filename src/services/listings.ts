@@ -4,6 +4,7 @@
 import { activeCampus } from "@/config/campus";
 import type { BoardingHouseWithRelations } from "@/lib/db/boarding-houses";
 import { estimateTravel } from "@/lib/utils/distance";
+import { isVerified } from "@/lib/owner/verification";
 import {
   isAvailabilityStale,
   summarizeAvailability,
@@ -75,6 +76,6 @@ export function toListingDetail(row: BoardingHouseWithRelations): ListingDetail 
       walkMinutes: place.walkMinutes,
     })),
     ownerName: row.owner.fullName,
-    ownerVerified: row.owner.verified,
+    ownerVerified: isVerified(row.owner),
   };
 }

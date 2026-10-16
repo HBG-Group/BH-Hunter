@@ -14,6 +14,12 @@ export const FREE_LISTING_LIMIT = 5;
 // Price of each listing beyond the free limit, in pesos.
 export const EXTRA_LISTING_PRICE = 29;
 
+// One-time fee an owner pays before an admin grants the Verified Owner badge, in pesos.
+export const VERIFICATION_PRICE = 39;
+
+// How long a granted verification lasts before it auto-expires.
+export const VERIFICATION_DURATION_DAYS = 30;
+
 // Future owner subscription, in pesos per month. Not enforced yet.
 export const MONTHLY_SUBSCRIPTION_PRICE = 99;
 
@@ -25,4 +31,11 @@ export function nextListingNeedsPayment(currentCount: number): boolean {
 // Free listings still remaining. Never negative.
 export function freeListingsLeft(currentCount: number): number {
   return Math.max(0, FREE_LISTING_LIMIT - currentCount);
+}
+
+// Has the owner reached the free ceiling? Unlike nextListingNeedsPayment this is NOT
+// tied to BILLING_ENABLED — extra listings always require contacting the admin, since
+// there is no self-serve payment. Used to block the create form beyond the free limit.
+export function isAtFreeLimit(currentCount: number): boolean {
+  return currentCount >= FREE_LISTING_LIMIT;
 }

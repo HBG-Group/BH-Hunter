@@ -9,6 +9,7 @@ import { AMENITIES } from "@/config/amenities";
 import { formatPeso } from "@/lib/utils/format";
 import { formatCurfew } from "@/lib/utils/curfew";
 import { parseContactNumbers, formatContactNumber } from "@/lib/contact/phones";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -18,9 +19,9 @@ const genderLabels: Record<string, string> = { MALE: "Male", FEMALE: "Female", M
 
 function Fact({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs text-neutral-500">{label}</dt>
-      <dd className="text-sm text-neutral-900">{value}</dd>
+      <dd className="break-words text-sm text-neutral-900">{value}</dd>
     </div>
   );
 }
@@ -28,7 +29,7 @@ function Fact({ label, value }: { label: string; value: React.ReactNode }) {
 export default async function AdminListingDetailPage({ params }: PageProps) {
   if (!(await getAdminOrNull())) return null;
   const { id } = await params;
-  const listing = await findListingForAdmin(id);
+  const listing = await resilientRead(() => findListingForAdmin(id));
   if (!listing) notFound();
 
   const amenityLabels = new Map(AMENITIES.map((a) => [a.key, a.label]));

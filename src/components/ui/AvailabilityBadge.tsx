@@ -13,7 +13,7 @@ export function AvailabilityBadge({ state, remaining }: Props) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${style.badgeClass}`}
+      className={`inline-flex w-fit shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium leading-none ring-1 ring-inset ${style.badgeClass}`}
     >
       <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: style.color }} />
       {text}

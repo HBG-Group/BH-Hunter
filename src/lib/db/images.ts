@@ -14,39 +14,46 @@ export function countImages(boardingHouseId: string) {
   return prisma.image.count({ where: { boardingHouseId } });
 }
 
-async function ownsListing(ownerId: string, boardingHouseId: string): Promise<boolean> {
-  const listing = await prisma.boardingHouse.findFirst({
-    where: { id: boardingHouseId, ownerId },
-    select: { id: true },
-  });
-  return listing !== null;
-}
-
-// Appends a photo after the current last one. Returns false if the owner doesn't
-// own the listing.
-export async function addImageForOwner(
+export async function registerImagesForOwner(
   ownerId: string,
   boardingHouseId: string,
-  url: string,
-): Promise<boolean> {
-  if (!(await ownsListing(ownerId, boardingHouseId))) return false;
+  urls: string[],
+  photoLimit: number,
+): Promise<"not-owned" | "limit" | "saved"> {
+  return prisma.$transaction(async (tx) => {
+    const listing = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "boarding_houses"
+      WHERE id = ${boardingHouseId} AND "ownerId" = ${ownerId}
+      FOR UPDATE
+    `;
+    if (listing.length === 0) return "not-owned";
 
-  const last = await prisma.image.findFirst({
-    where: { boardingHouseId },
-    orderBy: { sortOrder: "desc" },
-    select: { sortOrder: true },
+    const uniqueUrls = [...new Set(urls)];
+    const existing = await tx.image.findMany({
+      where: { boardingHouseId, url: { in: uniqueUrls } },
+      select: { url: true },
+    });
+    const knownUrls = new Set(existing.map((image) => image.url));
+    const newUrls = uniqueUrls.filter((url) => !knownUrls.has(url));
+    const count = await tx.image.count({ where: { boardingHouseId } });
+    if (count + newUrls.length > photoLimit) return "limit";
+
+    if (newUrls.length > 0) {
+      const last = await tx.image.findFirst({
+        where: { boardingHouseId },
+        orderBy: { sortOrder: "desc" },
+        select: { sortOrder: true },
+      });
+      await tx.image.createMany({
+        data: newUrls.map((url, index) => ({
+          boardingHouseId,
+          url,
+          sortOrder: (last?.sortOrder ?? -1) + index + 1,
+        })),
+      });
+    }
+    return "saved";
   });
-
-  await prisma.image.create({
-    data: { boardingHouseId, url, sortOrder: (last?.sortOrder ?? -1) + 1 },
-  });
-  return true;
-}
-
-// True when this exact object has already been registered — blocks ticket replay.
-export async function imageUrlExists(url: string): Promise<boolean> {
-  const existing = await prisma.image.findFirst({ where: { url }, select: { id: true } });
-  return existing !== null;
 }
 
 // Removes photos the owner owns on the given listing, returning their URLs so the
@@ -57,11 +64,55 @@ export async function deleteImagesForOwner(
   imageIds: string[],
 ): Promise<string[]> {
   const images = await prisma.image.findMany({
-    where: { id: { in: imageIds }, boardingHouseId, boardingHouse: { ownerId } },
+    where: {
+      id: { in: imageIds },
+      boardingHouseId,
+      boardingHouse: { ownerId },
+    },
     select: { id: true, url: true },
   });
   if (images.length === 0) return [];
 
-  await prisma.image.deleteMany({ where: { id: { in: images.map((image) => image.id) } } });
+  await prisma.image.deleteMany({
+    where: { id: { in: images.map((image) => image.id) } },
+  });
   return images.map((image) => image.url);
+}
+
+export async function updateImageAltForOwner(
+  ownerId: string,
+  boardingHouseId: string,
+  imageId: string,
+  alt: string | null,
+): Promise<boolean> {
+  const result = await prisma.image.updateMany({
+    where: { id: imageId, boardingHouseId, boardingHouse: { ownerId } },
+    data: { alt },
+  });
+  return result.count === 1;
+}
+
+export async function reorderImagesForOwner(
+  ownerId: string,
+  boardingHouseId: string,
+  imageIds: string[],
+): Promise<boolean> {
+  const uniqueIds = [...new Set(imageIds)];
+  if (uniqueIds.length !== imageIds.length) return false;
+
+  const owned = await prisma.image.count({
+    where: {
+      id: { in: uniqueIds },
+      boardingHouseId,
+      boardingHouse: { ownerId },
+    },
+  });
+  if (owned !== uniqueIds.length) return false;
+
+  await prisma.$transaction(
+    uniqueIds.map((id, sortOrder) =>
+      prisma.image.update({ where: { id }, data: { sortOrder } }),
+    ),
+  );
+  return true;
 }

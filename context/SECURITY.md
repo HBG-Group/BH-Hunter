@@ -14,6 +14,13 @@ the app is unaffected because it uses Prisma. Verified: all `public` tables (inc
 `subscriptions` and `advertisements`) have `relrowsecurity = true`.
 **Rule:** every new table must have RLS enabled — `db:push` does not do this.
 
+### ✓ Google-only authentication and database role checks
+**Why:** the PWA uses Google OAuth for sign-in. Admin OAuth callbacks are accepted only
+on the control host and only when the authenticated Supabase user already has a matching
+Profile row with `role = ADMIN` and a linked Google identity. The callback never creates
+or promotes an admin profile. The `/admin` layout and every admin operation independently
+check the database role.
+
 ### ✓ HMAC upload tickets — `lib/security/upload-ticket.ts`
 **Why:** the browser uploads photos directly to Storage, so the server must be sure a
 later "register this path" call refers to a file *it* authorized. Each ticket is an
@@ -69,11 +76,11 @@ anonymous): auth 8/min, reviews 5/min, viewings 5/5min, favorites 60/min, analyt
 per-instance on serverless — see "Future" for the Redis upgrade.
 
 ### ✓ Secure authentication
-**Why:** protect accounts and avoid enumeration. Supabase Auth; server-side Zod on
-sign-in/up; `signInAction` returns a uniform "Incorrect email or password" so it can't be
-used to probe which emails exist; role is coerced to STUDENT/OWNER before validation so
-ADMIN is unreachable via sign-up (admins only via `npm run make-admin`); redirects
-validated; `/admin` self-gates with an inline login and no data leak to non-admins.
+**Why:** protect accounts and avoid role escalation. Supabase Auth with Google OAuth;
+new profiles can become STUDENT or OWNER through the public sign-up flow, while ADMIN is
+assigned manually with `npm run make-admin`. The admin callback requires an existing
+database profile and linked Google identity, and `/admin` self-gates before reading
+admin data.
 
 ### ✓ Server-only secrets & safe errors
 **Why:** keep the service-role key and ticket secret off the client, and keep DB/Supabase
@@ -81,6 +88,19 @@ internals out of user-facing errors. `lib/supabase/admin.ts` and the security mo
 `import "server-only"`. `guarded`/`reportError` return a generic message + reference id;
 the real error and stack are logged server-side only. Only `NEXT_PUBLIC_*` values reach
 the browser.
+
+### ✓ Consent-gated preference cookies — `lib/cookies/`
+**Why:** cookies remember search filters, recently viewed listings, dismissed notices, and
+UI prefs — never anything sensitive. Auth cookies are managed entirely by Supabase
+`@supabase/ssr` and this module never touches them. The consent banner offers Accept All,
+Reject Non-Essential, and Customize (per-category: Preferences vs Activity); every optional
+cookie write checks `hasCategoryConsent()` for its category first (rejecting or unchecking a
+category clears its cookies immediately). On **read**, values are re-validated (Zod for
+filters, allowlisted tokens for theme/language/map style, filtered typed arrays for lists) so
+a tampered cookie can never inject an unexpected shape into app state — same "never trust
+client input" rule as server actions, just applied client-side. Values are size-capped before
+writing (well under the ~4KB browser limit) and set with `SameSite=Lax` plus `Secure` on
+HTTPS.
 
 ## Authorization model
 

@@ -3,11 +3,14 @@ import { findListingsAwaitingReview, getPlatformStats } from "@/lib/db/admin";
 import { PlatformStatCards } from "@/components/admin/PlatformStatCards";
 import { AdminListingRow } from "@/components/admin/AdminListingRow";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 export default async function AdminOverviewPage() {
   // Gate before any admin data is read; the layout renders the sign-in form.
   if (!(await getAdminOrNull())) return null;
-  const [stats, queue] = await Promise.all([getPlatformStats(), findListingsAwaitingReview()]);
+  const [stats, queue] = await resilientRead(() =>
+    Promise.all([getPlatformStats(), findListingsAwaitingReview()]),
+  );
 
   return (
     <div className="space-y-6">

@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { NAV_LINKS } from "@/components/layout/navLinks";
+import { NAV_LINKS, type NavLink } from "@/components/layout/navLinks";
+
+type Role = "STUDENT" | "OWNER" | "ADMIN";
 
 // Hamburger menu that mirrors the desktop nav links on small screens.
-export function MobileMenu() {
+export function MobileMenu({ links = NAV_LINKS, role }: { links?: NavLink[]; role?: Role }) {
   const [open, setOpen] = useState(false);
 
   // Close on Escape and lock background scroll while open.
@@ -32,7 +34,7 @@ export function MobileMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Menu"
         aria-expanded={open}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-700 hover:bg-neutral-100"
+        className="flex h-11 w-11 items-center justify-center rounded-lg text-neutral-700 hover:bg-neutral-100"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
@@ -62,7 +64,7 @@ export function MobileMenu() {
               className="absolute left-0 right-0 top-full z-[1101] border-b border-line bg-white shadow-sm"
             >
               <div className="mx-auto flex max-w-7xl flex-col px-4 py-2">
-                {NAV_LINKS.map((link) => (
+                {links.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
@@ -73,17 +75,30 @@ export function MobileMenu() {
                   </Link>
                 ))}
 
-                {/* Owner login — keeps the top bar clean while giving owners a path */}
-                <div className="mt-1 border-t border-line pt-2">
-                  <Link
-                    href="/list-your-property"
-                    onClick={() => setOpen(false)}
-                    className="block py-2.5 text-sm font-medium text-primary"
-                  >
-                    List your property
-                  </Link>
-                  <p className="pb-1 text-xs text-muted">Boarding house owner? Manage your listings here.</p>
-                </div>
+                {/* Role-aware owner CTA: guests get the pitch, owners get their dashboard,
+                    students/admins get nothing here — the nav links already cover them. */}
+                {role === "OWNER" ? (
+                  <div className="mt-1 border-t border-line pt-2">
+                    <Link
+                      href="/owner"
+                      onClick={() => setOpen(false)}
+                      className="block py-2.5 text-sm font-medium text-primary"
+                    >
+                      Manage your listings
+                    </Link>
+                  </div>
+                ) : !role ? (
+                  <div className="mt-1 border-t border-line pt-2">
+                    <Link
+                      href="/list-your-property"
+                      onClick={() => setOpen(false)}
+                      className="block py-2.5 text-sm font-medium text-primary"
+                    >
+                      List your property
+                    </Link>
+                    <p className="pb-1 text-xs text-muted">Boarding house owner? Manage your listings here.</p>
+                  </div>
+                ) : null}
               </div>
             </motion.nav>
           </>

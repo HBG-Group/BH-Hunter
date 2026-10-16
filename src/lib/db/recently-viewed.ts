@@ -25,7 +25,7 @@ export async function findRecentlyViewed(studentId: string, limit = 8) {
           amenities: { include: { amenity: true } },
           nearbyPlaces: true,
           reviews: { select: { overall: true } },
-          owner: { select: { fullName: true, verified: true } },
+          owner: { select: { fullName: true, verified: true, verifiedUntil: true } },
         },
       },
     },

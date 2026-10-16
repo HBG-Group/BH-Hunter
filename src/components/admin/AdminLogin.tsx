@@ -1,5 +1,4 @@
-import { AuthForm } from "@/components/auth/AuthForm";
-import { signInAction } from "@/lib/auth/actions";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 import { LogoMark } from "@/components/brand/Logo";
 
 // Shown in place of the dashboard when the visitor isn't a signed-in admin. Sign-in
@@ -15,7 +14,10 @@ export function AdminLogin({ denied }: { denied?: boolean }) {
 
         <div className="rounded-2xl border border-line bg-white p-6 shadow-sm">
           <h1 className="text-lg font-semibold text-ink">Staff sign in</h1>
-          <p className="mb-4 mt-0.5 text-sm text-muted">Administrator access only.</p>
+          <p className="mb-4 mt-0.5 text-sm text-muted">
+            Only a Google account linked to an existing Meino profile with the ADMIN
+            role can enter this portal.
+          </p>
 
           {denied && (
             <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -23,8 +25,7 @@ export function AdminLogin({ denied }: { denied?: boolean }) {
             </p>
           )}
 
-          {/* On success, sign-in returns to /admin; the gate re-checks the role there. */}
-          <AuthForm mode="signin" action={signInAction} next="/admin" showFooter={false} />
+          <GoogleButton next="/admin" label="Sign in with Google" />
         </div>
       </div>
     </div>

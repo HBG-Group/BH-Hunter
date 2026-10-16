@@ -26,7 +26,7 @@ export function ListingGrid({ listings, activeId, favoritedSet, isAuthenticated,
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       <AnimatePresence mode="popLayout">
-        {listings.map((listing) => (
+        {listings.map((listing, index) => (
           <ListingCard
             key={listing.id}
             listing={listing}
@@ -34,6 +34,7 @@ export function ListingGrid({ listings, activeId, favoritedSet, isAuthenticated,
             isFavorited={favoritedSet.has(listing.id)}
             isAuthenticated={isAuthenticated}
             onHover={onHover}
+            priority={index < 4}
           />
         ))}
       </AnimatePresence>

@@ -16,12 +16,15 @@ interface Props {
   isFavorited?: boolean;
   isAuthenticated?: boolean;
   onHover?: (id: string | null) => void;
+  // Set for the first visible row so its images skip lazy-loading — they're going to
+  // be requested immediately anyway, so treating them as lazy just delays first paint.
+  priority?: boolean;
 }
 
 const genderLabels: Record<string, string> = { MALE: "Male", FEMALE: "Female", MIXED: "Mixed" };
 
 // One boarding house in the grid. Hovering highlights its pin on the map.
-function ListingCardBase({ listing, isActive, isFavorited, isAuthenticated, onHover }: Props) {
+function ListingCardBase({ listing, isActive, isFavorited, isAuthenticated, onHover, priority }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -30,7 +33,8 @@ function ListingCardBase({ listing, isActive, isFavorited, isAuthenticated, onHo
       // `layout` slides remaining cards into place when the list is filtered;
       // exit fades removed ones. Entrance runs once on mount (not on scroll).
       layout
-      initial={{ opacity: 0, y: 12 }}
+      // Do not hide listings while hydration or a client-side dependency is unavailable.
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
       whileHover={{ y: -4 }}
@@ -49,6 +53,8 @@ function ListingCardBase({ listing, isActive, isFavorited, isAuthenticated, onHo
               alt={listing.name}
               fill
               sizes="(max-width: 768px) 100vw, 320px"
+              priority={priority}
+              loading={priority ? "eager" : "lazy"}
               onLoad={() => setLoaded(true)}
               onError={() => setFailed(true)}
               className={`object-cover transition-all duration-500 group-hover:scale-105 ${

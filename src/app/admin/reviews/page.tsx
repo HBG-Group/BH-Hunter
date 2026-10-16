@@ -2,10 +2,11 @@ import { getAdminOrNull } from "@/lib/auth/profile";
 import { findRecentReviews } from "@/lib/db/admin";
 import { AdminReviewRow } from "@/components/admin/AdminReviewRow";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 export default async function AdminReviewsPage() {
   if (!(await getAdminOrNull())) return null;
-  const rows = await findRecentReviews();
+  const rows = await resilientRead(findRecentReviews);
 
   return (
     <div className="space-y-4">

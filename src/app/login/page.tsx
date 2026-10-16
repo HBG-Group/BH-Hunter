@@ -1,10 +1,7 @@
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/AuthLayout";
-import { AuthForm } from "@/components/auth/AuthForm";
 import { GoogleButton } from "@/components/auth/GoogleButton";
-import { AuthDivider } from "@/components/auth/AuthDivider";
 import { safeRedirectPath } from "@/lib/security/redirect";
-import { signInAction } from "@/lib/auth/actions";
 
 interface Props {
   searchParams: Promise<{ next?: string; error?: string }>;
@@ -22,9 +19,23 @@ export default async function LoginPage({ searchParams }: Props) {
           Sign-in didn&apos;t complete. Please try again.
         </p>
       )}
-      <GoogleButton next={next || "/"} />
-      <AuthDivider />
-      <AuthForm mode="signin" action={signInAction} next={next || undefined} />
+      {error === "identity-conflict" && (
+        <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          This email already belongs to another Meino sign-in method. Use the
+          original provider, or link Google from that signed-in account first.
+        </p>
+      )}
+      {error === "confirmation" && (
+        <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          That confirmation link is invalid or expired. Request a new one and
+          wait at least 60 seconds before retrying.
+        </p>
+      )}
+      <GoogleButton next={next || "/"} label="Continue with Google" />
+
+      <p className="mt-3 text-center text-xs text-neutral-500">
+        Meino uses Google to keep sign-in simple and secure for students and owners.
+      </p>
 
       <p className="mt-4 text-center text-xs text-neutral-500">
         Renting a room?{" "}

@@ -5,10 +5,11 @@ import { toListingCards } from "@/services/listings";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { CompareTable } from "@/components/student/CompareTable";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 export default async function ComparePage() {
   const profile = await requireProfile("/compare");
-  const favorites = toListingCards(await findFavoriteListings(profile.id));
+  const favorites = toListingCards(await resilientRead(() => findFavoriteListings(profile.id)));
 
   return (
     <div className="min-h-screen bg-canvas">

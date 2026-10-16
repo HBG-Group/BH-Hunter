@@ -5,6 +5,8 @@ import { findOwnerListing } from "@/lib/db/owner";
 import { toFormValues } from "@/services/owner-listings";
 import { ListingForm } from "@/components/owner/form/ListingForm";
 import { updateListingAction } from "@/lib/owner/actions";
+import { resilientRead } from "@/lib/async/resilient-read";
+import { getOwnerRoomEntitlement } from "@/lib/owner/entitlements";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -14,7 +16,10 @@ export default async function EditListingPage({ params }: PageProps) {
   const { id } = await params;
   const owner = await requireOwner();
 
-  const row = await findOwnerListing(owner.id, id);
+  const [row, entitlement] = await resilientRead(() => Promise.all([
+    findOwnerListing(owner.id, id),
+    getOwnerRoomEntitlement(owner.id),
+  ]));
   if (!row) notFound();
 
   const initialValues = toFormValues(row);
@@ -28,7 +33,7 @@ export default async function EditListingPage({ params }: PageProps) {
       </Link>
       <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Edit {row.name}</h1>
 
-      <ListingForm action={action} initialValues={initialValues} submitLabel="Save changes" />
+      <ListingForm action={action} initialValues={initialValues} submitLabel="Save changes" roomLimit={entitlement.roomLimit} planName={entitlement.planName} />
     </div>
   );
 }

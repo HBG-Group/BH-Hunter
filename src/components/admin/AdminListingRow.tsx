@@ -6,8 +6,6 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   deleteListingAction,
   moderateStatusAction,
-  setFeaturedAction,
-  setOwnerVerifiedAction,
   setVerifiedAction,
 } from "@/lib/admin/actions";
 import { VerifiedOwnerBadge } from "@/components/ui/VerifiedOwnerBadge";
@@ -77,26 +75,6 @@ export function AdminListingRow({ listing, showModeration }: Props) {
         >
           {listing.isVerified ? "Unverify" : "Verify"}
         </button>
-
-        <button
-          onClick={() => run(() => setOwnerVerifiedAction(listing.ownerId, !listing.ownerVerified))}
-          disabled={pending}
-          title="Grant or revoke the Verified Owner badge"
-          className="rounded-lg px-3 py-1.5 text-neutral-700 ring-1 ring-inset ring-neutral-200 hover:ring-neutral-300 disabled:opacity-60"
-        >
-          {listing.ownerVerified ? "Unverify owner" : "Verify owner"}
-        </button>
-
-        {showModeration && (
-          <button
-            onClick={() => run(() => setFeaturedAction(listing.id, !listing.featured))}
-            disabled={pending}
-            title="Show this listing first on the homepage"
-            className="rounded-lg px-3 py-1.5 text-neutral-700 ring-1 ring-inset ring-neutral-200 hover:ring-neutral-300 disabled:opacity-60"
-          >
-            {listing.featured ? "Unfeature" : "Feature"}
-          </button>
-        )}
 
         {showModeration &&
           (listing.status === "PUBLISHED" ? (

@@ -1,4 +1,5 @@
 import { formatRelativeTime } from "@/lib/utils/format";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export interface NotificationItem {
   id: string;
@@ -11,9 +12,12 @@ export interface NotificationItem {
 export function NotificationList({ notifications }: { notifications: NotificationItem[] }) {
   if (notifications.length === 0) {
     return (
-      <p className="text-sm text-neutral-500">
-        No notifications yet. Favorite a boarding house to get alerts when a room opens up.
-      </p>
+      <EmptyState
+        title="No notifications yet"
+        message="Favorite a boarding house to get alerts when a room opens up there."
+        actionLabel="Browse listings"
+        actionHref="/"
+      />
     );
   }
 

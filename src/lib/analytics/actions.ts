@@ -4,6 +4,8 @@ import { logAnalyticsEvent } from "@/lib/db/analytics";
 import { publishedListingExists } from "@/lib/db/listing-guards";
 import { allow, clientKey, LIMITS } from "@/lib/security/rate-limit";
 import { reportError } from "@/lib/security/errors";
+import { getCurrentProfile } from "@/lib/auth/profile";
+import { prisma } from "@/lib/db/prisma";
 
 // Public actions any visitor can trigger, so they are rate limited per client and
 // only ever write for a listing that exists and is published. Failures are swallowed:
@@ -25,5 +27,14 @@ export async function logContactClickAction(boardingHouseId: string) {
 }
 
 export async function logProfileViewAction(boardingHouseId: string) {
+  // Don't let an owner inflate their own "profile views" tile by visiting their own listing.
+  const profile = await getCurrentProfile();
+  if (profile) {
+    const owned = await prisma.boardingHouse.findFirst({
+      where: { id: boardingHouseId, ownerId: profile.id },
+      select: { id: true },
+    });
+    if (owned) return;
+  }
   await record(boardingHouseId, "VIEW");
 }

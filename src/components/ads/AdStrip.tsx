@@ -1,6 +1,7 @@
 import { findLiveAdvertisements } from "@/lib/db/advertisements";
 import { safeExternalUrl } from "@/lib/security/url";
 import { reportError } from "@/lib/security/errors";
+import { resilientRead } from "@/lib/async/resilient-read";
 import { AdCard } from "./AdCard";
 
 // A calm row of local business ads below the hero. Renders nothing when there are no
@@ -10,7 +11,9 @@ export async function AdStrip() {
   // Ads are non-critical — never let a DB hiccup take down the homepage.
   let ads: Awaited<ReturnType<typeof findLiveAdvertisements>> = [];
   try {
-    ads = (await findLiveAdvertisements(3)).filter((ad) => ad.imageUrls.length > 0);
+    ads = (await resilientRead(() => findLiveAdvertisements(3))).filter(
+      (ad) => ad.imageUrls.length > 0,
+    );
   } catch (error) {
     reportError("adStrip", error);
     return null;

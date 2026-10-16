@@ -1,10 +1,16 @@
 import { requireOwner } from "@/lib/auth/profile";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { Logo } from "@/components/brand/Logo";
+import { OwnerFrozenNotice } from "@/components/owner/OwnerFrozenNotice";
+import { OwnerBetaNotice } from "@/components/owner/OwnerBetaNotice";
 
 // Every /owner page shares this shell. requireOwner here means the whole area is
 // protected in one place (the middleware guards it too, as defence in depth).
-export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
+export default async function OwnerLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const owner = await requireOwner();
 
   return (
@@ -20,12 +26,23 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
               { href: "/", label: "Back to site" },
               { href: "/owner", label: "My listings" },
               { href: "/owner/requests", label: "Viewing requests" },
+              { href: "/settings", label: "Settings" },
             ]}
           />
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+      {/* Frozen owners keep the shell (so they can sign out) but lose all management. */}
+      <main className="mx-auto max-w-5xl px-4 py-6">
+        {owner.frozen ? (
+          <OwnerFrozenNotice />
+        ) : (
+          <>
+            <OwnerBetaNotice />
+            {children}
+          </>
+        )}
+      </main>
     </div>
   );
 }

@@ -127,3 +127,127 @@ textarea {
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
+
+/* Rendered in the server layout so an installed PWA covers its loading state
+   immediately, before client hydration can begin the page transition. */
+.pwa-launch-screen {
+  display: none;
+}
+
+@media (display-mode: standalone) {
+  .pwa-launch-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #b74726;
+    animation: pwa-launch-exit 350ms ease 1.15s forwards;
+  }
+
+  .pwa-launch-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    animation: pwa-launch-enter 500ms ease both;
+  }
+
+  .pwa-launch-logo {
+    display: block;
+    width: 96px;
+    height: 96px;
+    border-radius: 22px;
+    box-shadow: 0 22px 40px rgba(72, 23, 11, 0.3);
+    overflow: hidden;
+  }
+
+  .pwa-launch-logo svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .pwa-launch-house {
+    stroke-dasharray: 430;
+    stroke-dashoffset: 430;
+    animation: pwa-house-draw 500ms ease 120ms forwards;
+  }
+
+  .pwa-launch-door {
+    transform-origin: 96px 127px;
+    animation: pwa-door-open 400ms ease 470ms both;
+  }
+
+  .pwa-launch-sparkle {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: pwa-sparkle-pop 300ms ease both;
+  }
+
+  .pwa-launch-sparkle-one { animation-delay: 620ms; }
+  .pwa-launch-sparkle-two { animation-delay: 720ms; }
+
+  .pwa-launch-wordmark {
+    animation: pwa-wordmark-in 400ms ease 500ms both;
+  }
+
+  .pwa-launch-wordmark {
+    color: rgba(255, 250, 244, 0.9);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+  }
+}
+
+@keyframes pwa-launch-enter {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pwa-house-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes pwa-door-open {
+  0% { transform: scaleY(0.35); opacity: 0.5; }
+  70% { transform: scaleY(1.08); opacity: 1; }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes pwa-sparkle-pop {
+  0% { opacity: 0; transform: scale(0); }
+  70% { opacity: 1; transform: scale(1.35); }
+  100% { opacity: 0.9; transform: scale(1); }
+}
+
+@keyframes pwa-wordmark-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pwa-launch-exit {
+  to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+
+@media (display-mode: standalone) and (prefers-reduced-motion: reduce) {
+  .pwa-launch-screen,
+  .pwa-launch-content {
+    animation: none;
+  }
+
+  .pwa-launch-screen {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .pwa-launch-house,
+  .pwa-launch-door,
+  .pwa-launch-sparkle,
+  .pwa-launch-wordmark {
+    animation: none;
+  }
+}

@@ -3,6 +3,7 @@ import { getAdminOrNull } from "@/lib/auth/profile";
 import { findAllListingsForAdmin, type AdminListingFilter } from "@/lib/db/admin";
 import { AdminListingRow } from "@/components/admin/AdminListingRow";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 interface PageProps {
   searchParams: Promise<{ filter?: string }>;
@@ -21,7 +22,7 @@ function normalizeFilter(value: string | undefined): AdminListingFilter {
 export default async function AdminListingsPage({ searchParams }: PageProps) {
   if (!(await getAdminOrNull())) return null;
   const filter = normalizeFilter((await searchParams).filter);
-  const rows = await findAllListingsForAdmin(filter);
+  const rows = await resilientRead(() => findAllListingsForAdmin(filter));
 
   return (
     <div className="space-y-4">

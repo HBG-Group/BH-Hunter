@@ -3,10 +3,11 @@ import { findAllAdvertisements, isAdLive } from "@/lib/db/advertisements";
 import { AdForm } from "@/components/admin/AdForm";
 import { AdRow } from "@/components/admin/AdRow";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { resilientRead } from "@/lib/async/resilient-read";
 
 export default async function AdminAdsPage() {
   if (!(await getAdminOrNull())) return null;
-  const ads = await findAllAdvertisements();
+  const ads = await resilientRead(findAllAdvertisements);
 
   return (
     <div className="space-y-6">

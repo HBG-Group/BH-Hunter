@@ -4,6 +4,7 @@
 
 import { prisma } from "@/lib/db/prisma";
 import { uniqueSlug } from "@/lib/utils/slug";
+import { ownerScope } from "@/lib/auth/authorization-core";
 
 export interface RoomInput {
   label: string;
@@ -46,7 +47,7 @@ export function findListingsByOwner(ownerId: string) {
 
 export function findOwnerListing(ownerId: string, id: string) {
   return prisma.boardingHouse.findFirst({
-    where: { id, ownerId },
+    where: ownerScope(ownerId, id),
     include: { rooms: true, amenities: { include: { amenity: true } } },
   });
 }
@@ -89,7 +90,7 @@ export async function updateOwnerListing(
   data: Omit<ListingWriteData, "slug">,
 ) {
   // Verify ownership before any write.
-  const owned = await prisma.boardingHouse.findFirst({ where: { id, ownerId }, select: { id: true } });
+  const owned = await prisma.boardingHouse.findFirst({ where: ownerScope(ownerId, id), select: { id: true } });
   if (!owned) return false;
 
   // Keep the existing slug so public URLs stay stable across edits.
@@ -113,8 +114,19 @@ export async function updateOwnerListing(
 // One-tap "still accurate" — refreshes the confidence timestamp behind the pins.
 export async function confirmVacancies(ownerId: string, id: string) {
   const result = await prisma.boardingHouse.updateMany({
-    where: { id, ownerId },
+    where: ownerScope(ownerId, id),
     data: { lastConfirmedAt: new Date() },
+  });
+  return result.count > 0;
+}
+
+// An owner asks to be verified. Only stamps the request time when they aren't already
+// verified and don't already have one pending, so repeat clicks are harmless. Returns
+// false when there was nothing to do (already verified/pending, or not an owner).
+export async function requestOwnerVerification(ownerId: string): Promise<boolean> {
+  const result = await prisma.profile.updateMany({
+    where: { id: ownerId, role: "OWNER", verified: false, verificationRequestedAt: null },
+    data: { verificationRequestedAt: new Date(), verificationStatus: "PENDING" },
   });
   return result.count > 0;
 }
@@ -127,7 +139,7 @@ export async function setListingStatus(
   status: "DRAFT" | "PENDING",
 ) {
   const result = await prisma.boardingHouse.updateMany({
-    where: { id, ownerId },
+    where: ownerScope(ownerId, id),
     data: { status },
   });
   return result.count > 0;
