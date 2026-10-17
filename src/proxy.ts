@@ -81,6 +81,14 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // OAuth callbacks need the PKCE code-verifier cookie created when sign-in
+  // starts. A callback has no session yet, so calling getUser() here would enter
+  // the stale-session cleanup path below and erase that verifier before the route
+  // handler can exchange the auth code. Let the callback route handle the exchange.
+  if (path === OAUTH_CALLBACK_PATH) {
+    return applySecurityHeaders(nextResponseWithNonce(request, nonce), nonce);
+  }
+
   let response = nextResponseWithNonce(request, nonce);
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
