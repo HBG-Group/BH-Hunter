@@ -32,7 +32,7 @@
     "@supabase/supabase-js": "^2.118.0",
     "@upstash/redis": "^1.39.0",
     "framer-motion": "^12.42.2",
-    "geist": "^1.7.2",
+    "geist": "^1.8.2",
     "leaflet": "^1.9.4",
     "leaflet-gesture-handling": "^1.2.2",
     "next": "16.4.2",
